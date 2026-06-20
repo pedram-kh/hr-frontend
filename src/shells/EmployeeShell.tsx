@@ -1,0 +1,30 @@
+import { useAuth } from '../auth/context';
+
+// Empty employee chat shell (Sprint 0). No chat logic — just proves auth + /me.
+export function EmployeeShell() {
+  const { identity, logout } = useAuth();
+  const profile = identity?.profile;
+
+  return (
+    <div className="shell">
+      <header className="shell-header">
+        <strong>HR Platform — Chat</strong>
+        <span className="muted">{identity?.email}</span>
+        <button className="link" onClick={logout}>
+          Log out
+        </button>
+      </header>
+      <main className="shell-body">
+        <h2>Welcome, {identity?.full_name}</h2>
+        <p className="muted">This is the (empty) employee chat shell. Chat arrives in a later sprint.</p>
+        <h3>Your resolved profile</h3>
+        <ul>
+          <li>Convenio: {profile?.convenio?.name ?? '—'} ({profile?.convenio?.numero ?? '—'})</li>
+          <li>Province: {profile?.province?.name ?? '—'} ({profile?.province?.code ?? '—'})</li>
+          <li>Job category: {profile?.job_category?.name ?? '—'}</li>
+          <li>Employment type: {profile?.employment_type ?? '—'}</li>
+        </ul>
+      </main>
+    </div>
+  );
+}
