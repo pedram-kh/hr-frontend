@@ -20,7 +20,7 @@ export function EmployeeShell() {
         <h3>Your resolved profile</h3>
         <ul>
           <li>Convenio: {profile?.convenio?.name ?? '—'} ({profile?.convenio?.numero ?? '—'})</li>
-          <li>Province: {profile?.province?.name ?? '—'} ({profile?.province?.code ?? '—'})</li>
+          <li>Territory: {profile?.territory?.name ?? '—'} ({profile?.territory?.code ?? '—'})</li>
           <li>Job category: {profile?.job_category?.name ?? '—'}</li>
           <li>Employment type: {profile?.employment_type ?? '—'}</li>
         </ul>
