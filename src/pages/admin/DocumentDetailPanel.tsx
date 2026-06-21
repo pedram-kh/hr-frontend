@@ -32,8 +32,14 @@ export function DocumentDetailPanel({
 
   useEffect(load, [uuid]);
 
-  if (error) return <aside className="detail"><button className="link" onClick={onClose}>✕ Close</button><p className="error">{error}</p></aside>;
-  if (!doc) return <aside className="detail"><p className="muted">Loading…</p></aside>;
+  if (error)
+    return (
+      <aside className="detail panel">
+        <button className="btn btn-ghost" onClick={onClose}>✕ Close</button>
+        <p className="error">{error}</p>
+      </aside>
+    );
+  if (!doc) return <aside className="detail panel"><p className="muted">Loading…</p></aside>;
 
   const confirm = async () => {
     setBusy(true);
@@ -47,24 +53,29 @@ export function DocumentDetailPanel({
   };
 
   return (
-    <aside className="detail">
+    <aside className="detail panel">
       <div className="detail-head">
         <strong>{doc.title}</strong>
-        <button className="link" onClick={onClose}>✕</button>
+        <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
       </div>
 
       {doc.empty_text && (
-        <p className="badge badge-warn">⚠ Empty text — likely a scanned/image-only PDF (no OCR this sprint)</p>
+        <p className="notice">
+          <span aria-hidden="true">∅</span>
+          No extractable text — this looks like a scanned, image-only PDF (no OCR this sprint).
+        </p>
       )}
 
       <section>
-        <h4>Tags</h4>
+        <h4>Scope</h4>
+        <div className="facets">
+          <Facet label="Convenio" value={doc.tags.convenio ? `${doc.tags.convenio.numero} — ${doc.tags.convenio.name}` : '—'} />
+          <Facet label="Territory" value={doc.tags.territory ? `${doc.tags.territory.name} (${doc.tags.territory.level})` : '—'} />
+          <Facet label="Sector" value={doc.tags.sector?.name ?? '—'} />
+          <Facet label="Type" value={doc.tags.document_type?.name ?? '—'} />
+          <Facet label="Validity" value={doc.validity_start ? `${doc.validity_start} → ${doc.validity_end}` : '—'} />
+        </div>
         <dl className="kv">
-          <dt>Convenio</dt><dd>{doc.tags.convenio ? `${doc.tags.convenio.numero} — ${doc.tags.convenio.name}` : '—'}</dd>
-          <dt>Territory</dt><dd>{doc.tags.territory ? `${doc.tags.territory.name} (${doc.tags.territory.level})` : '—'}</dd>
-          <dt>Sector</dt><dd>{doc.tags.sector?.name ?? '—'}</dd>
-          <dt>Type</dt><dd>{doc.tags.document_type?.name ?? '—'}</dd>
-          <dt>Validity</dt><dd>{doc.validity_start ? `${doc.validity_start} → ${doc.validity_end}` : '—'}</dd>
           <dt>Retrieval</dt><dd>{doc.retrieval_status}</dd>
           <dt>Authority</dt><dd>{doc.authority_level}</dd>
           <dt>Language</dt><dd>{doc.language}</dd>
@@ -93,8 +104,12 @@ export function DocumentDetailPanel({
       <ReassignControls uuid={uuid} onChanged={() => { load(); onChanged(); }} />
 
       <section className="actions">
-        <button onClick={confirm} disabled={busy || doc.tagging_status === 'verified'}>
-          {doc.tagging_status === 'verified' ? 'Verified ✓' : 'Confirm tags'}
+        <button
+          className="btn btn-primary"
+          onClick={confirm}
+          disabled={busy || doc.tagging_status === 'verified'}
+        >
+          {doc.tagging_status === 'verified' ? 'Tags confirmed ✓' : 'Confirm tags'}
         </button>
       </section>
 
@@ -102,11 +117,21 @@ export function DocumentDetailPanel({
         <h4>Provenance</h4>
         <ol className="timeline">
           {doc.provenance.map((e, i) => (
-            <li key={i}>
-              <span className={`src src-${e.source}`}>{e.source}</span>{' '}
-              <code>{e.facet}</code>
-              {e.new_value ? <> → <strong>{e.new_value}</strong></> : null}
-              {e.note ? <span className="muted"> · {e.note}</span> : null}
+            <li key={i} className="timeline-item">
+              <span className={`timeline-dot src-${e.source}`} aria-hidden="true" />
+              <div>
+                <span className="timeline-action">
+                  {e.source.replace(/_/g, ' ')} · <code>{e.facet}</code>
+                  {e.new_value ? (
+                    <>
+                      {' → '}
+                      <span className="timeline-value">{e.new_value}</span>
+                    </>
+                  ) : null}
+                </span>
+                {e.note ? <div className="timeline-meta">{e.note}</div> : null}
+                <div className="timeline-meta">{e.created_at}</div>
+              </div>
             </li>
           ))}
         </ol>
@@ -119,6 +144,15 @@ export function DocumentDetailPanel({
         ))}
       </section>
     </aside>
+  );
+}
+
+function Facet({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="facet">
+      <span className="facet-label">{label}</span>
+      <span className="facet-value">{value}</span>
+    </span>
   );
 }
 
@@ -149,11 +183,11 @@ function ReassignControls({ uuid, onChanged }: { uuid: string; onChanged: () => 
     <section>
       <h4>Re-assign facet</h4>
       <div className="reassign">
-        <select value={facet} onChange={(e) => setFacet(e.target.value as 'convenio' | 'document_type')}>
+        <select className="select" value={facet} onChange={(e) => setFacet(e.target.value as 'convenio' | 'document_type')}>
           <option value="convenio">Convenio</option>
           <option value="document_type">Document type</option>
         </select>
-        <select value={valueId} onChange={(e) => setValueId(e.target.value)}>
+        <select className="select" value={valueId} onChange={(e) => setValueId(e.target.value)}>
           <option value="">Select a value…</option>
           {options.map((o) => (
             <option key={o.id} value={o.id}>
@@ -161,7 +195,9 @@ function ReassignControls({ uuid, onChanged }: { uuid: string; onChanged: () => 
             </option>
           ))}
         </select>
-        <button onClick={apply} disabled={busy || !valueId}>Apply</button>
+        <button className="btn btn-secondary" onClick={apply} disabled={busy || !valueId}>
+          Re-assign
+        </button>
       </div>
     </section>
   );
@@ -184,7 +220,7 @@ function PageView({ uuid, page, text, hasText }: { uuid: string; page: number; t
       </summary>
       <div className="page-body">
         {imgUrl ? <img src={imgUrl} alt={`Page ${page}`} className="page-img" /> : <p className="muted">Loading image…</p>}
-        <pre className="page-text">{text || '(no extractable text)'}</pre>
+        <pre className="page-text well">{text || '(no extractable text)'}</pre>
       </div>
     </details>
   );

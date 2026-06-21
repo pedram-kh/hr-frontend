@@ -22,7 +22,7 @@ export function LoginPage() {
       await requestCode(email.trim());
       setStep('code');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.');
+      setError(err instanceof ApiError ? err.message : "We couldn't send the code. Check the email address and try again.");
     } finally {
       setBusy(false);
     }
@@ -37,7 +37,7 @@ export function LoginPage() {
       login(res.token, res.identity);
       navigate(res.identity.account_type === 'admin' ? '/admin' : '/app', { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.');
+      setError(err instanceof ApiError ? err.message : "That code didn't match. Request a new one and try again.");
     } finally {
       setBusy(false);
     }
@@ -50,47 +50,53 @@ export function LoginPage() {
         <p className="muted">Sign in with a one-time email code (email OTP).</p>
 
         {step === 'email' && (
-          <form onSubmit={onRequestCode}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoFocus
-            />
-            <button type="submit" disabled={busy}>
+          <form className="login-form" onSubmit={onRequestCode}>
+            <div className="field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
               {busy ? 'Sending…' : 'Send code'}
             </button>
           </form>
         )}
 
         {step === 'code' && (
-          <form onSubmit={onVerifyCode}>
+          <form className="login-form" onSubmit={onVerifyCode}>
             <p className="muted">
               We sent a 6-digit code to <strong>{email}</strong>. In local dev it is visible in
               MailHog at <code>localhost:8025</code>.
             </p>
-            <label htmlFor="code">Code</label>
-            <input
-              id="code"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="123456"
-              required
-              autoFocus
-            />
-            <button type="submit" disabled={busy}>
+            <div className="field">
+              <label htmlFor="code">Code</label>
+              <input
+                id="code"
+                className="input"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                required
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
               {busy ? 'Verifying…' : 'Verify & sign in'}
             </button>
             <button
               type="button"
-              className="link"
+              className="btn btn-ghost btn-block"
               onClick={() => {
                 setStep('email');
                 setCode('');

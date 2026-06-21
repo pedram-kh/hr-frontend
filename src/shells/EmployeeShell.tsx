@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/context';
+import { ThemeToggle } from '../theme/ThemeToggle';
 
 // Empty employee chat shell (Sprint 0). No chat logic — just proves auth + /me.
 export function EmployeeShell() {
@@ -10,7 +11,8 @@ export function EmployeeShell() {
       <header className="shell-header">
         <strong>HR Platform — Chat</strong>
         <span className="muted">{identity?.email}</span>
-        <button className="link" onClick={logout}>
+        <ThemeToggle />
+        <button className="btn btn-ghost" onClick={logout}>
           Log out
         </button>
       </header>

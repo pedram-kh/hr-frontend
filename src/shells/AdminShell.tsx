@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/context';
+import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
 
 type View = 'home' | 'documents';
@@ -15,12 +16,16 @@ export function AdminShell() {
       <header className="shell-header">
         <strong>HR Platform — Admin</strong>
         <nav className="shell-nav">
-          <button className={`link ${view === 'documents' ? 'active' : ''}`} onClick={() => setView('documents')}>
+          <button
+            className={`btn btn-ghost ${view === 'documents' ? 'active' : ''}`}
+            onClick={() => setView('documents')}
+          >
             Knowledge
           </button>
         </nav>
         <span className="muted">{identity?.email}</span>
-        <button className="link" onClick={logout}>Log out</button>
+        <ThemeToggle />
+        <button className="btn btn-ghost" onClick={logout}>Log out</button>
       </header>
       <main className="shell-body shell-body--wide">
         {view === 'documents' ? (

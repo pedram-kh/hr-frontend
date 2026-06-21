@@ -45,7 +45,7 @@ export function DocumentsPage() {
       setUploadMsg(`Ingested ${ingested}, skipped ${skipped}, failed ${failed}.`);
       refresh();
     } catch (err) {
-      setUploadMsg(`Upload failed: ${(err as Error).message}`);
+      setUploadMsg(`Couldn't ingest these files: ${(err as Error).message}`);
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -55,7 +55,7 @@ export function DocumentsPage() {
     <div className="docs-layout">
       <div className="docs-main">
         <div className="docs-toolbar">
-          <label className="upload-btn">
+          <label className="btn btn-primary">
             Upload folder
             <input
               ref={fileInput}
@@ -67,11 +67,15 @@ export function DocumentsPage() {
               style={{ display: 'none' }}
             />
           </label>
-          <select value={taggingStatus} onChange={(e) => setTaggingStatus(e.target.value)}>
+          <select
+            className="select"
+            value={taggingStatus}
+            onChange={(e) => setTaggingStatus(e.target.value)}
+          >
             <option value="">All statuses</option>
-            <option value="auto_proposed">auto_proposed</option>
-            <option value="under_review">under_review</option>
-            <option value="verified">verified</option>
+            <option value="auto_proposed">Auto-proposed</option>
+            <option value="under_review">Under review</option>
+            <option value="verified">Verified</option>
           </select>
           <label className="checkbox">
             <input type="checkbox" checked={conflictsOnly} onChange={(e) => setConflictsOnly(e.target.checked)} />
@@ -92,7 +96,7 @@ export function DocumentsPage() {
                 <th>Sector</th>
                 <th>Convenio</th>
                 <th>Type</th>
-                <th>Validity</th>
+                <th className="num">Validity</th>
                 <th>Retrieval</th>
                 <th>Status</th>
                 <th>Flags</th>
@@ -110,19 +114,41 @@ export function DocumentsPage() {
                   <td>{r.sector ?? '—'}</td>
                   <td>{r.convenio ?? '—'}</td>
                   <td>{r.document_type ?? '—'}</td>
-                  <td>{r.validity_start ? `${r.validity_start}→${r.validity_end}` : '—'}</td>
+                  <td className="num">{r.validity_start ? `${r.validity_start} → ${r.validity_end}` : '—'}</td>
                   <td>{r.retrieval_status}</td>
                   <td>{r.tagging_status}</td>
                   <td className="flags">
-                    {r.has_open_conflict && <span className="badge badge-conflict">conflict</span>}
-                    {!r.has_open_conflict && r.has_open_review && <span className="badge badge-review">review</span>}
-                    {r.empty_text && <span className="badge badge-warn">empty_text</span>}
-                    {r.authority_level === 'national_law' && <span className="badge badge-national">national</span>}
+                    {r.has_open_conflict && (
+                      <span className="badge badge-conflict">
+                        <span aria-hidden="true">⚠</span> Conflict
+                      </span>
+                    )}
+                    {!r.has_open_conflict && r.has_open_review && (
+                      <span className="badge badge-review">
+                        <span aria-hidden="true">⏳</span> Under review
+                      </span>
+                    )}
+                    {r.empty_text && (
+                      <span className="badge badge-empty">
+                        <span aria-hidden="true">∅</span> No text
+                      </span>
+                    )}
+                    {r.authority_level === 'national_law' && (
+                      <span className="badge badge-national">
+                        <span aria-hidden="true">⚑</span> National
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={9} className="muted">No documents. Upload a folder to ingest.</td></tr>
+                <tr>
+                  <td colSpan={9} className="col-empty">
+                    {conflictsOnly || taggingStatus
+                      ? 'No documents match these filters.'
+                      : 'No documents yet — upload a convenio folder to ingest.'}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
