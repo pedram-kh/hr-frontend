@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useAuth } from '../auth/context';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
+import { AnswerModelPage } from '../pages/admin/AnswerModelPage';
 
-type View = 'home' | 'documents';
+type View = 'documents' | 'settings';
 
-// Admin console shell. Sprint 1 adds the Knowledge → Documents module
-// (ingestion + tag verification); other modules arrive in later sprints.
+// Admin console shell. Sprint 1: Knowledge → Documents. Sprint 2b-1 adds
+// Settings → Answer model (the external-provider key screen, ADR-0015).
 export function AdminShell() {
   const { identity, logout } = useAuth();
   const [view, setView] = useState<View>('documents');
@@ -22,6 +23,12 @@ export function AdminShell() {
           >
             Knowledge
           </button>
+          <button
+            className={`btn btn-ghost ${view === 'settings' ? 'active' : ''}`}
+            onClick={() => setView('settings')}
+          >
+            Settings
+          </button>
         </nav>
         <span className="muted">{identity?.email}</span>
         <ThemeToggle />
@@ -35,7 +42,11 @@ export function AdminShell() {
             <DocumentsPage />
           </>
         ) : (
-          <h2>Welcome, {identity?.full_name}</h2>
+          <>
+            <h2>Settings · Answer model</h2>
+            <p className="muted">Configure the external answer-model provider key (ADR-0015).</p>
+            <AnswerModelPage />
+          </>
         )}
       </main>
     </div>

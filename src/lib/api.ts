@@ -199,6 +199,100 @@ export function getPageImageUrl(uuid: string, page: number): Promise<{ url: stri
   return request(`/admin/documents/${uuid}/pages/${page}/image`, { method: 'GET' });
 }
 
+// ----------------------------------------------------------------------------
+// Employee chat (Sprint 2b-1)
+// ----------------------------------------------------------------------------
+
+export interface Citation {
+  chunk_id: number;
+  document_id: number;
+  document_uuid: string | null;
+  document_title: string | null;
+  authority_level: string | null;
+  page_from: number | null;
+  page_to: number | null;
+  page_number: number | null;
+  snippet: string;
+}
+
+// The structured "how I got here" trace. Rendered read-only; never contains the
+// API key or any secret (the backend builds it without them).
+export interface MessageTrace {
+  profile?: Record<string, unknown>;
+  scope_filters?: Record<string, unknown>;
+  router_decision: null;
+  guardrail_check?: { fired: boolean; reason: string | null; rule: string | null };
+  retrieval?: {
+    eligible_total: number;
+    returned: number;
+    top_score: number;
+    chunks?: { chunk_id: number; document_id: number; page_from: number | null; page_to: number | null; score: number | null; authority_level: string | null }[];
+  };
+  synthesis?: {
+    provider?: string;
+    model?: string;
+    citation_count?: number;
+    confidence?: number;
+    authority_used?: string[];
+    [k: string]: unknown;
+  };
+  floor_decision?: {
+    retrieval_score_floor?: number;
+    answer_confidence_floor?: number;
+    check_a_retrieval?: boolean;
+    check_b_citations?: boolean;
+    authority_used?: string[];
+    outcome?: string;
+    escalation_reason?: string | null;
+    note?: string;
+  };
+}
+
+export interface ChatResponse {
+  session_uuid: string;
+  message_id: number;
+  escalated: boolean;
+  escalation_reason: string | null;
+  escalation_uuid: string | null;
+  answer: string;
+  citations: Citation[];
+  authority_used: string[];
+  trace: MessageTrace;
+}
+
+export function sendChatMessage(question: string, sessionUuid?: string | null): Promise<ChatResponse> {
+  return request('/chat/message', {
+    method: 'POST',
+    body: JSON.stringify({ question, session_uuid: sessionUuid ?? null }),
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Answer model key handling (Sprint 2b-1, ADR-0015)
+// ----------------------------------------------------------------------------
+
+export interface AnswerModelStatus {
+  configured: boolean;
+  masked_key: string | null; // ••••1234 — reconstructed without decrypting; never the raw key
+  provider: string;
+  configured_at: string | null;
+}
+
+export function getAnswerModelStatus(): Promise<AnswerModelStatus> {
+  return request('/admin/answer-model/status', { method: 'GET' });
+}
+
+export function setAnswerModelKey(apiKey: string): Promise<AnswerModelStatus> {
+  return request('/admin/answer-model', {
+    method: 'POST',
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
+
+export function clearAnswerModelKey(): Promise<{ configured: boolean }> {
+  return request('/admin/answer-model/key', { method: 'DELETE' });
+}
+
 export async function uploadDocuments(files: FileList): Promise<{ results: unknown[] }> {
   const form = new FormData();
   Array.from(files).forEach((file) => {
