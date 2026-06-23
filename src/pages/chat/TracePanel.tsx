@@ -25,11 +25,32 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     });
   }
 
+  if (trace.router_decision) {
+    const rd = trace.router_decision;
+    const subq = rd.subqueries && rd.subqueries.length > 0 ? ` · ${rd.subqueries.length} subconsulta(s)` : '';
+    steps.push({
+      label: 'Enrutado',
+      meta: `${rd.label} · confianza ${typeof rd.confidence === 'number' ? rd.confidence.toFixed(2) : rd.confidence} · ${rd.source}${subq}`,
+      dot: 'src-ai_agent',
+    });
+  }
+
+  if (trace.salary) {
+    const sal = trace.salary;
+    const cat = sal.category_source ? ` · categoría: ${sal.category_source}` : '';
+    steps.push({
+      label: 'Salario (SQL)',
+      meta: `${sal.outcome ?? ''}${sal.year ? ` · año ${sal.year} (${sal.year_selection ?? ''})` : ''}${cat}`,
+      dot: sal.outcome === 'answer' ? 'src-admin_manual' : 'src-system',
+    });
+  }
+
   if (trace.retrieval) {
     const r = trace.retrieval;
+    const passes = r.passes && r.passes.length > 1 ? ` · ${r.passes.length} pasadas (recall)` : '';
     steps.push({
       label: 'Recuperación',
-      meta: `${r.returned}/${r.eligible_total} fragmentos · score máx. ${r.top_score?.toFixed?.(3) ?? r.top_score}`,
+      meta: `${r.returned}/${r.eligible_total} fragmentos · score máx. ${r.top_score?.toFixed?.(3) ?? r.top_score}${passes}`,
       dot: 'src-ai_agent',
     });
   }
@@ -44,12 +65,24 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     });
   }
 
+  if (trace.floor_decision?.grounding?.checked) {
+    const g = trace.floor_decision.grounding;
+    steps.push({
+      label: 'Fundamentación (entailment)',
+      meta: `${g.grounded ? 'verificada' : 'no verificada'} · ${g.claims?.length ?? 0} afirmación(es)${g.ungrounded && g.ungrounded.length > 0 ? ` · ${g.ungrounded.length} sin respaldo` : ''}`,
+      dot: g.grounded ? 'src-admin_manual' : 'src-system',
+    });
+  }
+
   if (trace.floor_decision) {
     const f = trace.floor_decision;
+    const outcomeLabel =
+      f.outcome === 'answer' ? 'responder' : f.outcome === 'needs_category' ? 'pedir categoría' : 'escalar';
+    const checks = f.path === 'salary_sql' ? '' : ` · A=${f.check_a_retrieval ? '✓' : '✗'} B=${f.check_b_citations ? '✓' : '✗'}`;
     steps.push({
       label: 'Decisión',
-      meta: `${f.outcome === 'answer' ? 'responder' : 'escalar'}${f.escalation_reason ? ` (${f.escalation_reason})` : ''} · A=${f.check_a_retrieval ? '✓' : '✗'} B=${f.check_b_citations ? '✓' : '✗'}`,
-      dot: f.outcome === 'answer' ? 'src-admin_manual' : 'src-system',
+      meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}`,
+      dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' ? 'src-ai_agent' : 'src-system',
     });
   }
 

@@ -915,6 +915,24 @@ a {
   align-items: flex-start;
 }
 
+/* --- Salary category pick (single-turn constrained pick, §4) --- */
+.category-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.category-pick-option {
+  font-size: var(--text-sm);
+}
+
+.category-pick-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+}
+
 /* --- "How I got here" trace --- */
 .trace {
   margin-top: var(--space-3);

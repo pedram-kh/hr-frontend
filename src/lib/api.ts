@@ -204,7 +204,7 @@ export function getPageImageUrl(uuid: string, page: number): Promise<{ url: stri
 // ----------------------------------------------------------------------------
 
 export interface Citation {
-  chunk_id: number;
+  chunk_id: number | null; // null for a salary-table citation (structured data, not a chunk)
   document_id: number;
   document_uuid: string | null;
   document_title: string | null;
@@ -213,19 +213,53 @@ export interface Citation {
   page_to: number | null;
   page_number: number | null;
   snippet: string;
+  is_salary_table?: boolean;
 }
+
+// A constrained job category for the single-turn salary disambiguation pick (§4).
+// The id is FK-validated server-side to the employee's convenio — a free-text or
+// out-of-convenio value is impossible.
+export interface JobCategoryOption {
+  id: number;
+  name: string;
+  group_code: string | null;
+}
+
+// One turn's outcome (Sprint 2b-2). 'needs_category' renders the constrained pick.
+export type ChatOutcome = 'answer' | 'escalate' | 'needs_category';
 
 // The structured "how I got here" trace. Rendered read-only; never contains the
 // API key or any secret (the backend builds it without them).
 export interface MessageTrace {
   profile?: Record<string, unknown>;
   scope_filters?: Record<string, unknown>;
-  router_decision: null;
+  // The router decision (ADR-0016): null only for guardrail-escalated turns that
+  // never reached the router. Otherwise the label + confidence + source.
+  router_decision: {
+    label: string;
+    confidence: number;
+    source: string; // 'deterministic_salary' | 'llm' | 'fail_safe'
+    subqueries?: string[];
+    model?: string | null;
+    note?: string | null;
+    [k: string]: unknown;
+  } | null;
   guardrail_check?: { fired: boolean; reason: string | null; rule: string | null };
+  // Salary path detail (Sprint 2b-2): category + year + the resolved figures.
+  salary?: {
+    outcome?: string;
+    year?: number | null;
+    year_selection?: string;
+    category_source?: string; // 'profile' | 'picked_unverified'
+    job_category_id?: number | null;
+    note?: string | null;
+    [k: string]: unknown;
+  };
   retrieval?: {
     eligible_total: number;
     returned: number;
     top_score: number;
+    passes?: { kind: string; query: string; returned: number; eligible_total: number; top_score: number }[];
     chunks?: { chunk_id: number; document_id: number; page_from: number | null; page_to: number | null; score: number | null; authority_level: string | null }[];
   };
   synthesis?: {
@@ -237,10 +271,20 @@ export interface MessageTrace {
     [k: string]: unknown;
   };
   floor_decision?: {
+    path?: string;
     retrieval_score_floor?: number;
     answer_confidence_floor?: number;
     check_a_retrieval?: boolean;
     check_b_citations?: boolean;
+    figure_grounding?: { checked: boolean; grounded: boolean; figures?: string[]; ungrounded?: string[] };
+    grounding?: {
+      checked: boolean;
+      grounded?: boolean;
+      claims?: { claim: string; grounded: boolean; supporting_source: number | null }[];
+      ungrounded?: string[];
+      gate?: string;
+      [k: string]: unknown;
+    };
     authority_used?: string[];
     outcome?: string;
     escalation_reason?: string | null;
@@ -251,19 +295,29 @@ export interface MessageTrace {
 export interface ChatResponse {
   session_uuid: string;
   message_id: number;
+  outcome: ChatOutcome;
   escalated: boolean;
   escalation_reason: string | null;
   escalation_uuid: string | null;
   answer: string;
   citations: Citation[];
+  categories: JobCategoryOption[]; // populated only on a 'needs_category' outcome
   authority_used: string[];
   trace: MessageTrace;
 }
 
-export function sendChatMessage(question: string, sessionUuid?: string | null): Promise<ChatResponse> {
+export function sendChatMessage(
+  question: string,
+  sessionUuid?: string | null,
+  selectedJobCategoryId?: number | null,
+): Promise<ChatResponse> {
   return request('/chat/message', {
     method: 'POST',
-    body: JSON.stringify({ question, session_uuid: sessionUuid ?? null }),
+    body: JSON.stringify({
+      question,
+      session_uuid: sessionUuid ?? null,
+      selected_job_category_id: selectedJobCategoryId ?? null,
+    }),
   });
 }
 
