@@ -25,6 +25,7 @@ export interface EmployeeProfile {
 
 export interface Identity {
   account_type: 'employee' | 'admin';
+  id?: number; // numeric admin id (admins only) — used for board self-assign
   uuid: string;
   email: string;
   full_name: string;
@@ -40,12 +41,22 @@ export function canEditKnowledge(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['knowledge.edit']);
 }
 
+/** True when this admin holds the escalation.work ability (board: assign/move/reply/resolve). */
+export function canWorkEscalations(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['escalation.work']);
+}
+
 export class ApiError extends Error {
   status: number;
 
-  constructor(status: number, message: string) {
+  // The parsed JSON body (when present) so callers can read structured fields
+  // like `code` and `conflicts` on a 409 (Sprint 4 scope-confirm / publish-block).
+  body: Record<string, unknown> | null;
+
+  constructor(status: number, message: string, body: Record<string, unknown> | null = null) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -67,7 +78,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const message = (data && (data.message as string)) || `Request failed (${res.status})`;
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, data ?? null);
   }
 
   return data as T;
@@ -200,6 +211,9 @@ export interface DocumentDetail {
   empty_text: boolean;
   review_tasks: ReviewTask[];
   provenance: ProvenanceEvent[];
+  // Sprint 4: present only for a published internal_hr_ruling — the escalation
+  // it was created from (badge + provenance + back-link to the card).
+  ruling: { escalation_uuid: string | null; escalation_id: number; agent: string | null } | null;
 }
 
 export interface VocabularyItem {
@@ -470,6 +484,28 @@ export function sendChatMessage(
   });
 }
 
+// One persisted message in a session (Sprint 4). `hr_agent` is a HUMAN reply —
+// attributed as "Recursos Humanos" (author_label), never mistakable for the bot.
+// Assistant turns carry citations + the trace; user/hr_agent turns do not.
+export interface ConversationMessage {
+  id: number;
+  role: 'user' | 'assistant' | 'hr_agent';
+  content: string;
+  created_at: string | null;
+  author_label: string | null;
+  outcome: ChatOutcome | null;
+  escalated: boolean;
+  authority_used: string[];
+  citations: Citation[];
+  trace: MessageTrace | null;
+}
+
+// Hydrate the employee's OWN most-recent session (Q-D). Self-scoped; the UI
+// loads this on mount and polls so a human reply appears without a refresh.
+export function getChatSession(): Promise<{ session_uuid: string | null; messages: ConversationMessage[] }> {
+  return request('/chat/session', { method: 'GET' });
+}
+
 // ----------------------------------------------------------------------------
 // Admin — Answer model key handling (Sprint 2b-1, ADR-0015)
 // ----------------------------------------------------------------------------
@@ -494,6 +530,107 @@ export function setAnswerModelKey(apiKey: string): Promise<AnswerModelStatus> {
 
 export function clearAnswerModelKey(): Promise<{ configured: boolean }> {
   return request('/admin/answer-model/key', { method: 'DELETE' });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Escalation board + the flywheel (Sprint 4)
+// ----------------------------------------------------------------------------
+
+export type EscalationStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
+
+export interface EscalationCardSummary {
+  uuid: string;
+  status: EscalationStatus;
+  reason: string;
+  reason_label: string;
+  question: string | null;
+  employee: {
+    uuid: string;
+    full_name: string;
+    convenio: { id: number; numero: string; name: string } | null;
+  } | null;
+  assigned_to: { id: number; full_name: string } | null;
+  topic: { id: number; name: string } | null;
+  created_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface EscalationEvent {
+  type: string;
+  old_value: string | null;
+  new_value: string | null;
+  actor: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+
+export interface EscalationDetail {
+  card: EscalationCardSummary;
+  conversation: ConversationMessage[];
+  resolution: {
+    resolution_text: string;
+    converted_to_document_id: number | null;
+    document: { uuid: string; title: string } | null;
+  } | null;
+  events: EscalationEvent[];
+}
+
+export interface EscalationList {
+  cards: EscalationCardSummary[];
+  counts: Record<string, number>;
+  statuses: EscalationStatus[];
+}
+
+export interface EscalationFilters {
+  status?: string;
+  reason?: string;
+  assigned_to?: number;
+  convenio_id?: number;
+  unassigned?: boolean;
+}
+
+export function listEscalations(filters: EscalationFilters = {}): Promise<EscalationList> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+  });
+  const qs = params.toString();
+  return request(`/admin/escalations${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export function getEscalation(uuid: string): Promise<EscalationDetail> {
+  return request(`/admin/escalations/${uuid}`, { method: 'GET' });
+}
+
+export function updateEscalation(
+  uuid: string,
+  patch: { status?: EscalationStatus; assigned_to?: number | null },
+): Promise<{ card: EscalationCardSummary }> {
+  return request(`/admin/escalations/${uuid}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export function replyEscalation(
+  uuid: string,
+  content: string,
+): Promise<{ message: { id: number; role: string; content: string; author_label: string; created_at: string | null } }> {
+  return request(`/admin/escalations/${uuid}/reply`, { method: 'POST', body: JSON.stringify({ content }) });
+}
+
+export interface ResolveResult {
+  card: EscalationCardSummary;
+  document: { uuid: string; title: string } | null;
+  publish: {
+    chunks_written: number;
+    page_count: number;
+    round_trip: { lossless: boolean; chunk_count: number; expected_len: number; embedded_len: number };
+  } | null;
+}
+
+export function resolveEscalation(
+  uuid: string,
+  payload: { resolution_text: string; convert: boolean; topic_id?: number | null; confirm_scope_change?: boolean },
+): Promise<ResolveResult> {
+  return request(`/admin/escalations/${uuid}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function uploadDocuments(files: FileList): Promise<{ results: unknown[] }> {

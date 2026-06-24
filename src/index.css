@@ -1478,3 +1478,131 @@ a {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* ===========================================================================
+   Sprint 4 — Escalation board + the two new visual primitives
+   (the internal_hr_ruling badge reuses .badge-review; the only genuinely new
+   primitives are .chat-bubble--agent + .badge-agent — per the design-system
+   "a class/token each" rule).
+   =========================================================================== */
+
+/* The human-reply bubble — distinct from the bot answer (info-tinted, left
+   accent) so a person's reply is never mistaken for a synthesised answer. */
+.chat-bubble--agent {
+  border-left: 3px solid var(--info);
+  background: var(--info-bg);
+}
+.badge-agent {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* Kanban board */
+.board {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+}
+.board-col {
+  flex: 1 0 240px;
+  min-width: 240px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+}
+.board-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+}
+.board-col-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.board-col-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  background: var(--neutral-bg);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+.board-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.board-empty {
+  text-align: center;
+  margin: var(--space-2) 0;
+}
+.board-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  cursor: pointer;
+}
+.board-card:hover {
+  border-color: var(--accent);
+}
+.board-card.is-active {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.board-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+.board-card-q {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.board-card-meta {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+.board-card-foot {
+  margin-top: var(--space-2);
+}
+.board-card-unassigned {
+  font-size: var(--text-xs);
+}
+.board-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.board-readonly {
+  margin-left: auto;
+}
+.card-convo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.btn-inline {
+  padding: 0;
+  height: auto;
+  text-decoration: underline;
+}

@@ -6,8 +6,8 @@ specs in `hr-docs`.
 
 > **Current:** email-OTP login → employee chat (Sprint 2b) and the admin console.
 > The admin console has **Knowledge → Map** (the lens hierarchy + coverage gaps +
-> document card), **Knowledge → Documents** (ingestion/verification table), and
-> **Settings → Answer model**.
+> document card), **Knowledge → Documents** (ingestion/verification table),
+> **Escalations** (the Sprint-4 board + card drawer), and **Settings → Answer model**.
 
 ## Requirements
 
@@ -52,6 +52,29 @@ npm run dev                   # http://localhost:5173
   bounded-edit UI (FK pickers, the scope-warning modal, the id-94 retag flow). Edit
   affordances are gated on the `knowledge.edit` ability (`canEditKnowledge()` from
   `/me`'s `abilities`); an auditor sees a read-only notice (colour **and** text).
+
+### Escalation board + two-way chat (Sprint 4, `src/pages/admin/` + `src/pages/chat/`)
+
+- **`EscalationBoardPage.tsx`** — the Kanban board (New → Assigned → In Progress →
+  Resolved), filters (status/reason/`mine`), opens the card drawer. Assign/move/reply/
+  resolve affordances are gated on the **`escalation.work`** ability
+  (`canWorkEscalations()` from `/me`); an auditor sees a read-only board.
+- **`EscalationCardDrawer.tsx`** — the card detail: the **card-scoped** conversation
+  bubbles + the reused `TracePanel` (why it escalated), the triage controls
+  (assign/status), the **reply** box (writes an `hr_agent` turn), and the
+  **Save-as-knowledge** flow — resolution + optional convert + the required
+  approved-topic pick + the **scope-confirm modal** + the conflict-block message.
+- **`ChatScreen.tsx`** (employee) — now **hydrates from `GET /chat/session` on mount
+  and polls (~25 s) / re-hydrates on window focus**, so a human reply appears in the
+  employee's chat. A human turn renders as a distinct, clearly-attributed bubble
+  (`chat-bubble--agent`, "Respuesta de Recursos Humanos (persona)") — never mistakable
+  for a bot answer, never showing the admin's identity.
+- **`DocumentDetailPanel.tsx`** — for an `internal_hr_ruling` it shows the badge + the
+  "created from escalation #N by [agent]" provenance with a **back-link** to the card
+  (deep-links into the board via `AdminShell`).
+
+The only new visual primitives are the `internal_hr_ruling` badge and the
+`chat-bubble--agent` variant (one class/token each, per the design-system rule).
 
 ## Scripts
 

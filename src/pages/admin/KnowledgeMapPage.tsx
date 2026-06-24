@@ -14,7 +14,7 @@ const LENSES: { id: Lens; label: string }[] = [
 // Knowledge → Map: the lens hierarchy (ADR-0001) with coverage-gap markers
 // (deploy.md §5), in branching-graph and indented-list forms. A leaf opens the
 // document card on the right.
-export function KnowledgeMapPage() {
+export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uuid: string) => void } = {}) {
   const [lens, setLens] = useState<Lens>('territory');
   const [form, setForm] = useState<HierarchyForm>('graph');
   const [selected, setSelected] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export function KnowledgeMapPage() {
       </div>
 
       {selected && (
-        <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} />
+        <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />
       )}
     </div>
   );

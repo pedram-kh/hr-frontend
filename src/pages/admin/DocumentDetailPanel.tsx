@@ -26,10 +26,12 @@ export function DocumentDetailPanel({
   uuid,
   onClose,
   onChanged,
+  onOpenEscalation,
 }: {
   uuid: string;
   onClose: () => void;
   onChanged: () => void;
+  onOpenEscalation?: (uuid: string) => void;
 }) {
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
@@ -78,8 +80,27 @@ export function DocumentDetailPanel({
     <aside className="detail panel">
       <div className="detail-head">
         <strong>{doc.title}</strong>
+        {doc.authority_level === 'internal_hr_ruling' && (
+          <span className="badge badge-review">Resolución RR. HH.</span>
+        )}
         <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
       </div>
+
+      {doc.ruling && (
+        <p className="notice notice--neutral">
+          <span aria-hidden="true">🔁</span>
+          Creada desde la escalación <strong>#{doc.ruling.escalation_id}</strong>
+          {doc.ruling.agent ? ` por ${doc.ruling.agent}` : ''}.
+          {doc.ruling.escalation_uuid && onOpenEscalation && (
+            <>
+              {' '}
+              <button className="btn btn-ghost btn-inline" onClick={() => onOpenEscalation(doc.ruling!.escalation_uuid!)}>
+                Ver la tarjeta →
+              </button>
+            </>
+          )}
+        </p>
+      )}
 
       {!canEdit && (
         <p className="notice notice--neutral">

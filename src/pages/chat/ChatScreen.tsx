@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, sendChatMessage, type ChatResponse, type JobCategoryOption } from '../../lib/api';
+import {
+  ApiError,
+  getChatSession,
+  sendChatMessage,
+  type ChatResponse,
+  type ConversationMessage,
+  type JobCategoryOption,
+  type MessageTrace,
+} from '../../lib/api';
 import { CitationList } from './CitationList';
 import { TracePanel } from './TracePanel';
 
@@ -18,7 +26,48 @@ interface AssistantItem {
   question: string;
 }
 
-type Item = UserItem | AssistantItem;
+// A HUMAN reply from HR (Sprint 4). Clearly attributed, never the bot voice.
+interface HrAgentItem {
+  role: 'hr_agent';
+  id: string;
+  content: string;
+  authorLabel: string;
+}
+
+type Item = UserItem | AssistantItem | HrAgentItem;
+
+// How often the chat re-hydrates from the server so a human reply appears
+// without a manual refresh (Q-D: session-load + polling, no websockets).
+const POLL_MS = 25000;
+
+// Build a ChatResponse-shaped object from a persisted message so the hydrated
+// turn renders identically to a live one.
+function toResponse(m: ConversationMessage, sessionUuid: string | null): ChatResponse {
+  return {
+    session_uuid: sessionUuid ?? '',
+    message_id: m.id,
+    // A hydrated needs_category turn has no live category list; render its prose
+    // as a normal answer (the single-turn pick is ephemeral — Sprint 5 adds it).
+    outcome: m.outcome === 'needs_category' ? 'answer' : (m.outcome ?? 'answer'),
+    escalated: m.escalated,
+    escalation_reason: null,
+    escalation_uuid: null,
+    answer: m.content,
+    citations: m.citations,
+    categories: [],
+    authority_used: m.authority_used,
+    trace: m.trace ?? ({ router_decision: null } as MessageTrace),
+  };
+}
+
+function mapMessages(messages: ConversationMessage[], sessionUuid: string | null): Item[] {
+  return messages.map((m): Item => {
+    if (m.role === 'user') return { role: 'user', id: `s-${m.id}`, text: m.content };
+    if (m.role === 'hr_agent')
+      return { role: 'hr_agent', id: `s-${m.id}`, content: m.content, authorLabel: m.author_label ?? 'Recursos Humanos' };
+    return { role: 'assistant', id: `s-${m.id}`, response: toResponse(m, sessionUuid), question: '' };
+  });
+}
 
 const AUTHORITY_LABELS: Record<string, string> = {
   official_convenio: 'tu convenio',
@@ -41,6 +90,17 @@ function AnswerBlock({ response }: { response: ChatResponse }) {
       {caption && <p className="answer-authority">{caption}</p>}
       <CitationList citations={response.citations} />
       <TracePanel trace={response.trace} />
+    </div>
+  );
+}
+
+// A human HR reply (Sprint 4). Distinct, clearly-attributed bubble — never the
+// bot voice. Carries no citations/trace (a human turn, not a synthesised answer).
+function HumanReplyBlock({ content, authorLabel }: { content: string; authorLabel: string }) {
+  return (
+    <div className="card chat-bubble chat-bubble--assistant chat-bubble--agent">
+      <span className="badge badge-agent">Respuesta de {authorLabel} (persona)</span>
+      <p className="answer-prose">{content}</p>
     </div>
   );
 }
@@ -100,11 +160,44 @@ export function ChatScreen() {
   // closed pick disables after one choice — single-turn, §4).
   const [resolvedPicks, setResolvedPicks] = useState<number[]>([]);
   const sessionUuid = useRef<string | null>(null);
+  const sendingRef = useRef(false);
   const listEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [items, sending]);
+
+  // Hydrate the employee's own session from the server (Q-D). Replaces the local
+  // list with server truth — so a human (hr_agent) reply lands without a manual
+  // refresh. Skipped while a send is in flight (don't clobber the optimistic UI).
+  const hydrate = async () => {
+    if (sendingRef.current) return;
+    try {
+      const { session_uuid, messages } = await getChatSession();
+      if (sendingRef.current) return;
+      sessionUuid.current = session_uuid;
+      if (messages.length > 0) setItems(mapMessages(messages, session_uuid));
+    } catch {
+      // Silent — hydration is best-effort; the live send path still works.
+    }
+  };
+
+  useEffect(() => {
+    // Legit external-subscription effect (Q-D): hydrate the session on mount and
+    // subscribe to a poll + window-focus. setItems runs only inside hydrate's
+    // async fetch callback (after the awaited request), never synchronously here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void hydrate();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void hydrate();
+    }, POLL_MS);
+    const onFocus = () => void hydrate();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   async function submit() {
     const question = input.trim();
@@ -114,6 +207,7 @@ export function ChatScreen() {
     setInput('');
     const userId = crypto.randomUUID();
     setItems((prev) => [...prev, { role: 'user', id: userId, text: question }]);
+    sendingRef.current = true;
     setSending(true);
 
     try {
@@ -125,6 +219,7 @@ export function ChatScreen() {
         err instanceof ApiError ? err.message : 'No se pudo enviar la pregunta. Inténtalo de nuevo.';
       setError(message);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -133,6 +228,7 @@ export function ChatScreen() {
   async function pickCategory(turn: AssistantItem, category: JobCategoryOption) {
     if (sending) return;
     setError(null);
+    sendingRef.current = true;
     setSending(true);
     setItems((prev) => [
       ...prev,
@@ -149,6 +245,7 @@ export function ChatScreen() {
         err instanceof ApiError ? err.message : 'No se pudo enviar la selección. Inténtalo de nuevo.';
       setError(message);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -174,6 +271,10 @@ export function ChatScreen() {
           item.role === 'user' ? (
             <div key={item.id} className="chat-row chat-row--user">
               <div className="chat-bubble chat-bubble--user">{item.text}</div>
+            </div>
+          ) : item.role === 'hr_agent' ? (
+            <div key={item.id} className="chat-row chat-row--assistant">
+              <HumanReplyBlock content={item.content} authorLabel={item.authorLabel} />
             </div>
           ) : (
             <div key={item.id} className="chat-row chat-row--assistant">
