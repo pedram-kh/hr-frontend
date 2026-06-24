@@ -4,8 +4,10 @@ React + Vite + TypeScript SPA for the HR platform — the employee chat UI and t
 admin console. Talks to `hr-backend` over HTTP. See `AGENTS.md` and the canonical
 specs in `hr-docs`.
 
-> **Sprint 0:** email-OTP login into two empty protected shells. No chat, no
-> admin modules, no lens/hierarchy UI yet.
+> **Current:** email-OTP login → employee chat (Sprint 2b) and the admin console.
+> The admin console has **Knowledge → Map** (the lens hierarchy + coverage gaps +
+> document card), **Knowledge → Documents** (ingestion/verification table), and
+> **Settings → Answer model**.
 
 ## Requirements
 
@@ -30,8 +32,26 @@ npm run dev                   # http://localhost:5173
   the 6-digit code → store token → redirect. In local dev, read the code from
   MailHog at <http://localhost:8025>.
 - **Two separate protected route trees** — employee chat shell at `/app`, admin
-  console shell at `/admin` (both empty; each calls `/me`). Routing target after
-  login is chosen by `account_type`.
+  console shell at `/admin`. Routing target after login is chosen by `account_type`.
+
+### Knowledge Center (Sprint 3, `src/pages/admin/`)
+
+- **`Hierarchy.tsx`** — the single reusable lens-hierarchy component (ADR-0001) in
+  two forms from one data model: an indented **list** and a hand-rolled **SVG
+  graph** (absolutely-positioned HTML node boxes + an SVG connector overlay with
+  deterministic coordinates — no layout dependency, ADR-0012). Lens-driven, lazy
+  children, leaf-opens-card, coverage-gap node badges. Exports `GAP_META` (the
+  shared gap label/colour map: a hole reads `--danger`/`--warning`, a staleness/
+  scope note reads `--neutral`).
+- **`KnowledgeMapPage.tsx`** — the **Knowledge → Map** view: lens + graph/list
+  segmented controls, the coverage-gap summary bar, the hierarchy, and the card.
+- **`DocumentDetailPanel.tsx`** — the document card: scope facets (territory/sector
+  marked *derived*), topics, chunk health, lineage, the provenance timeline (with
+  the reserved `ai_agent` dot colour), the real-PDF viewer, the read-only
+  **sandbox** ("test a question against this document" — persists nothing), and the
+  bounded-edit UI (FK pickers, the scope-warning modal, the id-94 retag flow). Edit
+  affordances are gated on the `knowledge.edit` ability (`canEditKnowledge()` from
+  `/me`'s `abilities`); an auditor sees a read-only notice (colour **and** text).
 
 ## Scripts
 

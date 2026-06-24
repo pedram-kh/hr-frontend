@@ -24,6 +24,11 @@
   --neutral: #475467;
   --neutral-bg: #f2f4f7;
 
+  /* Reserved provenance color for the AI tagging tier (Sprint 7). The only new
+     visual primitive this sprint — its dot appears in the timeline once an
+     ai_agent row exists; human (admin_manual) stays --accent. */
+  --provenance-ai: #7c3aed;
+
   /* --- Surfaces & text — LIGHT (default) --- */
   --canvas: #f8fafc;
   --surface: #ffffff;
@@ -102,6 +107,7 @@
   --info-bg: rgba(23, 92, 211, 0.2);
   --neutral: #c2cad6;
   --neutral-bg: rgba(71, 84, 103, 0.28);
+  --provenance-ai: #b794f6;
 
   /* Shadow: near-black, lower spread */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -701,7 +707,7 @@ a {
 }
 
 .timeline-dot.src-ai_agent {
-  background: var(--info);
+  background: var(--provenance-ai);
 }
 
 .timeline-action {
@@ -1068,4 +1074,407 @@ a {
   .btn {
     display: none;
   }
+}
+
+/* =============================================================================
+   Sprint 3 — Knowledge Center (lens map, coverage gaps, card edit, sandbox)
+   On the design tokens (ADR-0012); no raw hex in component rules.
+   ========================================================================== */
+
+/* --- Warning button (scope-affecting saves) --- */
+.btn-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.btn-warning:hover:not(:disabled) {
+  background: var(--warning);
+  color: var(--accent-contrast);
+}
+
+/* --- Map toolbar: lens + view segmented controls --- */
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+.seg {
+  display: inline-flex;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+.seg-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.seg-btn.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Coverage-gap summary bar --- */
+.gap-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+}
+.gap-bar-title {
+  margin-right: var(--space-1);
+}
+.gap-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* A coverage HOLE reads danger/warning; STALENESS / scope notes read neutral. */
+.gap--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.gap--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.gap--neutral {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
+/* --- Map canvas --- */
+.map-canvas {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: var(--space-3);
+  min-height: 200px;
+}
+
+/* --- Lens list (indented disclosure tree) --- */
+.lens-list,
+.lens-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lens-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+.lens-row:hover {
+  background: var(--surface-raised);
+}
+.lens-row--leaf {
+  color: var(--text-muted);
+}
+.lens-caret {
+  font-size: 9px;
+  color: var(--text-faint);
+  transition: transform 0.12s ease;
+}
+.lens-caret.is-open {
+  transform: rotate(90deg);
+}
+.lens-leaf-dot {
+  color: var(--text-faint);
+  width: 9px;
+  text-align: center;
+}
+.lens-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lens-meta {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.lens-count {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+}
+.lens-loading {
+  padding: var(--space-1) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* --- Lens graph (hand-rolled SVG: HTML node boxes + SVG connector overlay) --- */
+.lens-graph-scroll {
+  overflow: auto;
+  max-width: 100%;
+}
+.lens-graph {
+  position: relative;
+}
+.lens-graph-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.lens-edge {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.lens-edge--gap {
+  stroke: var(--warning);
+}
+.lens-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+.lens-node:hover {
+  border-color: var(--accent);
+}
+.lens-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent), var(--shadow-sm);
+}
+.lens-node--leaf {
+  background: var(--surface-inset);
+}
+.lens-node.has-gap {
+  border-color: var(--warning);
+}
+.lens-node-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lens-node-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Topic chips --- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+}
+.chip .timeline-dot {
+  margin: 0;
+}
+.chip-x {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  padding: 0 2px;
+}
+.chip-x:hover {
+  color: var(--danger);
+}
+
+.facet-derived {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.notice--neutral {
+  background: var(--neutral-bg);
+  color: var(--text-muted);
+}
+
+.timeline-old {
+  color: var(--text-faint);
+}
+
+/* --- Lineage --- */
+.lineage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+}
+.lineage-rel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  min-width: 92px;
+}
+.lineage-title {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* --- Edit block --- */
+.edit-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--surface-inset);
+}
+.lifecycle-edit {
+  margin-top: var(--space-3);
+}
+.lifecycle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.lifecycle-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* --- Scope-warning modal --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: var(--space-4);
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-5);
+  max-width: 440px;
+  width: 100%;
+}
+.modal-title {
+  margin: 0 0 var(--space-2);
+  color: var(--warning);
+}
+.modal-body {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  color: var(--text);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* --- Source viewer --- */
+.source-frame {
+  width: 100%;
+  height: 520px;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+/* --- Sandbox --- */
+.sandbox-tag {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-faint);
+  text-transform: none;
+}
+.sandbox-result {
+  margin-top: var(--space-3);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--surface-inset);
+}
+.sandbox-result.is-answer {
+  border-left-color: var(--success);
+}
+.sandbox-result.is-escalate {
+  border-left-color: var(--warning);
+}
+.sandbox-outcome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.sandbox-answer {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+}
+.sandbox-cites {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.sandbox-draft summary {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }

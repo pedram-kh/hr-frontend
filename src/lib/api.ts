@@ -30,7 +30,14 @@ export interface Identity {
   full_name: string;
   status: string;
   roles?: string[];
+  // Granular abilities (Sprint 3). The UI gates edit affordances on these.
+  abilities?: Record<string, boolean>;
   profile?: EmployeeProfile;
+}
+
+/** True when this admin holds the knowledge.edit ability (label editing). */
+export function canEditKnowledge(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['knowledge.edit']);
 }
 
 export class ApiError extends Error {
@@ -140,6 +147,34 @@ export interface ReviewTask {
   raw_unmatched_values: { facet: string; value: string }[] | null;
 }
 
+export interface TopicTag {
+  id: number;
+  name: string;
+  source: string;
+  confidence: number | null;
+  verified_by: number | null;
+  verified_at: string | null;
+}
+
+export interface LineageRef {
+  uuid: string;
+  title: string;
+  validity_start: string | null;
+  validity_end: string | null;
+  retrieval_status: string;
+}
+
+export interface ChunkHealth {
+  chunk_count: number;
+  token_total: number;
+  first_page: number | null;
+  last_page: number | null;
+  has_embeddings: boolean;
+  zero_chunks: boolean;
+  language_split_available: boolean;
+  note: string;
+}
+
 export interface DocumentDetail {
   uuid: string;
   title: string;
@@ -157,6 +192,10 @@ export interface DocumentDetail {
     sector: { id: number; name: string } | null;
     document_type: { id: number; code: string; name: string } | null;
   };
+  topics: TopicTag[];
+  lineage: { predecessor: LineageRef | null; successors: LineageRef[] };
+  chunk_health: ChunkHealth;
+  is_unscoped: boolean;
   pages: DocumentPage[];
   empty_text: boolean;
   review_tasks: ReviewTask[];
@@ -184,10 +223,15 @@ export function confirmTags(uuid: string): Promise<{ status: string }> {
   return request(`/admin/documents/${uuid}/confirm`, { method: 'POST' });
 }
 
-export function reassignFacet(uuid: string, facet: string, valueId: number): Promise<{ status: string }> {
+export function reassignFacet(
+  uuid: string,
+  facet: string,
+  valueId: number,
+  confirmScopeChange = false,
+): Promise<{ status: string }> {
   return request(`/admin/documents/${uuid}/facets/${facet}`, {
     method: 'PATCH',
-    body: JSON.stringify({ value_id: valueId }),
+    body: JSON.stringify({ value_id: valueId, confirm_scope_change: confirmScopeChange }),
   });
 }
 
@@ -197,6 +241,111 @@ export function getVocabulary(type: string): Promise<{ items: VocabularyItem[] }
 
 export function getPageImageUrl(uuid: string, page: number): Promise<{ url: string }> {
   return request(`/admin/documents/${uuid}/pages/${page}/image`, { method: 'GET' });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Knowledge Center: lens hierarchy, coverage gaps, bounded edit,
+// source viewer, sandbox (Sprint 3)
+// ----------------------------------------------------------------------------
+
+export type Lens = 'territory' | 'sector' | 'validity' | 'topic';
+export type GapKind =
+  | 'unanswerable'
+  | 'expired_no_successor'
+  | 'suspected_mistag'
+  | 'date_expired_active'
+  | 'unscoped';
+
+export interface HierarchyNode {
+  key: string;
+  label: string;
+  child_kind: 'group' | 'leaf-parent' | 'leaf';
+  count?: number;
+  meta?: string | null;
+  gap_kind?: GapKind | null;
+  // leaf-only fields
+  doc_uuid?: string;
+  document_type?: string | null;
+  retrieval_status?: string;
+  tagging_status?: string;
+  authority_level?: string;
+  validity_start?: string | null;
+  validity_end?: string | null;
+}
+
+export interface CoverageGaps {
+  gaps: {
+    unanswerable: Record<string, unknown>[];
+    expired_no_successor: Record<string, unknown>[];
+    suspected_mistag: Record<string, unknown>[];
+    date_expired_active: Record<string, unknown>[];
+  };
+  counts: Record<GapKind | string, number>;
+}
+
+export interface SandboxResult {
+  answer: string;
+  citations: Citation[];
+  persisted: boolean;
+  trace: {
+    outcome?: string;
+    retrieval?: { returned: number; top_score: number };
+    draft_answer?: string;
+    draft_citations?: Citation[];
+    synthesis?: { citation_count?: number; confidence?: number; authority_used?: string[] };
+    grounding?: {
+      checked?: boolean;
+      grounded?: boolean;
+      claims?: { claim: string; grounded: boolean }[];
+      ungrounded?: string[];
+    };
+    floor_decision?: Record<string, unknown>;
+    [k: string]: unknown;
+  };
+}
+
+export function getHierarchy(lens: Lens): Promise<{ lens: Lens; nodes: HierarchyNode[] }> {
+  return request(`/admin/hierarchy?lens=${lens}`, { method: 'GET' });
+}
+
+export function getHierarchyChildren(lens: Lens, parentKey: string): Promise<{ nodes: HierarchyNode[] }> {
+  const qs = new URLSearchParams({ lens, parent: parentKey }).toString();
+  return request(`/admin/hierarchy/children?${qs}`, { method: 'GET' });
+}
+
+export function getCoverageGaps(): Promise<CoverageGaps> {
+  return request('/admin/coverage-gaps', { method: 'GET' });
+}
+
+export function getDocumentSourceUrl(uuid: string): Promise<{ url: string; content_type: string | null; filename: string | null }> {
+  return request(`/admin/documents/${uuid}/source`, { method: 'GET' });
+}
+
+export function runSandbox(uuid: string, question: string): Promise<SandboxResult> {
+  return request(`/admin/documents/${uuid}/sandbox`, {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  });
+}
+
+export interface LifecyclePatch {
+  validity_start?: string | null;
+  validity_end?: string | null;
+  retrieval_status?: string;
+  tagging_status?: string;
+  confirm_scope_change?: boolean;
+}
+
+export function updateLifecycle(uuid: string, patch: LifecyclePatch): Promise<{ status: string }> {
+  return request(`/admin/documents/${uuid}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export function addTopic(uuid: string, topicId: number): Promise<{ status: string }> {
+  return request(`/admin/documents/${uuid}/topics`, { method: 'POST', body: JSON.stringify({ topic_id: topicId }) });
+}
+
+export function removeTopic(uuid: string, topicId: number): Promise<{ status: string }> {
+  return request(`/admin/documents/${uuid}/topics/${topicId}`, { method: 'DELETE' });
 }
 
 // ----------------------------------------------------------------------------
