@@ -3,6 +3,7 @@ import { useAuth } from '../auth/context';
 import { canManageAdmins, canManageDirectory, canViewAllHistory } from '../lib/api';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
+import { ReviewQueuePage } from '../pages/admin/ReviewQueuePage';
 import { KnowledgeMapPage } from '../pages/admin/KnowledgeMapPage';
 import { AnswerModelPage } from '../pages/admin/AnswerModelPage';
 import { GuardrailsPage } from '../pages/admin/GuardrailsPage';
@@ -11,7 +12,7 @@ import { DirectoryPage } from '../pages/admin/DirectoryPage';
 import { AdminsPage } from '../pages/admin/AdminsPage';
 import { HistoryPage } from '../pages/admin/HistoryPage';
 
-type View = 'documents' | 'map' | 'escalations' | 'directory' | 'admins' | 'history' | 'guardrails' | 'settings';
+type View = 'documents' | 'map' | 'review' | 'escalations' | 'directory' | 'admins' | 'history' | 'guardrails' | 'settings';
 
 // Admin console shell. Sprint 1: Knowledge → Documents. Sprint 2b-1 adds
 // Settings → Answer model (ADR-0015). Sprint 3 adds Knowledge → Map. Sprint 5
@@ -49,6 +50,7 @@ export function AdminShell() {
         <nav className="shell-nav">
           {navBtn('map', 'Map')}
           {navBtn('documents', 'Documents')}
+          {navBtn('review', 'Review')}
           {navBtn('escalations', 'Escalations')}
           {showDirectory && navBtn('directory', 'Directory')}
           {showHistory && navBtn('history', 'History')}
@@ -73,6 +75,13 @@ export function AdminShell() {
             <h2>Knowledge · Documents</h2>
             <p className="muted">Upload convenio folders, review auto-parsed tags, resolve conflicts, and confirm.</p>
             <DocumentsPage />
+          </>
+        )}
+        {view === 'review' && (
+          <>
+            <h2>Knowledge · Review</h2>
+            <p className="muted">The messy-tail queues: AI tagging proposals to verify, vocabulary proposals to approve, and documents nearing expiry to succeed. Fuchsia marks unverified-AI content.</p>
+            <ReviewQueuePage />
           </>
         )}
         {view === 'escalations' && (

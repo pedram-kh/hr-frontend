@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   addTopic,
   canEditKnowledge,
@@ -9,15 +9,19 @@ import {
   getVocabulary,
   reassignFacet,
   removeTopic,
+  resuggestTags,
   runSandbox,
   updateLifecycle,
   type ChunkHealth,
   type DocumentDetail,
   type LineageRef,
+  type ProvenanceEvent,
   type SandboxResult,
+  type VocabularyFacet,
   type VocabularyItem,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
+import { ProposeVocabularyForm } from './ProposeVocabularyForm';
 
 // Right-hand document card: scope facets + inline provenance, validity/status,
 // chunk health, lineage, the provenance timeline, the real-document viewer, the
@@ -37,7 +41,11 @@ export function DocumentDetailPanel({
   const canEdit = canEditKnowledge(identity);
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [busy, setBusy] = useState(false);
+  const [proposing, setProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline notice near the Re-suggest button (softer than the full-panel error state).
+  const [suggestNotice, setSuggestNotice] = useState<string | null>(null);
+  const pollCancelRef = useRef<(() => void) | null>(null);
 
   const load = () => {
     getDocument(uuid)
@@ -46,6 +54,9 @@ export function DocumentDetailPanel({
   };
 
   useEffect(load, [uuid]);
+
+  // Cancel any in-flight re-suggest poll when the doc changes or the panel closes.
+  useEffect(() => () => pollCancelRef.current?.(), [uuid]);
 
   // ESC to close
   useEffect(() => {
@@ -86,12 +97,69 @@ export function DocumentDetailPanel({
 
   const confirm = async () => {
     setBusy(true);
+    setError(null);
     try {
       await confirmTags(uuid);
       reload();
+    } catch (e) {
+      setError(`Confirm failed: ${(e as Error).message ?? e}`);
     } finally {
       setBusy(false);
     }
+  };
+
+  const aiEventCount = (d: DocumentDetail) =>
+    d.provenance.filter((e) => e.source === 'ai_agent').length;
+
+  const resuggest = async () => {
+    // Scans with no extractable text are skipped by the tagging service.
+    // Show an inline notice rather than taking over the whole panel.
+    if (doc?.empty_text) {
+      setSuggestNotice('No extractable text — this is a scan PDF. AI tagging requires a text layer.');
+      return;
+    }
+    setSuggestNotice(null);
+    setBusy(true);
+    setError(null);
+    // tag_events is append-only, so a successful new proposal strictly raises
+    // the ai_agent provenance count. Snapshot it, then poll until it grows.
+    const before = doc ? aiEventCount(doc) : 0;
+    try {
+      await resuggestTags(uuid);
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    // The proposal runs on the queue (real Claude call ~10s). Poll every 2s and
+    // surface the fuchsia facets the moment the ai_agent count grows.
+    setProposing(true);
+    let cancelled = false;
+    const deadline = Date.now() + 30_000;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const fresh = await getDocument(uuid);
+        if (aiEventCount(fresh) > before) {
+          setDoc(fresh);
+          onChanged();
+          setProposing(false);
+          return;
+        }
+      } catch {
+        // transient — keep polling until the deadline
+      }
+      if (Date.now() < deadline) {
+        setTimeout(poll, 2000);
+      } else {
+        // Gave up waiting; do a final reload to show whatever landed.
+        setProposing(false);
+        reload();
+      }
+    };
+    setTimeout(poll, 2000);
+    pollCancelRef.current = () => { cancelled = true; };
   };
 
   const suspectedMistag =
@@ -156,6 +224,19 @@ export function DocumentDetailPanel({
         </p>
       )}
 
+      {doc.is_ai_proposed && (
+        <p className="notice notice--ai">
+          <span className="ai-pill">AI</span>
+          {'  '}Unverified AI tagging — <strong>inert</strong> until you confirm.{' '}
+          <strong>Step 1:</strong> review the fuchsia suggestions below; use the edit
+          pickers to accept or correct the convenio, type, and validity.{' '}
+          <strong>Step 2:</strong> click <strong>Confirm tags</strong> — that writes
+          the scope and makes the document retrievable.
+        </p>
+      )}
+
+      <AiSuggestionsSection doc={doc} canEdit={canEdit} onChanged={reload} />
+
       <section>
         <h4>Scope</h4>
         <div className="facets">
@@ -188,7 +269,14 @@ export function DocumentDetailPanel({
               {t.raw_unmatched_values && t.raw_unmatched_values.length > 0 && (
                 <ul>
                   {t.raw_unmatched_values.map((rv, j) => (
-                    <li key={j}><code>{rv.facet}</code>: {rv.value}</li>
+                    <UnmatchedValueRow
+                      key={j}
+                      facet={rv.facet}
+                      value={rv.value}
+                      canEdit={canEdit}
+                      sourceDocumentUuid={doc.uuid}
+                      onChanged={reload}
+                    />
                   ))}
                 </ul>
               )}
@@ -204,10 +292,27 @@ export function DocumentDetailPanel({
           <button
             className="btn btn-primary"
             onClick={confirm}
-            disabled={busy || doc.tagging_status === 'verified'}
+            disabled={busy || proposing || doc.tagging_status === 'verified'}
           >
             {doc.tagging_status === 'verified' ? 'Tags confirmed ✓' : 'Confirm tags'}
           </button>
+          {doc.tagging_status === 'under_review' && (
+            <>
+              <button
+                className="btn btn-ghost"
+                onClick={resuggest}
+                disabled={busy || proposing}
+                title={doc.empty_text ? 'No extractable text — scan PDF, cannot AI-tag' : 'Re-run the AI tagging proposal (queued)'}
+              >
+                {proposing ? 'Proposing…' : 'Re-suggest with AI'}
+              </button>
+              {suggestNotice && (
+                <p className="notice notice--neutral" style={{ marginTop: '0.5rem' }}>
+                  {suggestNotice}
+                </p>
+              )}
+            </>
+          )}
         </section>
       )}
 
@@ -261,6 +366,111 @@ function Facet({ label, value, derived }: { label: string; value: string; derive
       </span>
       <span className="facet-value">{value}</span>
     </span>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// AI suggestions (Sprint 7a) — the unverified ai_agent facet proposals, fuchsia.
+// Derived from the provenance timeline; shown live ONLY while under_review. On
+// verify the doc reverts to normal styling and these live in history only.
+// -----------------------------------------------------------------------------
+
+const FACET_LABELS: Record<string, string> = {
+  convenio: 'Convenio',
+  territory: 'Territory',
+  sector: 'Sector',
+  document_type: 'Type',
+  validity: 'Validity',
+  topic: 'Topic',
+};
+
+function AiSuggestionsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEdit: boolean; onChanged: () => void }) {
+  if (!doc.is_ai_proposed) return null;
+
+  // The latest ai_agent suggestion per facet (the proposals to review).
+  const aiEvents = doc.provenance.filter((e: ProvenanceEvent) => e.source === 'ai_agent' && e.new_value);
+  const latestByFacet = new Map<string, ProvenanceEvent>();
+  for (const e of aiEvents) latestByFacet.set(e.facet, e);
+  const suggestions = Array.from(latestByFacet.values());
+
+  // Unresolved values the AI flagged (it never invents vocabulary).
+  const aiUnresolved = doc.provenance.filter((e: ProvenanceEvent) => e.source === 'ai_agent' && !e.new_value && /unresolved/i.test(e.note ?? ''));
+
+  if (suggestions.length === 0 && aiUnresolved.length === 0) return null;
+
+  return (
+    <section className="ai-suggestions ai-marked">
+      <h4><span className="ai-pill">AI</span> Suggested facets <span className="muted">(unverified)</span></h4>
+      {suggestions.length > 0 ? (
+        <div className="facets">
+          {suggestions.map((e, i) => (
+            <span key={i} className="facet">
+              <span className="facet-label">{FACET_LABELS[e.facet] ?? e.facet}</span>
+              <span className="facet-value ai-facet">
+                {e.new_value}
+                {e.confidence != null && <span className="muted"> · {Math.round(e.confidence * 100)}%</span>}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">The AI couldn’t resolve a facet — see the flagged values below.</p>
+      )}
+      <p className="timeline-meta">
+        These are suggestions only — they have NOT changed the document’s scope.
+        {canEdit ? ' Adjust below if needed, then Confirm tags to verify (the human write).' : ' A knowledge editor verifies them.'}
+      </p>
+      {aiUnresolved.length > 0 && (
+        <ul className="ai-unresolved">
+          {aiUnresolved.map((e, i) => (
+            <li key={i} className="timeline-meta">{e.note}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// One raw_unmatched_value with an inline "propose vocabulary" affordance.
+function UnmatchedValueRow({
+  facet,
+  value,
+  canEdit,
+  sourceDocumentUuid,
+  onChanged,
+}: {
+  facet: string;
+  value: string;
+  canEdit: boolean;
+  sourceDocumentUuid: string;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const proposable = facet === 'territory' || facet === 'sector' || facet === 'convenio';
+
+  return (
+    <li>
+      <code>{facet}</code>: {value}
+      {canEdit && proposable && !msg && (
+        <button className="btn btn-ghost btn-inline" onClick={() => setOpen((o) => !o)}>
+          {open ? 'Cancel' : 'Propose vocabulary'}
+        </button>
+      )}
+      {msg && <span className="muted"> — {msg}</span>}
+      {open && !msg && (
+        <ProposeVocabularyForm
+          facet={facet as VocabularyFacet}
+          value={value}
+          sourceDocumentUuid={sourceDocumentUuid}
+          onDone={(m) => {
+            setMsg(m);
+            setOpen(false);
+            onChanged();
+          }}
+        />
+      )}
+    </li>
   );
 }
 

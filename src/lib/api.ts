@@ -73,6 +73,16 @@ export function canManageGuardrails(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['guardrails.manage']);
 }
 
+/**
+ * Sprint-7a ability (ADR-0011/0020). vocabulary.approve gates APPROVING a
+ * vocabulary proposal into the controlled vocabulary (fold into aliases / create
+ * a new value) — super_admin only. PROPOSING rides knowledge.edit. The UI only
+ * HIDES the approve affordance on this; the server enforces every endpoint.
+ */
+export function canApproveVocabulary(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['vocabulary.approve']);
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -148,8 +158,11 @@ export interface DocumentRow {
   retrieval_status: string;
   authority_level: string;
   tagging_status: string;
+  tagging_confidence?: number | null;
   has_open_conflict: boolean;
   has_open_review: boolean;
+  // Sprint 7a: unverified-AI proposal exists on this doc (drives fuchsia).
+  is_ai_proposed?: boolean;
   empty_text: boolean;
 }
 
@@ -224,6 +237,9 @@ export interface DocumentDetail {
   authority_level: string;
   tagging_status: string;
   tagging_confidence: number | null;
+  // Sprint 7a: unverified-AI proposal present (still under_review). Fuchsia on;
+  // flips false on verify (the AI origin remains only as the timeline dot).
+  is_ai_proposed?: boolean;
   tags: {
     convenio: { id: number; numero: string; name: string } | null;
     territory: { id: number; code: string | null; name: string; level: string } | null;
@@ -262,6 +278,12 @@ export function getDocument(uuid: string): Promise<DocumentDetail> {
 
 export function confirmTags(uuid: string): Promise<{ status: string }> {
   return request(`/admin/documents/${uuid}/confirm`, { method: 'POST' });
+}
+
+// Sprint 7a: manually re-run the AI tagging proposal (the auto-trigger is a
+// queued job on ingest). Only meaningful while the doc is still under_review.
+export function resuggestTags(uuid: string): Promise<{ status: string; note: string }> {
+  return request(`/admin/documents/${uuid}/resuggest`, { method: 'POST' });
 }
 
 export function reassignFacet(
@@ -961,6 +983,116 @@ export function getHistoryConversation(sessionUuid: string): Promise<HistoryConv
 
 export function searchHistory(q: string): Promise<{ query: string; matches: HistorySearchMatch[] }> {
   return request(`/admin/history/search?q=${encodeURIComponent(q)}`, { method: 'GET' });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Sprint 7a: managed vocabulary growth (propose → approve, ADR-0011/0020)
+// ----------------------------------------------------------------------------
+
+export type VocabularyFacet = 'territory' | 'sector' | 'convenio';
+
+export interface VariantSuggestion {
+  type: VocabularyFacet;
+  id: number;
+  name: string;
+  similarity: number;
+}
+
+export interface VocabularyProposal {
+  id: number;
+  facet: VocabularyFacet;
+  proposed_value: string;
+  variant_of: { type: string; id: number; similarity: number | null } | null;
+  resolution: 'alias' | 'new_value' | null;
+  status: 'proposed' | 'approved' | 'rejected';
+  proposed_by_source: 'ai_agent' | 'admin_manual';
+  proposed_by: string | null;
+  approved_by: string | null;
+  source_document: { uuid: string; title: string } | null;
+  review_task_id: number | null;
+  note: string | null;
+  created_at: string | null;
+}
+
+export function listVocabularyProposals(status = 'proposed'): Promise<{ proposals: VocabularyProposal[]; can_approve: boolean }> {
+  return request(`/admin/vocabulary-proposals?status=${encodeURIComponent(status)}`, { method: 'GET' });
+}
+
+export function suggestVocabularyVariant(facet: VocabularyFacet, value: string): Promise<{ variant: VariantSuggestion | null; threshold: number }> {
+  const qs = new URLSearchParams({ facet, value }).toString();
+  return request(`/admin/vocabulary-proposals/suggest?${qs}`, { method: 'GET' });
+}
+
+export interface ProposeVocabularyPayload {
+  facet: VocabularyFacet;
+  value: string;
+  source_document_uuid?: string | null;
+  review_task_id?: number | null;
+  note?: string | null;
+  // Super_admin propose-and-approve in one action (requires vocabulary.approve).
+  approve_now?: boolean;
+  resolution?: 'alias' | 'new_value';
+  target_id?: number | null;
+  level?: 'national' | 'regional' | 'provincial';
+}
+
+export function proposeVocabulary(payload: ProposeVocabularyPayload): Promise<{ proposal: VocabularyProposal; approved?: unknown }> {
+  return request('/admin/vocabulary-proposals', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function approveVocabularyProposal(
+  id: number,
+  payload: { resolution: 'alias' | 'new_value'; target_id?: number | null; level?: 'national' | 'regional' | 'provincial' },
+): Promise<{ status: string; result: unknown; proposal: VocabularyProposal }> {
+  return request(`/admin/vocabulary-proposals/${id}/approve`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function rejectVocabularyProposal(id: number, note?: string): Promise<{ status: string; proposal: VocabularyProposal }> {
+  return request(`/admin/vocabulary-proposals/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Sprint 7a: expiry queue + lineage write-side (human-confirmed)
+// ----------------------------------------------------------------------------
+
+export interface SuccessorCandidate {
+  uuid: string;
+  title: string;
+  validity_start: string | null;
+  validity_end: string | null;
+  retrieval_status: string;
+}
+
+export interface ExpiryTask {
+  task_id: number;
+  due_date: string | null;
+  past: boolean;
+  document: {
+    uuid: string;
+    title: string;
+    convenio: { id: number; numero: string; name: string } | null;
+    validity_start: string | null;
+    validity_end: string | null;
+    retrieval_status: string;
+  } | null;
+  is_unscoped: boolean;
+  successor_candidates: SuccessorCandidate[];
+}
+
+export function getExpiryQueue(): Promise<{ tasks: ExpiryTask[] }> {
+  return request('/admin/review/expiry', { method: 'GET' });
+}
+
+export interface ResolveExpiryPayload {
+  action: 'link_successor' | 'dismiss' | 'escalate';
+  successor_uuid?: string;
+  retire_predecessor?: boolean;
+  confirm_scope_change?: boolean;
+  note?: string;
+}
+
+export function resolveExpiryTask(taskId: number, payload: ResolveExpiryPayload): Promise<Record<string, unknown>> {
+  return request(`/admin/review/expiry/${taskId}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function uploadDocuments(files: FileList): Promise<{ results: unknown[] }> {

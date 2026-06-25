@@ -8,10 +8,12 @@ specs in `hr-docs`.
 > The admin console has **Knowledge → Map** (the lens hierarchy + coverage gaps +
 > document card), **Knowledge → Documents** (ingestion/verification table),
 > **Escalations** (the Sprint-4 board + card drawer), **Settings → Answer model**,
-> — Sprint 5 — **Directory**, **History**, and **Admins**, and — Sprint 6 —
+> — Sprint 5 — **Directory**, **History**, and **Admins**, — Sprint 6 —
 > **Seguridad → Guardarraíles** (the additive, raise-only guardrail console;
-> writes super_admin-only, auditor read-only). Each nav item is gated on its
-> ability; the server enforces regardless.
+> writes super_admin-only, auditor read-only), and — Sprint 7a — **Review** (the
+> messy-tail AI-tagging / vocabulary-proposals / expiry hub, with the fuchsia
+> `--provenance-ai` signal for unverified-AI content). Each nav item is gated on
+> its ability; the server enforces regardless.
 
 ## Requirements
 
@@ -122,6 +124,31 @@ super_admin), so **auditor is read-only**. No new visual primitives — reuses t
 - A **change-history** panel (read-only) over `guardrail_config_events`.
 - The server **rejects** a below-floor write (422) even if the client check is
   bypassed; the page surfaces the server message verbatim.
+
+### Review hub (Sprint 7a, `src/pages/admin/ReviewQueuePage.tsx`, ADR-0020)
+
+The messy-tail review console — three tabs, **AI proposes → human confirms**:
+
+- **AI tagging** — the `under_review` backlog sorted by `tagging_confidence`,
+  **fuchsia-marked**, opening the existing `DocumentDetailPanel`. Verifying reuses
+  the **Sprint-3 Confirm-tags button + bounded edit** (accept/adjust the AI's
+  facets → confirm) — no new verify mechanism; on confirm the doc turns normal and
+  becomes embeddable, the AI origin surviving only as the `ai_agent` provenance
+  dot. A "Re-suggest with AI" button re-runs the proposal.
+- **Vocabulary proposals** — the variant→alias-first chooser
+  (`ProposeVocabularyForm`); proposing rides `knowledge.edit`, approve/reject the
+  `vocabulary.approve` ability (super_admin can propose-and-approve), gated on the
+  server-provided identity abilities.
+- **Expiry** — near-expiry docs + the same-convenio successor handoff
+  (link-successor writes `predecessor_document_id`; dismiss; escalate) — never
+  auto-retire.
+
+**The `--provenance-ai` token is re-valued to fuchsia `#e879f9`** (was violet
+`#7c3aed`) in the vanilla-CSS token system (ADR-0012/0013, **not** Tailwind).
+Fuchsia means **"unverified AI — needs a human" only**: it marks the review queue,
+the AI-proposed facets on the card, and the proposed-vocabulary list, and **never
+bleeds onto confirmed content** (on verify/approve the UI reverts to normal). The
+new nav item is **Review**, gated on the relevant abilities.
 
 ## Scripts
 
