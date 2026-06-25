@@ -63,6 +63,16 @@ export function canManageAdmins(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['admin.manage']);
 }
 
+/**
+ * Sprint-6 ability (ADR-0019). guardrails.manage gates WRITES to the admin
+ * guardrail layer (super_admin only — the most safety-sensitive surface). READS
+ * are open to any admin (auditor browses read-only). The UI only HIDES write
+ * affordances on this; the server rejects every below-floor / unauthorized write.
+ */
+export function canManageGuardrails(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['guardrails.manage']);
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -547,6 +557,87 @@ export function setAnswerModelKey(apiKey: string): Promise<AnswerModelStatus> {
 
 export function clearAnswerModelKey(): Promise<{ configured: boolean }> {
   return request('/admin/answer-model/key', { method: 'DELETE' });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Guardrails configuration (Sprint 6, ADR-0019)
+//
+// The admin layer ON TOP of the hardcoded GuardrailService baseline. Every knob
+// is additive / raise-only: the server applies stricter_of(baseline, admin) and
+// REJECTS a below-floor value (422) — it is never clamped. The client mirrors
+// the inline floor for fast feedback, but the SERVER is authoritative.
+// ----------------------------------------------------------------------------
+
+/** A threshold knob: the admin override (null = use the floor), the hardcoded floor, and the effective (stricter_of) value. */
+export interface GuardrailThreshold {
+  admin: number | null;
+  floor: number;
+  effective: number;
+}
+
+export interface GuardrailBlockedTopic {
+  id: number;
+  pattern: string;
+  kind: 'blocked_topic' | 'off_domain';
+  enabled: boolean;
+  created_at: string | null;
+  disabled_at: string | null;
+}
+
+export interface GuardrailHistoryEntry {
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  actor: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+
+export interface GuardrailConfig {
+  can_manage: boolean;
+  thresholds: {
+    retrieval_score_floor: GuardrailThreshold;
+    answer_confidence_floor: GuardrailThreshold;
+    router_confidence_floor: GuardrailThreshold;
+  };
+  confidence_is_tiebreaker: boolean;
+  off_domain_message: { value: string | null; default: string };
+  tone_constraints: { value: string | null; max_len: number };
+  convert_by_reason: { baseline: string[]; allowed: string[]; locked: string[] };
+  blocked_topics: GuardrailBlockedTopic[];
+  history: GuardrailHistoryEntry[];
+}
+
+/** The fields a super_admin may write. Only present fields are applied (partial save); a null value reverts/clears. */
+export interface GuardrailConfigUpdate {
+  retrieval_score_floor?: number | null;
+  answer_confidence_floor?: number | null;
+  router_confidence_floor?: number | null;
+  off_domain_message?: string | null;
+  tone_constraints?: string | null;
+  convert_allowed_reasons?: string[];
+}
+
+export function getGuardrails(): Promise<GuardrailConfig> {
+  return request('/admin/guardrails', { method: 'GET' });
+}
+
+export function updateGuardrails(update: GuardrailConfigUpdate): Promise<GuardrailConfig> {
+  return request('/admin/guardrails', { method: 'POST', body: JSON.stringify(update) });
+}
+
+export function addGuardrailBlockedTopic(
+  pattern: string,
+  kind: 'blocked_topic' | 'off_domain',
+): Promise<GuardrailConfig> {
+  return request('/admin/guardrails/blocked-topics', {
+    method: 'POST',
+    body: JSON.stringify({ pattern, kind }),
+  });
+}
+
+export function disableGuardrailBlockedTopic(id: number): Promise<GuardrailConfig> {
+  return request(`/admin/guardrails/blocked-topics/${id}`, { method: 'DELETE' });
 }
 
 // ----------------------------------------------------------------------------

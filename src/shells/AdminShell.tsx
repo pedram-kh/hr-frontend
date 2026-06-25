@@ -5,18 +5,22 @@ import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
 import { KnowledgeMapPage } from '../pages/admin/KnowledgeMapPage';
 import { AnswerModelPage } from '../pages/admin/AnswerModelPage';
+import { GuardrailsPage } from '../pages/admin/GuardrailsPage';
 import { EscalationBoardPage } from '../pages/admin/EscalationBoardPage';
 import { DirectoryPage } from '../pages/admin/DirectoryPage';
 import { AdminsPage } from '../pages/admin/AdminsPage';
 import { HistoryPage } from '../pages/admin/HistoryPage';
 
-type View = 'documents' | 'map' | 'escalations' | 'directory' | 'admins' | 'history' | 'settings';
+type View = 'documents' | 'map' | 'escalations' | 'directory' | 'admins' | 'history' | 'guardrails' | 'settings';
 
 // Admin console shell. Sprint 1: Knowledge → Documents. Sprint 2b-1 adds
 // Settings → Answer model (ADR-0015). Sprint 3 adds Knowledge → Map. Sprint 5
 // adds the access-control surfaces — Directory (directory.manage), Admins
-// (admin.manage) and History (history.view_all). The nav only HIDES on these
-// abilities; the server enforces each endpoint regardless (ADR-0018).
+// (admin.manage) and History (history.view_all). Sprint 6 adds Seguridad →
+// Guardarraíles (read open to admins; writes guardrails.manage / super_admin —
+// ADR-0019). The nav only HIDES on these abilities; the server enforces each
+// endpoint regardless (ADR-0018), and the Guardrails page gates its own write
+// affordances on the server-provided can_manage.
 export function AdminShell() {
   const { identity, logout } = useAuth();
   const [view, setView] = useState<View>('map');
@@ -49,6 +53,7 @@ export function AdminShell() {
           {showDirectory && navBtn('directory', 'Directory')}
           {showHistory && navBtn('history', 'History')}
           {showAdmins && navBtn('admins', 'Admins')}
+          {navBtn('guardrails', 'Guardrails')}
           {navBtn('settings', 'Settings')}
         </nav>
         <span className="muted">{identity?.email}</span>
@@ -96,6 +101,17 @@ export function AdminShell() {
             <h2>Administración · Administradores y roles</h2>
             <p className="muted">Crea administradores, asigna los cuatro roles y desactiva cuentas (la desactivación retira el acceso de inmediato).</p>
             <AdminsPage />
+          </>
+        )}
+        {view === 'guardrails' && (
+          <>
+            <h2>Seguridad · Guardarraíles</h2>
+            <p className="muted">
+              Ajusta la capa configurable sobre la base de seguridad fija. Solo puede endurecer,
+              nunca debilitar: el servidor aplica siempre el valor más estricto y rechaza cualquier valor por
+              debajo del mínimo. Escritura solo para super_admin; auditor en solo lectura.
+            </p>
+            <GuardrailsPage />
           </>
         )}
         {view === 'settings' && (

@@ -8,8 +8,10 @@ specs in `hr-docs`.
 > The admin console has **Knowledge → Map** (the lens hierarchy + coverage gaps +
 > document card), **Knowledge → Documents** (ingestion/verification table),
 > **Escalations** (the Sprint-4 board + card drawer), **Settings → Answer model**,
-> and — Sprint 5 — **Directory**, **History**, and **Admins** (each nav item gated
-> on its ability; the server enforces regardless).
+> — Sprint 5 — **Directory**, **History**, and **Admins**, and — Sprint 6 —
+> **Seguridad → Guardarraíles** (the additive, raise-only guardrail console;
+> writes super_admin-only, auditor read-only). Each nav item is gated on its
+> ability; the server enforces regardless.
 
 ## Requirements
 
@@ -101,6 +103,25 @@ modal, badge, `kv`, timeline, and the chat `CitationList`/`TracePanel`.
   Read-only for everyone — acting routes through the escalation board.
 - **`EscalationCardDrawer.tsx`** — now shows a "no permission" notice for the
   conversation when the server reports `conversation_restricted` (knowledge_editor).
+
+### Guardrails console (Sprint 6, `src/pages/admin/GuardrailsPage.tsx`, ADR-0019)
+
+The admin layer over the hardcoded baseline — **additive, raise-only**. The nav
+item (**Seguridad → Guardarraíles**) is visible to any admin; the page gates its
+own write affordances on the server-provided `can_manage` (`guardrails.manage` /
+super_admin), so **auditor is read-only**. No new visual primitives — reuses the
+`card`, `field`, `input`, `badge`, `kv`, and table styles.
+
+- **Five knobs**, each showing the **inline hardcoded floor** and the **effective**
+  value: the retrieval/confidence/router **thresholds** (with **client
+  reject-below-floor** for fast feedback — the server is authoritative — and the
+  Check-C-is-a-tiebreaker honesty note); the **add-only** blocked-topics list (+
+  off-domain kind); the **off-domain message**; the length-capped **tone** textarea
+  with the "style only, can't bypass grounding" helper; and the **convert-by-reason**
+  checkboxes with `sensitive_topic` **locked**.
+- A **change-history** panel (read-only) over `guardrail_config_events`.
+- The server **rejects** a below-floor write (422) even if the client check is
+  bypassed; the page surfaces the server message verbatim.
 
 ## Scripts
 
