@@ -34,8 +34,8 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
   };
 
   return (
-    <div className="docs-layout">
-      <div className="docs-main">
+    <>
+    <div className="docs-main">
         <div className="map-toolbar">
           <div className="seg" role="tablist" aria-label="Lens">
             {LENSES.map((l) => (
@@ -67,10 +67,11 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
         </div>
       </div>
 
-      {selected && (
-        <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />
-      )}
     </div>
+    {selected && (
+      <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />
+    )}
+    </>
   );
 }
 

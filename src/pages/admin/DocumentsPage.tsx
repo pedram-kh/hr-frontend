@@ -52,8 +52,8 @@ export function DocumentsPage() {
   };
 
   return (
-    <div className="docs-layout">
-      <div className="docs-main">
+    <>
+    <div className="docs-main">
         <div className="docs-toolbar">
           <label className="btn btn-primary">
             Upload folder
@@ -155,13 +155,14 @@ export function DocumentsPage() {
         )}
       </div>
 
-      {selected && (
-        <DocumentDetailPanel
-          uuid={selected}
-          onClose={() => setSelected(null)}
-          onChanged={refresh}
-        />
-      )}
     </div>
+    {selected && (
+      <DocumentDetailPanel
+        uuid={selected}
+        onClose={() => setSelected(null)}
+        onChanged={refresh}
+      />
+    )}
+    </>
   );
 }

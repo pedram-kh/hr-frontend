@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ApiError,
   getVocabulary,
@@ -53,6 +53,10 @@ export function CardDrawer({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Stable ref so the ESC handler never captures a stale onClose.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const load = () => {
     fetchDetail(uuid)
       .then(setDetail)
@@ -61,6 +65,13 @@ export function CardDrawer({
 
   useEffect(load, [uuid]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ESC to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const reload = () => {
     load();
     onChanged();
@@ -68,12 +79,28 @@ export function CardDrawer({
 
   if (error)
     return (
-      <aside className="detail panel">
-        <button className="btn btn-ghost" onClick={onClose}>✕ Cerrar</button>
-        <p className="error">{error}</p>
-      </aside>
+      <div className="detail-backdrop" onClick={onClose}>
+        <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="detail-head">
+            <strong>Error</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+          </div>
+          <div className="detail-body"><p className="error">{error}</p></div>
+        </aside>
+      </div>
     );
-  if (!detail) return <aside className="detail panel"><p className="muted">Cargando…</p></aside>;
+  if (!detail)
+    return (
+      <div className="detail-backdrop" onClick={onClose}>
+        <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="detail-head">
+            <strong>Cargando…</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+          </div>
+          <div className="detail-body"><p className="muted">Cargando…</p></div>
+        </aside>
+      </div>
+    );
 
   const card = detail.card;
   const isResolved = card.status === 'resolved' || card.status === 'closed';
@@ -105,11 +132,13 @@ export function CardDrawer({
   };
 
   return (
-    <aside className="detail panel">
+    <div className="detail-backdrop" onClick={onClose}>
+    <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Escalación · ${card.reason_label}`}>
       <div className="detail-head">
         <strong>Escalación · {card.reason_label}</strong>
         <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
       </div>
+      <div className="detail-body">
 
       {!canWork && (
         <p className="notice notice--neutral">
@@ -119,6 +148,11 @@ export function CardDrawer({
       )}
 
       <section>
+        <div className="card-trigger">
+          <span className="badge badge-review">{card.reason_label}</span>
+          <p className="card-trigger-q">{card.question ?? '(sin pregunta de origen)'}</p>
+          {card.created_at && <p className="timeline-meta">Escalada el {card.created_at}</p>}
+        </div>
         <dl className="kv">
           <dt>Estado</dt><dd>{STATUS_LABELS[card.status]}</dd>
           <dt>Empleado</dt><dd>{card.employee?.full_name ?? '—'}</dd>
@@ -159,7 +193,11 @@ export function CardDrawer({
 
       <section>
         <h4>Conversación</h4>
-        <p className="timeline-meta">La conversación de esta tarjeta (su sesión). No es un histórico general.</p>
+        <p className="timeline-meta">
+          La conversación completa de la sesión de esta tarjeta (no es un histórico general). Una misma
+          sesión puede generar varias tarjetas, que comparten esta conversación; la pregunta que originó
+          <em> esta</em> tarjeta se muestra arriba.
+        </p>
         <div className="card-convo">
           {detail.conversation.map((m) => <ConversationBubble key={m.id} message={m} />)}
         </div>
@@ -170,7 +208,9 @@ export function CardDrawer({
       {canWork && !isResolved && <SaveAsKnowledge uuid={uuid} onResolved={reload} />}
 
       <EventsLog events={detail.events} />
+      </div>
     </aside>
+    </div>
   );
 }
 

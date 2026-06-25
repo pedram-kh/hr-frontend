@@ -153,8 +153,8 @@ export function EscalationBoardPage({
   };
 
   return (
-    <div className="docs-layout">
-      <div className="docs-main">
+    <>
+    <div className="docs-main">
         <div className="map-toolbar">
           <select
             className="select"
@@ -213,16 +213,17 @@ export function EscalationBoardPage({
         </DndContext>
       </div>
 
-      {openUuid && (
-        <CardDrawer
-          uuid={openUuid}
-          canWork={canWork}
-          onClose={closeDrawer}
-          onChanged={onCardChanged}
-          fetchDetail={getEscalation}
-        />
-      )}
     </div>
+    {openUuid && (
+      <CardDrawer
+        uuid={openUuid}
+        canWork={canWork}
+        onClose={closeDrawer}
+        onChanged={onCardChanged}
+        fetchDetail={getEscalation}
+      />
+    )}
+    </>
   );
 }
 

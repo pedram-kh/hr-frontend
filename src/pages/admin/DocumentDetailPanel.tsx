@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   addTopic,
   canEditKnowledge,
@@ -47,14 +47,37 @@ export function DocumentDetailPanel({
 
   useEffect(load, [uuid]);
 
+  // ESC to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   if (error)
     return (
-      <aside className="detail panel">
-        <button className="btn btn-ghost" onClick={onClose}>✕ Close</button>
-        <p className="error">{error}</p>
-      </aside>
+      <div className="detail-backdrop" onClick={onClose}>
+        <div className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="detail-head">
+            <strong>Error</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+          </div>
+          <div className="detail-body"><p className="error">{error}</p></div>
+        </div>
+      </div>
     );
-  if (!doc) return <aside className="detail panel"><p className="muted">Loading…</p></aside>;
+  if (!doc)
+    return (
+      <div className="detail-backdrop" onClick={onClose}>
+        <div className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="detail-head">
+            <strong>Loading…</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+          </div>
+          <div className="detail-body"><p className="muted">Loading…</p></div>
+        </div>
+      </div>
+    );
 
   const reload = () => {
     load();
@@ -77,7 +100,8 @@ export function DocumentDetailPanel({
     /tabla/i.test(`${doc.title} ${doc.source_filename ?? ''}`);
 
   return (
-    <aside className="detail panel">
+    <div className="detail-backdrop" onClick={onClose}>
+    <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={doc.title}>
       <div className="detail-head">
         <strong>{doc.title}</strong>
         {doc.authority_level === 'internal_hr_ruling' && (
@@ -85,6 +109,7 @@ export function DocumentDetailPanel({
         )}
         <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
       </div>
+      <div className="detail-body">
 
       {doc.ruling && (
         <p className="notice notice--neutral">
@@ -215,13 +240,15 @@ export function DocumentDetailPanel({
 
       <SandboxPanel uuid={uuid} title={doc.title} />
 
-      <section>
-        <h4>Source pages ({doc.pages.length})</h4>
-        {doc.pages.map((p) => (
-          <PageView key={p.page_number} uuid={uuid} page={p.page_number} text={p.text} hasText={p.has_text} />
-        ))}
-      </section>
+      {doc.pages.length > 0 && (
+        <section>
+          <h4>Source pages ({doc.pages.length})</h4>
+          <PaginatedPageViewer uuid={uuid} pages={doc.pages} />
+        </section>
+      )}
+      </div>
     </aside>
+    </div>
   );
 }
 
@@ -675,25 +702,50 @@ function SandboxPanel({ uuid, title }: { uuid: string; title: string }) {
   );
 }
 
-function PageView({ uuid, page, text, hasText }: { uuid: string; page: number; text: string; hasText: boolean }) {
+function PaginatedPageViewer({
+  uuid,
+  pages,
+}: {
+  uuid: string;
+  pages: { page_number: number; text: string; has_text: boolean }[];
+}) {
+  const [idx, setIdx] = useState(0);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const requested = useRef(false);
+  const [imgLoading, setImgLoading] = useState(false);
 
-  const showImage = () => {
-    if (requested.current) return;
-    requested.current = true;
-    getPageImageUrl(uuid, page).then((r) => setImgUrl(r.url)).catch(() => setImgUrl(null));
-  };
+  const page = pages[idx];
+  const total = pages.length;
+
+  const loadImage = useCallback((pageNum: number) => {
+    setImgUrl(null);
+    setImgLoading(true);
+    getPageImageUrl(uuid, pageNum)
+      .then((r) => setImgUrl(r.url))
+      .catch(() => setImgUrl(null))
+      .finally(() => setImgLoading(false));
+  }, [uuid]);
+
+  useEffect(() => { loadImage(page.page_number); }, [page.page_number, loadImage]);
+
+  const go = (next: number) => { setIdx(Math.max(0, Math.min(total - 1, next))); };
 
   return (
-    <details className="page" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && showImage()}>
-      <summary>
-        Page {page} {hasText ? '' : '· (no text)'}
-      </summary>
-      <div className="page-body">
-        {imgUrl ? <img src={imgUrl} alt={`Page ${page}`} className="page-img" /> : <p className="muted">Loading image…</p>}
-        <pre className="page-text well">{text || '(no extractable text)'}</pre>
+    <div className="page-viewer">
+      <div className="page-viewer-nav">
+        <button className="btn btn-secondary" onClick={() => go(idx - 1)} disabled={idx === 0}>← Anterior</button>
+        <span className="page-counter">Página {page.page_number} de {total}</span>
+        <button className="btn btn-secondary" onClick={() => go(idx + 1)} disabled={idx === total - 1}>Siguiente →</button>
       </div>
-    </details>
+      <div className="page-viewer-content">
+        <div className="page-viewer-img">
+          {imgLoading && <p className="muted">Cargando imagen…</p>}
+          {!imgLoading && imgUrl && <img src={imgUrl} alt={`Página ${page.page_number}`} />}
+          {!imgLoading && !imgUrl && <p className="muted">(sin imagen)</p>}
+        </div>
+        <div className="page-viewer-text">
+          <pre className="well">{page.text || '(sin texto extraíble)'}</pre>
+        </div>
+      </div>
+    </div>
   );
 }
