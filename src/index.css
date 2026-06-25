@@ -11,6 +11,8 @@
   --accent-hover: #1d4ed8;
   --accent-weak: #eff4ff;
   --accent-contrast: #ffffff;
+  --teal: #0d9488;
+  --teal-weak: #f0fdfa;
 
   /* --- Semantic state — LIGHT (foreground + soft tint) --- */
   --danger: #b42318;
@@ -95,6 +97,8 @@
 
   /* Accent: keep role; lift tint onto dark surface */
   --accent-weak: rgba(37, 99, 235, 0.18);
+  --teal: #2dd4bf;
+  --teal-weak: rgba(13, 148, 136, 0.18);
 
   /* Semantic state: brighter foregrounds + low-alpha tints */
   --danger: #ff9a8d;
@@ -1281,6 +1285,10 @@ a {
 .lens-row--leaf {
   color: var(--text-muted);
 }
+.lens-row--ruling {
+  border-left: 2px solid var(--teal);
+  background: var(--teal-weak);
+}
 .lens-caret {
   font-size: 9px;
   color: var(--text-faint);
@@ -1364,6 +1372,9 @@ a {
 }
 .lens-node--leaf {
   background: var(--surface-inset);
+}
+.lens-node--ruling {
+  border: 2px solid var(--teal) !important;
 }
 .lens-node.has-gap {
   border-color: var(--warning);

@@ -141,7 +141,7 @@ function ListNode({
   return (
     <li role="treeitem" aria-expanded={leaf ? undefined : open}>
       <button
-        className={`lens-row ${leaf ? 'lens-row--leaf' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
+        className={`lens-row ${leaf ? 'lens-row--leaf' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-row--ruling' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
         style={{ paddingLeft: `${depth * 18 + 8}px` }}
         onClick={toggle}
       >
@@ -242,7 +242,7 @@ function GraphForm({
           nodes.map((node, idx) => (
             <button
               key={node.key}
-              className={`lens-node ${isLeaf(node) ? 'lens-node--leaf' : ''} ${selectedPath[col] === node.key ? 'is-selected' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
+              className={`lens-node ${isLeaf(node) ? 'lens-node--leaf' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-node--ruling' : ''} ${selectedPath[col] === node.key ? 'is-selected' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
               style={{ left: nodeX(col), top: nodeY(idx), width: COL_W, height: ROW_H }}
               onClick={() => onSelect(col, node)}
               title={node.label}
