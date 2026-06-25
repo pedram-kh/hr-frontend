@@ -65,8 +65,6 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
         <div className="map-canvas">
           <Hierarchy key={`${lens}-${reloadKey}`} lens={lens} form={form} reloadKey={reloadKey} onOpenDocument={setSelected} />
         </div>
-      </div>
-
     </div>
     {selected && (
       <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />

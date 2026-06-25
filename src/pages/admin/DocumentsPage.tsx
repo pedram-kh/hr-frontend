@@ -153,8 +153,6 @@ export function DocumentsPage() {
             </tbody>
           </table>
         )}
-      </div>
-
     </div>
     {selected && (
       <DocumentDetailPanel

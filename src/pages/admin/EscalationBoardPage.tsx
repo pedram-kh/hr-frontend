@@ -211,8 +211,6 @@ export function EscalationBoardPage({
             ) : null}
           </DragOverlay>
         </DndContext>
-      </div>
-
     </div>
     {openUuid && (
       <CardDrawer
