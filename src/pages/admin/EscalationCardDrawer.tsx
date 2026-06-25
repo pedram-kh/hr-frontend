@@ -193,14 +193,27 @@ export function CardDrawer({
 
       <section>
         <h4>Conversación</h4>
-        <p className="timeline-meta">
-          La conversación completa de la sesión de esta tarjeta (no es un histórico general). Una misma
-          sesión puede generar varias tarjetas, que comparten esta conversación; la pregunta que originó
-          <em> esta</em> tarjeta se muestra arriba.
-        </p>
-        <div className="card-convo">
-          {detail.conversation.map((m) => <ConversationBubble key={m.id} message={m} />)}
-        </div>
+        {detail.conversation_restricted ? (
+          // Sprint-5 tightening (ADR-0018 §4.4): a knowledge_editor sees the card
+          // meta but NOT the conversation content (gated server-side; the payload
+          // arrives empty). The hr_agent boundary is unchanged.
+          <p className="notice notice--neutral">
+            <span aria-hidden="true">🔒</span>
+            No tienes permiso para ver el contenido de la conversación. Se requiere{' '}
+            <code>escalation.work</code> o <code>history.view_all</code>.
+          </p>
+        ) : (
+          <>
+            <p className="timeline-meta">
+              La conversación completa de la sesión de esta tarjeta (no es un histórico general). Una misma
+              sesión puede generar varias tarjetas, que comparten esta conversación; la pregunta que originó
+              <em> esta</em> tarjeta se muestra arriba.
+            </p>
+            <div className="card-convo">
+              {detail.conversation.map((m) => <ConversationBubble key={m.id} message={m} />)}
+            </div>
+          </>
+        )}
       </section>
 
       {canWork && <ReplyBox uuid={uuid} disabled={busy} onSent={reload} />}

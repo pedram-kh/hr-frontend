@@ -46,6 +46,23 @@ export function canWorkEscalations(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['escalation.work']);
 }
 
+/**
+ * Sprint-5 abilities (ADR-0018). The UI only HIDES on these — the server
+ * enforces every endpoint. history.view_all gates the full-history browser;
+ * directory.manage the employee directory; admin.manage admin/role management.
+ */
+export function canViewAllHistory(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['history.view_all']);
+}
+
+export function canManageDirectory(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['directory.manage']);
+}
+
+export function canManageAdmins(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['admin.manage']);
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -567,6 +584,10 @@ export interface EscalationEvent {
 export interface EscalationDetail {
   card: EscalationCardSummary;
   conversation: ConversationMessage[];
+  // Sprint-5 tightening (ADR-0018 §4.4): true when the caller lacks
+  // escalation.work AND history.view_all (e.g. knowledge_editor) — the messages
+  // are withheld server-side and `conversation` arrives empty.
+  conversation_restricted?: boolean;
   resolution: {
     resolution_text: string;
     converted_to_document_id: number | null;
@@ -631,6 +652,224 @@ export function resolveEscalation(
   payload: { resolution_text: string; convert: boolean; topic_id?: number | null; confirm_scope_change?: boolean },
 ): Promise<ResolveResult> {
   return request(`/admin/escalations/${uuid}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Employee directory (Sprint 5, ADR-0004). CRUD + search/filter + CSV
+// bootstrap. Behind directory.manage; every change writes employee_audit_log.
+// ----------------------------------------------------------------------------
+
+export interface EmployeeRef {
+  id: number;
+  numero?: string;
+  code?: string | null;
+  name: string;
+}
+
+export interface EmployeeListRow {
+  uuid: string;
+  full_name: string;
+  email: string;
+  status: string;
+  convenio: { id: number; numero: string; name: string } | null;
+  territory: { id: number; code: string | null; name: string } | null;
+  job_category: { id: number; name: string } | null;
+  employment_type: string;
+  profile_last_reviewed_at: string | null;
+}
+
+export interface EmployeeDetail {
+  uuid: string;
+  email: string;
+  full_name: string;
+  employee_external_id: string | null;
+  convenio: { id: number; numero: string; name: string } | null;
+  job_category: { id: number; name: string; group_code: string | null } | null;
+  territory: { id: number; code: string | null; name: string; level: string } | null;
+  work_location: string | null;
+  employment_type: string;
+  start_date: string | null;
+  status: string;
+  profile_last_reviewed_at: string | null;
+  convenio_id: number | null;
+  job_category_id: number | null;
+  territory_id: number | null;
+}
+
+export interface EmployeeAuditEntry {
+  field_changed: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by: string | null;
+  changed_at: string | null;
+}
+
+export interface EmployeeWritePayload {
+  email: string;
+  full_name: string;
+  employee_external_id?: string | null;
+  convenio_id: number;
+  job_category_id?: number | null;
+  territory_id: number;
+  work_location?: string | null;
+  employment_type: string;
+  start_date?: string | null;
+  status?: string;
+  confirm_email_change?: boolean;
+}
+
+export interface CsvReportRow {
+  row_number: number;
+  email: string;
+  full_name: string;
+  action: 'create' | 'update' | 'skip';
+  status: 'pass' | 'fail';
+  errors: string[];
+}
+
+export interface CsvReport {
+  ok: boolean;
+  error?: string;
+  summary: { total: number; valid: number; invalid: number; created: number; updated: number };
+  rows: CsvReportRow[];
+}
+
+export function listEmployees(params: Record<string, string>): Promise<Paginated<EmployeeListRow>> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/employees${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export function getEmployee(uuid: string): Promise<{ employee: EmployeeDetail; audit_log: EmployeeAuditEntry[] }> {
+  return request(`/admin/employees/${uuid}`, { method: 'GET' });
+}
+
+export function createEmployee(payload: EmployeeWritePayload): Promise<{ employee: EmployeeDetail }> {
+  return request('/admin/employees', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateEmployee(uuid: string, payload: EmployeeWritePayload): Promise<{ employee: EmployeeDetail }> {
+  return request(`/admin/employees/${uuid}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function markEmployeeReviewed(uuid: string): Promise<{ employee: EmployeeDetail }> {
+  return request(`/admin/employees/${uuid}/mark-reviewed`, { method: 'POST' });
+}
+
+export function getJobCategories(convenioId: number): Promise<{ items: JobCategoryOption[] }> {
+  return request(`/admin/job-categories?convenio_id=${convenioId}`, { method: 'GET' });
+}
+
+function uploadCsv(path: string, file: File): Promise<CsvReport> {
+  const form = new FormData();
+  form.append('file', file);
+  const token = getToken();
+  const headers = new Headers({ Accept: 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: form }).then(async (res) => {
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, (data && (data.message as string)) || `Upload failed (${res.status})`, data ?? null);
+    return data as CsvReport;
+  });
+}
+
+export function validateEmployeeCsv(file: File): Promise<CsvReport> {
+  return uploadCsv('/admin/employees/import/validate', file);
+}
+
+export function importEmployeeCsv(file: File): Promise<CsvReport> {
+  return uploadCsv('/admin/employees/import', file);
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Admin & role management (Sprint 5). Behind admin.manage (super_admin).
+// ----------------------------------------------------------------------------
+
+export interface AdminRow {
+  uuid: string;
+  email: string;
+  full_name: string;
+  status: string;
+  roles: string[];
+  abilities: Record<string, boolean>;
+}
+
+export function listAdmins(): Promise<{ admins: AdminRow[]; roles: string[] }> {
+  return request('/admin/admins', { method: 'GET' });
+}
+
+export function createAdmin(payload: { email: string; full_name: string; status?: string; roles?: string[] }): Promise<{ admin: AdminRow }> {
+  return request('/admin/admins', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAdmin(uuid: string, payload: { full_name?: string; status?: string }): Promise<{ admin: AdminRow }> {
+  return request(`/admin/admins/${uuid}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function syncAdminRoles(uuid: string, roles: string[]): Promise<{ admin: AdminRow }> {
+  return request(`/admin/admins/${uuid}/roles`, { method: 'PUT', body: JSON.stringify({ roles }) });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Full conversation History (Sprint 5, ADR-0018). Behind
+// history.view_all (super_admin + auditor). EVERY access is logged server-side.
+// ----------------------------------------------------------------------------
+
+export interface HistoryRow {
+  session_uuid: string;
+  employee: {
+    uuid: string;
+    full_name: string;
+    convenio: { numero: string; name: string } | null;
+    territory: { code: string | null; name: string } | null;
+  } | null;
+  started_at: string | null;
+  last_activity_at: string | null;
+  message_count: number;
+  escalated: boolean;
+  escalation_reason: string | null;
+}
+
+export interface HistoryConversation {
+  session_uuid: string;
+  employee: { uuid: string; full_name: string; convenio: { numero: string; name: string } | null } | null;
+  started_at: string | null;
+  last_activity_at: string | null;
+  messages: ConversationMessage[];
+}
+
+export interface HistorySearchMatch {
+  session_uuid: string | null;
+  employee: { uuid: string; full_name: string } | null;
+  role: string;
+  snippet: string;
+  last_activity_at: string | null;
+}
+
+export interface HistoryFilters {
+  employee_uuid?: string;
+  convenio_id?: number;
+  territory_id?: number;
+  from?: string;
+  to?: string;
+  reason?: string;
+  outcome?: 'answered' | 'escalated';
+}
+
+export function listHistory(filters: HistoryFilters = {}): Promise<Paginated<HistoryRow>> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+  });
+  const qs = params.toString();
+  return request(`/admin/history/conversations${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export function getHistoryConversation(sessionUuid: string): Promise<HistoryConversation> {
+  return request(`/admin/history/conversations/${sessionUuid}`, { method: 'GET' });
+}
+
+export function searchHistory(q: string): Promise<{ query: string; matches: HistorySearchMatch[] }> {
+  return request(`/admin/history/search?q=${encodeURIComponent(q)}`, { method: 'GET' });
 }
 
 export async function uploadDocuments(files: FileList): Promise<{ results: unknown[] }> {

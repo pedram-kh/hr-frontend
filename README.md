@@ -7,7 +7,9 @@ specs in `hr-docs`.
 > **Current:** email-OTP login → employee chat (Sprint 2b) and the admin console.
 > The admin console has **Knowledge → Map** (the lens hierarchy + coverage gaps +
 > document card), **Knowledge → Documents** (ingestion/verification table),
-> **Escalations** (the Sprint-4 board + card drawer), and **Settings → Answer model**.
+> **Escalations** (the Sprint-4 board + card drawer), **Settings → Answer model**,
+> and — Sprint 5 — **Directory**, **History**, and **Admins** (each nav item gated
+> on its ability; the server enforces regardless).
 
 ## Requirements
 
@@ -75,6 +77,30 @@ npm run dev                   # http://localhost:5173
 
 The only new visual primitives are the `internal_hr_ruling` badge and the
 `chat-bubble--agent` variant (one class/token each, per the design-system rule).
+
+### Access control — Directory / Admins / History (Sprint 5, `src/pages/admin/`)
+
+The UI **only hides** on the new abilities (`canManageDirectory` /
+`canManageAdmins` / `canViewAllHistory` from `/me`'s `abilities`); the server
+enforces every endpoint (ADR-0018). `AdminShell` shows each nav item only when
+the ability is held. No new visual primitives — reuses the table, drawer,
+modal, badge, `kv`, timeline, and the chat `CitationList`/`TracePanel`.
+
+- **`DirectoryPage.tsx`** — searchable/filterable employee list + a create/edit
+  **drawer** with FK pickers (convenio → convenio-scoped category, territory),
+  the **email-edit warning** + the **409 confirm modal**, a **staleness badge** +
+  **mark-reviewed**, and the **audit-log timeline**.
+- **`CsvImportPanel.tsx`** — the two-phase CSV flow: upload → **dry-run report**
+  (per-row pass/fail, nothing written) → **apply** the valid rows. Bad rows are
+  shown, never hidden.
+- **`AdminsPage.tsx`** — list/create admins, **role checkboxes** (the four roles
+  via `syncRoles`), and **deactivate/reactivate** (deactivation revokes access).
+- **`HistoryPage.tsx`** — the gated full-conversation browser: list + filters
+  (convenio/territory/outcome/reason/date) + content **search**, and a read-only
+  **conversation drawer** (opening it writes the server-side access-log row).
+  Read-only for everyone — acting routes through the escalation board.
+- **`EscalationCardDrawer.tsx`** — now shows a "no permission" notice for the
+  conversation when the server reports `conversation_restricted` (knowledge_editor).
 
 ## Scripts
 

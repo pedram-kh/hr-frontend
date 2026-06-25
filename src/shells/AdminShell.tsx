@@ -1,21 +1,31 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/context';
+import { canManageAdmins, canManageDirectory, canViewAllHistory } from '../lib/api';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
 import { KnowledgeMapPage } from '../pages/admin/KnowledgeMapPage';
 import { AnswerModelPage } from '../pages/admin/AnswerModelPage';
 import { EscalationBoardPage } from '../pages/admin/EscalationBoardPage';
+import { DirectoryPage } from '../pages/admin/DirectoryPage';
+import { AdminsPage } from '../pages/admin/AdminsPage';
+import { HistoryPage } from '../pages/admin/HistoryPage';
 
-type View = 'documents' | 'map' | 'escalations' | 'settings';
+type View = 'documents' | 'map' | 'escalations' | 'directory' | 'admins' | 'history' | 'settings';
 
 // Admin console shell. Sprint 1: Knowledge → Documents. Sprint 2b-1 adds
-// Settings → Answer model (ADR-0015). Sprint 3 adds Knowledge → Map (the
-// lens hierarchy + coverage gaps + the document card with bounded edit/sandbox).
+// Settings → Answer model (ADR-0015). Sprint 3 adds Knowledge → Map. Sprint 5
+// adds the access-control surfaces — Directory (directory.manage), Admins
+// (admin.manage) and History (history.view_all). The nav only HIDES on these
+// abilities; the server enforces each endpoint regardless (ADR-0018).
 export function AdminShell() {
   const { identity, logout } = useAuth();
   const [view, setView] = useState<View>('map');
   // Deep-link from a Knowledge-Center ruling card back to its escalation card.
   const [escalationFocus, setEscalationFocus] = useState<string | null>(null);
+
+  const showDirectory = canManageDirectory(identity);
+  const showAdmins = canManageAdmins(identity);
+  const showHistory = canViewAllHistory(identity);
 
   const openEscalation = (uuid: string) => {
     setEscalationFocus(uuid);
@@ -36,6 +46,9 @@ export function AdminShell() {
           {navBtn('map', 'Map')}
           {navBtn('documents', 'Documents')}
           {navBtn('escalations', 'Escalations')}
+          {showDirectory && navBtn('directory', 'Directory')}
+          {showHistory && navBtn('history', 'History')}
+          {showAdmins && navBtn('admins', 'Admins')}
           {navBtn('settings', 'Settings')}
         </nav>
         <span className="muted">{identity?.email}</span>
@@ -62,6 +75,27 @@ export function AdminShell() {
             <h2>Knowledge · Escalations</h2>
             <p className="muted">Triage escalated questions: assign, reply to the employee, and resolve — optionally publishing the answer as reusable knowledge.</p>
             <EscalationBoardPage focusUuid={escalationFocus} onFocusHandled={() => setEscalationFocus(null)} />
+          </>
+        )}
+        {view === 'directory' && showDirectory && (
+          <>
+            <h2>Personas · Directorio</h2>
+            <p className="muted">Gestiona el alta y los datos de las personas (convenio, territorio, categoría). Cada cambio queda auditado; importa en bloque por CSV.</p>
+            <DirectoryPage />
+          </>
+        )}
+        {view === 'history' && showHistory && (
+          <>
+            <h2>Personas · Histórico de conversaciones</h2>
+            <p className="muted">Consulta y busca las conversaciones de toda la organización (solo lectura). Cada apertura queda registrada en el registro de accesos.</p>
+            <HistoryPage />
+          </>
+        )}
+        {view === 'admins' && showAdmins && (
+          <>
+            <h2>Administración · Administradores y roles</h2>
+            <p className="muted">Crea administradores, asigna los cuatro roles y desactiva cuentas (la desactivación retira el acceso de inmediato).</p>
+            <AdminsPage />
           </>
         )}
         {view === 'settings' && (
