@@ -535,6 +535,137 @@ a {
   color: var(--neutral);
 }
 
+/* Sprint 7b-1 (ADR-0021): the distinct badge for a Structured Reference fact
+   leaf. A NON-fuchsia accent (info-toned) — fuchsia (--provenance-ai) stays
+   reserved for unverified AI (7b-2). It marks the knowledge CLASS, not a state;
+   the needs-review/verified state rides the existing .badge-review/.badge-verified. */
+.badge-reference {
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+/* A reference-fact leaf gets a subtle info-toned left rule so it reads as a
+   distinct class beside document leaves (list + graph). */
+.lens-row--fact {
+  border-left: 3px solid color-mix(in srgb, var(--info) 45%, transparent);
+}
+
+.lens-node--fact {
+  border-color: color-mix(in srgb, var(--info) 45%, transparent);
+  background: color-mix(in srgb, var(--info) 6%, transparent);
+}
+
+/* The authority-lock chip on the fact card (the visible INVARIANT 1). */
+.authority-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---- Reference fact panels (Sprint 7b-1, ADR-0021) --------------------- */
+
+.map-toolbar-action {
+  margin-left: auto;
+}
+
+/* A wider panel for the two-column create view (reader + form). */
+.panel--wide {
+  max-width: 960px;
+  width: 92vw;
+}
+
+.fact-create-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 760px) {
+  .fact-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fact-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.field-row > .field {
+  flex: 1;
+}
+
+.detail-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.derived-scope {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+}
+
+.fact-value {
+  font-size: var(--text-base);
+  line-height: var(--text-base-lh);
+  white-space: pre-wrap;
+}
+
+.raw-values,
+.reader-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  max-height: 280px;
+  overflow: auto;
+}
+
+.fact-reader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-right: 1px solid var(--border);
+  padding-right: var(--space-4);
+}
+
+.reader-pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reader-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.fact-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+}
+
 /* Inline warning notice (e.g. empty-text callout in the panel) */
 .notice {
   display: flex;
@@ -1427,19 +1558,33 @@ a {
   border-color: var(--warning);
 }
 .lens-node-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text);
+}
+.lens-node-label-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .lens-node-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Keep the leaf badges from forcing the fixed-height node to overflow. */
+.lens-node-label .badge,
+.lens-node-sub .badge {
+  flex: none;
 }
 
 /* --- Topic chips --- */

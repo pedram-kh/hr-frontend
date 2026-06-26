@@ -20,11 +20,14 @@ export function Hierarchy({
   lens,
   form,
   onOpenDocument,
+  onOpenFact,
   reloadKey,
 }: {
   lens: Lens;
   form: HierarchyForm;
   onOpenDocument: (uuid: string) => void;
+  // Sprint 7b-1 (ADR-0021): a reference-fact leaf opens the fact card instead.
+  onOpenFact?: (uuid: string) => void;
   reloadKey?: number;
 }) {
   const [roots, setRoots] = useState<HierarchyNode[] | null>(null);
@@ -61,9 +64,35 @@ export function Hierarchy({
     );
 
   return form === 'list' ? (
-    <ListForm roots={roots} cache={cache} ensureChildren={ensureChildren} onOpenDocument={onOpenDocument} />
+    <ListForm roots={roots} cache={cache} ensureChildren={ensureChildren} onOpenLeaf={openLeaf} />
   ) : (
-    <GraphForm roots={roots} cache={cache} ensureChildren={ensureChildren} onOpenDocument={onOpenDocument} />
+    <GraphForm roots={roots} cache={cache} ensureChildren={ensureChildren} onOpenLeaf={openLeaf} />
+  );
+
+  // A leaf opens its card by knowledge type (ADR-0021): a reference fact opens
+  // the fact card; a document opens the document card.
+  function openLeaf(node: HierarchyNode) {
+    if (node.knowledge_type === 'reference_fact' && node.fact_uuid) {
+      onOpenFact?.(node.fact_uuid);
+      return;
+    }
+    if (node.doc_uuid) onOpenDocument(node.doc_uuid);
+  }
+}
+
+/** The distinct badge for a reference-fact leaf (ADR-0021). No fuchsia in 7b-1
+ * (fuchsia is unverified-AI only — 7b-2). A manual unverified fact uses the
+ * neutral "needs review" badge, exactly like a document under review. */
+function FactBadges({ node }: { node: HierarchyNode }) {
+  return (
+    <>
+      <span className="badge badge-reference" title="Structured reference fact">dato</span>
+      {node.status === 'verified' ? (
+        <span className="badge badge-verified">verified</span>
+      ) : (
+        <span className="badge badge-review">needs review</span>
+      )}
+    </>
   );
 }
 
@@ -88,17 +117,17 @@ function ListForm({
   roots,
   cache,
   ensureChildren,
-  onOpenDocument,
+  onOpenLeaf,
 }: {
   roots: HierarchyNode[];
   cache: Map<string, HierarchyNode[]>;
   ensureChildren: (key: string) => Promise<void>;
-  onOpenDocument: (uuid: string) => void;
+  onOpenLeaf: (node: HierarchyNode) => void;
 }) {
   return (
     <ul className="lens-list" role="tree">
       {roots.map((n) => (
-        <ListNode key={n.key} node={n} depth={0} cache={cache} ensureChildren={ensureChildren} onOpenDocument={onOpenDocument} />
+        <ListNode key={n.key} node={n} depth={0} cache={cache} ensureChildren={ensureChildren} onOpenLeaf={onOpenLeaf} />
       ))}
     </ul>
   );
@@ -109,22 +138,23 @@ function ListNode({
   depth,
   cache,
   ensureChildren,
-  onOpenDocument,
+  onOpenLeaf,
 }: {
   node: HierarchyNode;
   depth: number;
   cache: Map<string, HierarchyNode[]>;
   ensureChildren: (key: string) => Promise<void>;
-  onOpenDocument: (uuid: string) => void;
+  onOpenLeaf: (node: HierarchyNode) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const leaf = isLeaf(node);
+  const isFact = node.knowledge_type === 'reference_fact';
   const children = cache.get(node.key);
 
   const toggle = async () => {
     if (leaf) {
-      if (node.doc_uuid) onOpenDocument(node.doc_uuid);
+      onOpenLeaf(node);
       return;
     }
     if (!open && !children) {
@@ -141,7 +171,7 @@ function ListNode({
   return (
     <li role="treeitem" aria-expanded={leaf ? undefined : open}>
       <button
-        className={`lens-row ${leaf ? 'lens-row--leaf' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-row--ruling' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
+        className={`lens-row ${leaf ? 'lens-row--leaf' : ''} ${isFact ? 'lens-row--fact' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-row--ruling' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
         style={{ paddingLeft: `${depth * 18 + 8}px` }}
         onClick={toggle}
       >
@@ -150,14 +180,15 @@ function ListNode({
         <span className="lens-label">{node.label}</span>
         {node.meta && <span className="lens-meta">{node.meta}</span>}
         {typeof node.count === 'number' && !leaf && <span className="lens-count">{node.count}</span>}
-        {leaf && node.retrieval_status && <span className={`badge badge-${node.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{node.retrieval_status}</span>}
+        {leaf && isFact && <FactBadges node={node} />}
+        {leaf && !isFact && node.retrieval_status && <span className={`badge badge-${node.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{node.retrieval_status}</span>}
         {node.gap_kind && <GapBadge kind={node.gap_kind} />}
       </button>
       {!leaf && open && (
         <ul role="group">
           {busy && <li className="muted lens-loading">Loading…</li>}
           {(children ?? []).map((c) => (
-            <ListNode key={c.key} node={c} depth={depth + 1} cache={cache} ensureChildren={ensureChildren} onOpenDocument={onOpenDocument} />
+            <ListNode key={c.key} node={c} depth={depth + 1} cache={cache} ensureChildren={ensureChildren} onOpenLeaf={onOpenLeaf} />
           ))}
           {children && children.length === 0 && <li className="muted lens-loading">(empty)</li>}
         </ul>
@@ -172,7 +203,7 @@ function ListNode({
 
 const COL_W = 210;
 const COL_GAP = 56;
-const ROW_H = 56;
+const ROW_H = 64;
 const ROW_GAP = 12;
 const TOP_PAD = 8;
 
@@ -180,12 +211,12 @@ function GraphForm({
   roots,
   cache,
   ensureChildren,
-  onOpenDocument,
+  onOpenLeaf,
 }: {
   roots: HierarchyNode[];
   cache: Map<string, HierarchyNode[]>;
   ensureChildren: (key: string) => Promise<void>;
-  onOpenDocument: (uuid: string) => void;
+  onOpenLeaf: (node: HierarchyNode) => void;
 }) {
   // selectedPath[k] = the key selected in column k (drives column k+1).
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
@@ -200,7 +231,7 @@ function GraphForm({
 
   const onSelect = async (colIndex: number, node: HierarchyNode) => {
     if (isLeaf(node)) {
-      if (node.doc_uuid) onOpenDocument(node.doc_uuid);
+      onOpenLeaf(node);
       return;
     }
     await ensureChildren(node.key);
@@ -242,15 +273,23 @@ function GraphForm({
           nodes.map((node, idx) => (
             <button
               key={node.key}
-              className={`lens-node ${isLeaf(node) ? 'lens-node--leaf' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-node--ruling' : ''} ${selectedPath[col] === node.key ? 'is-selected' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
+              className={`lens-node ${isLeaf(node) ? 'lens-node--leaf' : ''} ${node.knowledge_type === 'reference_fact' ? 'lens-node--fact' : ''} ${node.authority_level === 'internal_hr_ruling' ? 'lens-node--ruling' : ''} ${selectedPath[col] === node.key ? 'is-selected' : ''} ${node.gap_kind ? 'has-gap' : ''}`}
               style={{ left: nodeX(col), top: nodeY(idx), width: COL_W, height: ROW_H }}
               onClick={() => onSelect(col, node)}
               title={node.label}
             >
-              <span className="lens-node-label">{node.label}</span>
+              <span className="lens-node-label">
+                {node.knowledge_type === 'reference_fact' && <span className="badge badge-reference">dato</span>}
+                <span className="lens-node-label-text">{node.label}</span>
+              </span>
               <span className="lens-node-sub">
-                {typeof node.count === 'number' && !isLeaf(node) ? `${node.count} doc${node.count === 1 ? '' : 's'}` : null}
-                {isLeaf(node) && node.retrieval_status ? node.retrieval_status : null}
+                {typeof node.count === 'number' && !isLeaf(node) ? `${node.count} item${node.count === 1 ? '' : 's'}` : null}
+                {isLeaf(node) && node.knowledge_type === 'reference_fact' && (
+                  node.status === 'verified'
+                    ? <span className="badge badge-verified">verified</span>
+                    : <span className="badge badge-review">needs review</span>
+                )}
+                {isLeaf(node) && node.knowledge_type !== 'reference_fact' && node.retrieval_status ? node.retrieval_status : null}
                 {node.gap_kind ? ` · ${GAP_META[node.gap_kind].label}` : null}
               </span>
             </button>

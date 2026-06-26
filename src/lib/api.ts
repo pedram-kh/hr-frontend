@@ -265,6 +265,12 @@ export interface VocabularyItem {
   numero?: string;
   name: string;
   level?: string;
+  // The `convenios` vocabulary eager-loads its derived scope (territory/sector)
+  // — used to DISPLAY the derived territory/sector when a convenio is picked.
+  territory_id?: number;
+  sector_id?: number;
+  territory?: { id: number; name: string } | null;
+  sector?: { id: number; name: string } | null;
 }
 
 export function listDocuments(params: Record<string, string>): Promise<Paginated<DocumentRow>> {
@@ -327,6 +333,9 @@ export interface HierarchyNode {
   meta?: string | null;
   gap_kind?: GapKind | null;
   // leaf-only fields
+  // Sprint 7b-1 (ADR-0021): which knowledge class a leaf is. A 'document' leaf
+  // opens the document card; a 'reference_fact' leaf opens the fact card.
+  knowledge_type?: 'document' | 'reference_fact';
   doc_uuid?: string;
   document_type?: string | null;
   retrieval_status?: string;
@@ -334,6 +343,12 @@ export interface HierarchyNode {
   authority_level?: string;
   validity_start?: string | null;
   validity_end?: string | null;
+  // reference-fact leaf fields
+  fact_uuid?: string;
+  status?: string; // needs_review | verified
+  source?: string; // admin_manual | ai_agent (ai_agent is 7b-2)
+  topic?: string | null;
+  is_ai_proposed?: boolean; // always false in 7b-1 — fuchsia is reserved for 7b-2
 }
 
 export interface CoverageGaps {
@@ -1095,13 +1110,17 @@ export function resolveExpiryTask(taskId: number, payload: ResolveExpiryPayload)
   return request(`/admin/review/expiry/${taskId}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function uploadDocuments(files: FileList): Promise<{ results: unknown[] }> {
+export async function uploadDocuments(files: FileList, asReference = false): Promise<{ results: unknown[] }> {
   const form = new FormData();
   Array.from(files).forEach((file) => {
     form.append('files[]', file);
     // webkitRelativePath preserves the folder grouping (province/Antiguo/…).
     form.append('relative_paths[]', (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name);
   });
+  // Sprint 7b-1 (ADR-0021): mark a Structured Reference SOURCE upload — a
+  // non-salary .docx/.xlsx read for content + fed to the manual fact path. The
+  // deliberate routing tag (Invariant 2): never salary, never embedded.
+  if (asReference) form.append('as_reference', '1');
 
   const token = getToken();
   const headers = new Headers({ Accept: 'application/json' });
@@ -1111,4 +1130,123 @@ export async function uploadDocuments(files: FileList): Promise<{ results: unkno
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, (data && (data.message as string)) || `Upload failed (${res.status})`);
   return data as { results: unknown[] };
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Structured Reference Knowledge (Sprint 7b-1, ADR-0021). A non-vectorized
+// scoped-fact class with the MANUAL create/verify path. No AI (the ai_agent lane
+// is 7b-2), no answering (that is 7c) — these endpoints STORE + DISPLAY only.
+// Authority is structurally bounded: a fact can only ever be `structured_reference`.
+// ----------------------------------------------------------------------------
+
+/** The one authority level a reference fact may carry (INVARIANT 1). */
+export const REFERENCE_AUTHORITY_LEVEL = 'structured_reference';
+
+export interface ReferenceFactRow {
+  uuid: string;
+  value: string;
+  convenio: string | null;
+  territory: string | null;
+  sector: string | null;
+  job_category: string | null;
+  topic: string | null;
+  status: 'needs_review' | 'verified';
+  source: 'admin_manual' | 'ai_agent';
+  authority_level: string;
+  validity_start: string | null;
+  validity_end: string | null;
+}
+
+export interface ReferenceFactProvenanceEvent {
+  facet: string;
+  old_value: string | null;
+  new_value: string | null;
+  source: string;
+  actor_id: number | null;
+  confidence: number | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface ReferenceFactCard {
+  uuid: string;
+  value: string;
+  raw_values: Record<string, unknown> | null;
+  scope: {
+    convenio: { id: number; numero: string; name: string } | null;
+    territory: { name: string; level: string } | null; // derived (read-only)
+    sector: { name: string } | null; // derived (read-only)
+    job_category: { id: number; name: string; group_code: string | null } | null;
+  };
+  topic: { id: number; name: string } | null;
+  validity_start: string | null;
+  validity_end: string | null;
+  authority_level: string;
+  source: 'admin_manual' | 'ai_agent';
+  status: 'needs_review' | 'verified';
+  is_ai_proposed: boolean; // always false in 7b-1
+  verified_by: string | null;
+  verified_at: string | null;
+  created_by: string | null;
+  source_document: { uuid: string; title: string; source_filename: string | null } | null;
+  source_locator: string | null;
+  provenance: ReferenceFactProvenanceEvent[];
+}
+
+export interface ReferenceSourceDoc {
+  id: number;
+  uuid: string;
+  title: string;
+  source_filename: string | null;
+}
+
+export interface ReferenceSourceContent {
+  uuid: string;
+  title: string;
+  pages: { page_number: number; text: string }[];
+}
+
+export interface CreateReferenceFactPayload {
+  convenio_id: number;
+  job_category_id?: number | null;
+  topic_id?: number | null;
+  value: string;
+  raw_values?: Record<string, unknown> | null;
+  validity_start?: string | null;
+  validity_end?: string | null;
+  source_document_id?: number | null;
+  source_locator?: string | null;
+}
+
+export type UpdateReferenceFactPayload = Partial<CreateReferenceFactPayload> & {
+  confirm_scope_change?: boolean;
+};
+
+export function listReferenceFacts(params: Record<string, string> = {}): Promise<{ facts: Paginated<ReferenceFactRow> }> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/reference-facts${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export function getReferenceFact(uuid: string): Promise<ReferenceFactCard> {
+  return request(`/admin/reference-facts/${uuid}`, { method: 'GET' });
+}
+
+export function createReferenceFact(payload: CreateReferenceFactPayload): Promise<{ status: string; uuid: string }> {
+  return request('/admin/reference-facts', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateReferenceFact(uuid: string, payload: UpdateReferenceFactPayload): Promise<{ status: string }> {
+  return request(`/admin/reference-facts/${uuid}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function verifyReferenceFact(uuid: string): Promise<{ status: string; fact_status: string }> {
+  return request(`/admin/reference-facts/${uuid}/verify`, { method: 'POST' });
+}
+
+export function listReferenceSources(): Promise<{ sources: ReferenceSourceDoc[] }> {
+  return request('/admin/reference-facts/sources', { method: 'GET' });
+}
+
+export function getReferenceSourceContent(uuid: string): Promise<ReferenceSourceContent> {
+  return request(`/admin/reference-sources/${uuid}/content`, { method: 'GET' });
 }

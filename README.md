@@ -58,6 +58,19 @@ npm run dev                   # http://localhost:5173
   bounded-edit UI (FK pickers, the scope-warning modal, the id-94 retag flow). Edit
   affordances are gated on the `knowledge.edit` ability (`canEditKnowledge()` from
   `/me`'s `abilities`); an auditor sees a read-only notice (colour **and** text).
+- **`ReferenceFactPanel.tsx` / `ReferenceFactCreatePanel.tsx`** *(Sprint 7b-1,
+  ADR-0021)* — Structured Reference Knowledge. A `reference_fact` leaf in
+  `Hierarchy.tsx` is a **distinct-badged** leaf (`.badge-reference` — info-toned,
+  **not** fuchsia; fuchsia stays reserved for unverified AI in 7b-2) that opens
+  the **fact card** (value, raw_values, derived scope, source link + locator,
+  topic, validity, the visible **authority lock**, the append-only provenance
+  timeline) with the **verify** action and a bounded edit (the scope-edit 409
+  confirm). The **create** panel is a two-column reader + form: read a
+  `reference_source` (`.docx`/`.xlsx`) content on the left, enter a scoped fact on
+  the right — convenio → derived territory/sector display, convenio-scoped job
+  category, approved topic, value/raw, validity, optional source link + locator;
+  authority is **locked** to `structured_reference` (no higher option). Both gated
+  on `knowledge.edit`; a new fact lands **needs review** (inert until verified).
 
 ### Escalation board + two-way chat (Sprint 4, `src/pages/admin/` + `src/pages/chat/`)
 

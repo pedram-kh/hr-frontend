@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getCoverageGaps, type CoverageGaps, type GapKind, type Lens } from '../../lib/api';
+import { canEditKnowledge, getCoverageGaps, type CoverageGaps, type GapKind, type Lens } from '../../lib/api';
+import { useAuth } from '../../auth/context';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { GAP_META } from './gapMeta';
 import { Hierarchy, type HierarchyForm } from './Hierarchy';
+import { ReferenceFactPanel } from './ReferenceFactPanel';
+import { ReferenceFactCreatePanel } from './ReferenceFactCreatePanel';
 
 const LENSES: { id: Lens; label: string }[] = [
   { id: 'territory', label: 'Territory' },
@@ -15,9 +18,15 @@ const LENSES: { id: Lens; label: string }[] = [
 // (deploy.md §5), in branching-graph and indented-list forms. A leaf opens the
 // document card on the right.
 export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uuid: string) => void } = {}) {
+  const { identity } = useAuth();
+  const canEdit = canEditKnowledge(identity);
   const [lens, setLens] = useState<Lens>('territory');
   const [form, setForm] = useState<HierarchyForm>('graph');
   const [selected, setSelected] = useState<string | null>(null);
+  // Sprint 7b-1 (ADR-0021): a reference-fact leaf opens the fact card; the
+  // toolbar button opens the manual create panel.
+  const [selectedFact, setSelectedFact] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [gaps, setGaps] = useState<CoverageGaps | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -58,16 +67,42 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
               List
             </button>
           </div>
+          {canEdit && (
+            <button className="btn btn-primary map-toolbar-action" onClick={() => setCreating(true)}>
+              + New reference fact
+            </button>
+          )}
         </div>
 
         {gaps && <CoverageGapBar gaps={gaps} />}
 
         <div className="map-canvas">
-          <Hierarchy key={`${lens}-${reloadKey}`} lens={lens} form={form} reloadKey={reloadKey} onOpenDocument={setSelected} />
+          <Hierarchy
+            key={`${lens}-${reloadKey}`}
+            lens={lens}
+            form={form}
+            reloadKey={reloadKey}
+            onOpenDocument={setSelected}
+            onOpenFact={setSelectedFact}
+          />
         </div>
     </div>
     {selected && (
       <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />
+    )}
+    {selectedFact && (
+      <ReferenceFactPanel
+        uuid={selectedFact}
+        onClose={() => setSelectedFact(null)}
+        onChanged={onChanged}
+        onOpenDocument={(uuid) => { setSelectedFact(null); setSelected(uuid); }}
+      />
+    )}
+    {creating && (
+      <ReferenceFactCreatePanel
+        onClose={() => setCreating(false)}
+        onCreated={() => { setCreating(false); onChanged(); }}
+      />
     )}
     </>
   );
