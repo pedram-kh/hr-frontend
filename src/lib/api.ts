@@ -1142,6 +1142,16 @@ export async function uploadDocuments(files: FileList, asReference = false): Pro
 /** The one authority level a reference fact may carry (INVARIANT 1). */
 export const REFERENCE_AUTHORITY_LEVEL = 'structured_reference';
 
+// Sprint 7b-2: the structured uncertainty flag {field, reason} (not a flat
+// boolean) so "scope unclear" / "compound group" / "possible version" are
+// distinguishable and sortable.
+export interface FactUncertainty {
+  field: string; // scope | group | version | value
+  reason: string;
+}
+
+export type ReferenceFactStatus = 'needs_review' | 'verified' | 'rejected';
+
 export interface ReferenceFactRow {
   uuid: string;
   value: string;
@@ -1149,12 +1159,19 @@ export interface ReferenceFactRow {
   territory: string | null;
   sector: string | null;
   job_category: string | null;
+  group_label: string | null; // Sprint 7b-2 — the group AS WRITTEN
   topic: string | null;
-  status: 'needs_review' | 'verified';
+  status: ReferenceFactStatus;
   source: 'admin_manual' | 'ai_agent';
   authority_level: string;
   validity_start: string | null;
   validity_end: string | null;
+  // Sprint 7b-2 — the AI review-queue safety fields.
+  confidence: number | null;
+  uncertainty: FactUncertainty | null;
+  source_excerpt: string | null;
+  is_ai_proposed: boolean;
+  is_possible_duplicate: boolean;
 }
 
 export interface ReferenceFactProvenanceEvent {
@@ -1177,14 +1194,21 @@ export interface ReferenceFactCard {
     territory: { name: string; level: string } | null; // derived (read-only)
     sector: { name: string } | null; // derived (read-only)
     job_category: { id: number; name: string; group_code: string | null } | null;
+    group_label: string | null; // Sprint 7b-2 — the group AS WRITTEN
   };
   topic: { id: number; name: string } | null;
   validity_start: string | null;
   validity_end: string | null;
   authority_level: string;
   source: 'admin_manual' | 'ai_agent';
-  status: 'needs_review' | 'verified';
-  is_ai_proposed: boolean; // always false in 7b-1
+  status: ReferenceFactStatus;
+  is_ai_proposed: boolean; // ai_agent + needs_review → fuchsia until verified
+  // Sprint 7b-2 — the segmentation metadata the reviewer judges against.
+  confidence: number | null;
+  uncertainty: FactUncertainty | null;
+  source_excerpt: string | null;
+  proposal_batch_id: string | null;
+  duplicate_of: { uuid: string; value: string } | null; // the version FLAG (7d resolves)
   verified_by: string | null;
   verified_at: string | null;
   created_by: string | null;
@@ -1241,6 +1265,19 @@ export function updateReferenceFact(uuid: string, payload: UpdateReferenceFactPa
 
 export function verifyReferenceFact(uuid: string): Promise<{ status: string; fact_status: string }> {
   return request(`/admin/reference-facts/${uuid}/verify`, { method: 'POST' });
+}
+
+// Sprint 7b-2 — reject an AI proposal (auditable, no delete) and (re-)run the
+// segmentation agent on a reference source.
+export function rejectReferenceFact(uuid: string, reason?: string): Promise<{ status: string; fact_status: string }> {
+  return request(`/admin/reference-facts/${uuid}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export function segmentReferenceSource(uuid: string): Promise<{ status: string; document_uuid: string }> {
+  return request(`/admin/reference-sources/${uuid}/segment`, { method: 'POST' });
 }
 
 export function listReferenceSources(): Promise<{ sources: ReferenceSourceDoc[] }> {

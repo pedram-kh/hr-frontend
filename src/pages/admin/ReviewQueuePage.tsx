@@ -2,21 +2,25 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   getExpiryQueue,
   listDocuments,
+  listReferenceFacts,
   listVocabularyProposals,
   rejectVocabularyProposal,
   resolveExpiryTask,
   type DocumentRow,
   type ExpiryTask,
+  type ReferenceFactRow,
   type VocabularyFacet,
   type VocabularyProposal,
 } from '../../lib/api';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
+import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 
-type Tab = 'tagging' | 'vocabulary' | 'expiry';
+type Tab = 'tagging' | 'reference-facts' | 'vocabulary' | 'expiry';
 
-// Sprint 7a — the messy-tail review surfaces, in one place: the AI tagging
-// backlog (verify reuses the Sprint-3 Confirm UI), the proposed-vocabulary list
+// Sprint 7a/7b-2 — the messy-tail review surfaces, in one place: the AI tagging
+// backlog (verify reuses the Sprint-3 Confirm UI), the AI-segmented reference
+// facts (uncertain-first — the 7b-2 safety queue), the proposed-vocabulary list
 // (approve = vocabulary.approve), and the expiry queue (human-confirmed
 // succession). Fuchsia marks unverified-AI ONLY.
 export function ReviewQueuePage() {
@@ -25,13 +29,80 @@ export function ReviewQueuePage() {
     <div className="review-queue">
       <div className="tabs">
         <button className={`tab ${tab === 'tagging' ? 'active' : ''}`} onClick={() => setTab('tagging')}>AI tagging</button>
+        <button className={`tab ${tab === 'reference-facts' ? 'active' : ''}`} onClick={() => setTab('reference-facts')}>Reference facts</button>
         <button className={`tab ${tab === 'vocabulary' ? 'active' : ''}`} onClick={() => setTab('vocabulary')}>Vocabulary proposals</button>
         <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>Expiry</button>
       </div>
       {tab === 'tagging' && <TaggingQueue />}
+      {tab === 'reference-facts' && <ReferenceFactsQueue />}
       {tab === 'vocabulary' && <VocabularyQueue />}
       {tab === 'expiry' && <ExpiryQueue />}
     </div>
+  );
+}
+
+// --- AI-segmented reference facts (Sprint 7b-2) -------------------------------
+// The riskiest queue: each row is an AI scope-assignment. UNCERTAIN-FIRST so a
+// flagged fact (scope unclear / compound group / possible version) floats to the
+// top, then the least-confident. Open one to check the source line against the
+// assigned scope, then verify / fix-then-verify / reject. Inert until verified
+// (not answerable — answering is a later sprint).
+function ReferenceFactsQueue() {
+  const [rows, setRows] = useState<ReferenceFactRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    listReferenceFacts({ queue: 'true' })
+      .then((p) => setRows(p.facts.data))
+      .catch((e) => setError(String(e.message ?? e)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(refresh, [refresh]);
+
+  return (
+    <>
+      <p className="muted">
+        AI-segmented reference facts awaiting verification — <strong>uncertain-first</strong>, then lowest-confidence.
+        Inert (fuchsia, not answerable) until a human verifies. Open one to check the source line against the assigned scope.
+      </p>
+      {error && <p className="error">{error}</p>}
+      {loading ? (
+        <p className="muted">Loading…</p>
+      ) : (
+        <table className="docs-table">
+          <thead>
+            <tr><th>Value</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.uuid}
+                className={`${selected === r.uuid ? 'is-selected' : ''} ${r.is_ai_proposed ? 'ai-marked' : ''}`}
+                onClick={() => setSelected(r.uuid)}
+              >
+                <td className="cell-clip">{r.value}</td>
+                <td>{[r.territory, r.sector].filter(Boolean).join(' · ') || r.convenio || '—'}</td>
+                <td>{r.group_label ?? r.job_category ?? '—'}</td>
+                <td className="num">{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : '—'}</td>
+                <td className="flags">
+                  {r.is_ai_proposed && <span className="ai-pill">AI</span>}
+                  {r.uncertainty && <span className="badge badge-conflict">⚠ {r.uncertainty.field}</span>}
+                  {r.is_possible_duplicate && <span className="badge badge-conflict">≈ version</span>}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={5} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
+            )}
+          </tbody>
+        </table>
+      )}
+      {selected && <ReferenceFactPanel uuid={selected} onClose={() => setSelected(null)} onChanged={refresh} />}
+    </>
   );
 }
 

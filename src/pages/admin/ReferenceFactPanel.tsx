@@ -3,6 +3,8 @@ import {
   ApiError,
   canEditKnowledge,
   getReferenceFact,
+  rejectReferenceFact,
+  segmentReferenceSource,
   updateReferenceFact,
   verifyReferenceFact,
   REFERENCE_AUTHORITY_LEVEL,
@@ -12,14 +14,20 @@ import {
 import { useAuth } from '../../auth/context';
 
 /**
- * The reference-fact card (Sprint 7b-1, ADR-0021) — the right-hand panel a
- * `fact:{uuid}` leaf opens. Mirrors the document card: scope (convenio +
- * DERIVED territory/sector + job category), topic, validity, the AUTHORITY LOCK
- * (the visible INVARIANT 1 — structured_reference, no higher option), the source
- * link + locator, raw_values verbatim, the append-only provenance timeline, and
- * — for knowledge.edit holders — the bounded edit + the verify action (the 7a
- * spine). NO fuchsia here: a manual unverified fact uses the neutral
- * needs-review treatment (fuchsia is reserved for unverified AI — 7b-2).
+ * The reference-fact card (Sprint 7b-1 / 7b-2, ADR-0021/0022) — the right-hand
+ * panel a `fact:{uuid}` leaf opens. Mirrors the document card: scope (convenio +
+ * DERIVED territory/sector + job category + group_label), topic, validity, the
+ * AUTHORITY LOCK (the visible INVARIANT 1 — structured_reference, no higher
+ * option), the source link + locator, raw_values verbatim, the append-only
+ * provenance timeline, and — for knowledge.edit holders — the bounded edit + the
+ * verify action (the 7a spine).
+ *
+ * Sprint 7b-2 — the review UX IS the safety. An AI-proposed fact (ai_agent +
+ * needs_review) shows FUCHSIA, the source EXCERPT (the header trail + exact line,
+ * so the reviewer checks "did the source say Álava?" in seconds), the confidence,
+ * the structured uncertainty flag, and a possible-version flag. The human can
+ * verify / fix-then-verify / reject. The agent NEVER verifies its own output —
+ * the verify action is human-only.
  */
 export function ReferenceFactPanel({
   uuid,
@@ -59,6 +67,32 @@ export function ReferenceFactPanel({
     }
   };
 
+  const reject = async () => {
+    setBusy(true);
+    try {
+      await rejectReferenceFact(uuid);
+      load();
+      onChanged();
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resegment = async () => {
+    if (!fact?.source_document) return;
+    setBusy(true);
+    try {
+      await segmentReferenceSource(fact.source_document.uuid);
+      onChanged();
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="detail-backdrop" onClick={onClose}>
@@ -81,16 +115,25 @@ export function ReferenceFactPanel({
   }
 
   const validity = fact.validity_start ? `${fact.validity_start} → ${fact.validity_end ?? '—'}` : '—';
+  const isAi = fact.is_ai_proposed; // ai_agent + needs_review → fuchsia
+  const confidencePct = fact.confidence != null ? `${Math.round(fact.confidence * 100)}%` : null;
 
   return (
     <div className="detail-backdrop" onClick={onClose}>
-      <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Reference fact">
+      <aside
+        className={`detail panel${isAi ? ' ai-marked' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reference fact"
+      >
         <div className="detail-head">
           <strong>Reference fact</strong>
           <span className="badge badge-reference">dato</span>
-          {fact.status === 'verified'
-            ? <span className="badge badge-verified">verified</span>
-            : <span className="badge badge-review">needs review</span>}
+          {isAi && <span className="ai-pill">AI proposal</span>}
+          {fact.status === 'verified' && <span className="badge badge-verified">verified</span>}
+          {fact.status === 'needs_review' && <span className="badge badge-review">needs review</span>}
+          {fact.status === 'rejected' && <span className="badge badge-review">rejected</span>}
           <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="detail-body">
@@ -101,12 +144,43 @@ export function ReferenceFactPanel({
             </p>
           )}
 
-          {fact.status === 'needs_review' && (
+          {isAi && (
+            <div className="notice notice--ai">
+              <p style={{ margin: 0 }}>
+                <span aria-hidden="true">✨</span>{' '}
+                <strong>AI-segmented proposal — unverified.</strong> Check the scope against the quoted
+                source line below before verifying. The agent only proposes; it never verifies itself.
+              </p>
+              <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+                Confidence: {confidencePct ?? '—'}
+                {fact.uncertainty && (
+                  <> · <span className="ai-facet">⚠ {fact.uncertainty.field}: {fact.uncertainty.reason}</span></>
+                )}
+              </p>
+            </div>
+          )}
+
+          {fact.duplicate_of && (
+            <p className="notice">
+              <span aria-hidden="true">⚠</span>
+              <strong>Possible version/duplicate</strong> — same scope as an existing fact with a
+              different value ("{fact.duplicate_of.value}"). Flagged only; resolution is a later sprint.
+            </p>
+          )}
+
+          {(fact.status === 'needs_review') && (
             <p className="notice">
               <span aria-hidden="true">⚠</span>
               <strong>Inert until verified</strong> — this fact is not answerable until a human verifies it
               {' '}(and answering from facts arrives in a later sprint).
             </p>
+          )}
+
+          {isAi && fact.source_excerpt && (
+            <section>
+              <h4>Source line (check the scope)</h4>
+              <blockquote className="ai-suggestions" style={{ whiteSpace: 'pre-wrap' }}>{fact.source_excerpt}</blockquote>
+            </section>
           )}
 
           <section>
@@ -127,6 +201,7 @@ export function ReferenceFactPanel({
               <Facet label="Territory" value={fact.scope.territory ? `${fact.scope.territory.name} (${fact.scope.territory.level})` : '—'} derived />
               <Facet label="Sector" value={fact.scope.sector?.name ?? '—'} derived />
               <Facet label="Job category" value={fact.scope.job_category?.name ?? '— (convenio-wide)'} />
+              {fact.scope.group_label && <Facet label="Group" value={fact.scope.group_label} />}
               <Facet label="Topic" value={fact.topic?.name ?? '—'} />
               <Facet label="Validity" value={validity} />
             </div>
@@ -161,12 +236,22 @@ export function ReferenceFactPanel({
               <div className="detail-actions">
                 {fact.status === 'needs_review' && (
                   <button className="btn btn-primary" onClick={verify} disabled={busy}>
-                    {busy ? 'Verifying…' : 'Verify fact'}
+                    {busy ? 'Verifying…' : isAi ? 'Verify proposal' : 'Verify fact'}
                   </button>
                 )}
                 <button className="btn btn-secondary" onClick={() => setEditing((e) => !e)} disabled={busy}>
-                  {editing ? 'Cancel edit' : 'Edit'}
+                  {editing ? 'Cancel edit' : isAi && fact.status === 'needs_review' ? 'Fix then verify' : 'Edit'}
                 </button>
+                {isAi && fact.status === 'needs_review' && (
+                  <button className="btn btn-ghost" onClick={reject} disabled={busy}>
+                    {busy ? 'Rejecting…' : 'Reject'}
+                  </button>
+                )}
+                {isAi && fact.source_document && (
+                  <button className="btn btn-ghost" onClick={resegment} disabled={busy} title="Re-run the segmentation agent on the source (idempotent upsert)">
+                    Re-segment source
+                  </button>
+                )}
               </div>
               {editing && (
                 <FactEditForm

@@ -71,6 +71,19 @@ npm run dev                   # http://localhost:5173
   category, approved topic, value/raw, validity, optional source link + locator;
   authority is **locked** to `structured_reference` (no higher option). Both gated
   on `knowledge.edit`; a new fact lands **needs review** (inert until verified).
+- **AI-segmented facts in the fact card + the review queue** *(Sprint 7b-2,
+  ADR-0022)* — the `ai_agent` lane lights the **fuchsia** (`--provenance-ai`,
+  reserved-and-unlit since 7b-1): an AI-proposed fact (`source==='ai_agent' &&
+  status==='needs_review'`) renders fuchsia-accented with an **AI** pill, a notice
+  showing `confidence` + structured `uncertainty`, a **possible version/duplicate**
+  notice (linking the `duplicate_of` sibling), and — the safety defense — the exact
+  **source line** (`source_excerpt`, the `ÁLAVA › COEAS ÁLAVA › Grupo 1: …` trail)
+  inline so the reviewer checks the scope against the quote. Actions: **verify
+  proposal** / **fix then verify** / **reject** / **re-segment source** (all
+  `knowledge.edit`). `ReviewQueuePage.tsx` gains a **"Reference facts"** tab — the
+  **uncertain-first** queue (uncertainty, then ascending confidence) with the value,
+  scope, group, confidence, and uncertainty/duplicate flags. On verify the fuchsia
+  reverts; the AI origin persists only as the `ai_agent` provenance dot.
 
 ### Escalation board + two-way chat (Sprint 4, `src/pages/admin/` + `src/pages/chat/`)
 
