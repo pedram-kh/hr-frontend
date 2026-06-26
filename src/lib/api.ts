@@ -441,6 +441,7 @@ export interface Citation {
   page_number: number | null;
   snippet: string;
   is_salary_table?: boolean;
+  is_reference_fact?: boolean; // a verified structured reference fact (chunk_id = null), Sprint 7c
 }
 
 // A constrained job category for the single-turn salary disambiguation pick (§4).
@@ -479,6 +480,19 @@ export interface MessageTrace {
     year_selection?: string;
     category_source?: string; // 'profile' | 'picked_unverified'
     job_category_id?: number | null;
+    note?: string | null;
+    [k: string]: unknown;
+  };
+  // Reference-fact path detail (Sprint 7c): the resolved verified fact + how its
+  // scope/validity was selected. authority_used is always structured_reference.
+  reference_fact?: {
+    outcome?: string;
+    topic_id?: number | null;
+    fact_id?: number | null;
+    match_kind?: string; // 'job_category' | 'group_label' | 'convenio_wide'
+    validity_selection?: string | null; // 'single' | 'most_recent_validity' | 'ambiguous_conflict'
+    group_label?: string | null;
+    value?: string | null;
     note?: string | null;
     [k: string]: unknown;
   };

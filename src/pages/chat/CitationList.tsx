@@ -2,9 +2,19 @@ import type { Citation } from '../../lib/api';
 
 // Maps a citation's authority_level to a design-system status badge. The badge is
 // color + text (never color-only) per design-system §6.
-function authorityBadge(level: string | null, isSalaryTable?: boolean): { cls: string; label: string } {
+function authorityBadge(
+  level: string | null,
+  isSalaryTable?: boolean,
+  isReferenceFact?: boolean,
+): { cls: string; label: string } {
   if (isSalaryTable) {
     return { cls: 'badge-verified', label: 'Tabla salarial' };
+  }
+  // A verified structured reference fact (Sprint 7c) — quoted exactly, cited to
+  // its source with chunk_id = null, beside the salary-table branch. Bounded at
+  // structured_reference: it can never outrank the convenio.
+  if (isReferenceFact) {
+    return { cls: 'badge-verified', label: 'Dato de referencia' };
   }
   switch (level) {
     case 'national_law':
@@ -37,10 +47,11 @@ export function CitationList({ citations }: { citations: Citation[] }) {
       <div className="citation-list-label">Fuentes</div>
       <ol className="citation-items">
         {citations.map((c, i) => {
-          const badge = authorityBadge(c.authority_level, c.is_salary_table);
+          const badge = authorityBadge(c.authority_level, c.is_salary_table, c.is_reference_fact);
           const page = pageLabel(c.page_from, c.page_to);
+          const key = c.chunk_id ?? (c.is_reference_fact ? 'fact' : 'salary');
           return (
-            <li key={`${c.chunk_id ?? 'salary'}-${c.document_id}-${i}`} className="citation">
+            <li key={`${key}-${c.document_id}-${i}`} className="citation">
               <div className="citation-head">
                 <span className="citation-title">{c.document_title ?? `Documento ${c.document_id}`}</span>
                 <span className={`badge ${badge.cls}`}>{badge.label}</span>

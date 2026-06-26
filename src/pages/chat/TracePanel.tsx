@@ -45,6 +45,17 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     });
   }
 
+  if (trace.reference_fact) {
+    const rf = trace.reference_fact;
+    const match = rf.match_kind ? ` · ámbito: ${rf.match_kind}` : '';
+    const validity = rf.validity_selection ? ` · validez: ${rf.validity_selection}` : '';
+    steps.push({
+      label: 'Dato de referencia (estructurado)',
+      meta: `${rf.outcome ?? ''}${rf.fact_id ? ` · fact #${rf.fact_id}` : ''}${match}${validity} · structured_reference`,
+      dot: rf.outcome === 'answer' ? 'src-admin_manual' : 'src-system',
+    });
+  }
+
   if (trace.retrieval) {
     const r = trace.retrieval;
     const passes = r.passes && r.passes.length > 1 ? ` · ${r.passes.length} pasadas (recall)` : '';
@@ -78,7 +89,10 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     const f = trace.floor_decision;
     const outcomeLabel =
       f.outcome === 'answer' ? 'responder' : f.outcome === 'needs_category' ? 'pedir categoría' : 'escalar';
-    const checks = f.path === 'salary_sql' ? '' : ` · A=${f.check_a_retrieval ? '✓' : '✗'} B=${f.check_b_citations ? '✓' : '✗'}`;
+    // Structured paths (salary SQL, reference fact) are grounded by construction —
+    // they have no Check A/B retrieval+citation gate to show.
+    const structuredPath = f.path === 'salary_sql' || f.path === 'reference_fact' || f.path === 'reference_fact_composition';
+    const checks = structuredPath ? '' : ` · A=${f.check_a_retrieval ? '✓' : '✗'} B=${f.check_b_citations ? '✓' : '✗'}`;
     steps.push({
       label: 'Decisión',
       meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}`,
