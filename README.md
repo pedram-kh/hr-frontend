@@ -108,6 +108,17 @@ npm run dev                   # http://localhost:5173
 The only new visual primitives are the `internal_hr_ruling` badge and the
 `chat-bubble--agent` variant (one class/token each, per the design-system rule).
 
+> **Reference-fact answer + composition in chat (Sprint 7c, ADR-0023) — additive,
+> reuses the salary-citation rendering.** `CitationList.tsx` shows a **"Dato de
+> referencia"** badge for a `structured_reference` fact citation (`is_reference_fact`,
+> `chunk_id = null` — the salary-citation shape), and renders the **multi-source**
+> composition set (the fact + the governing convenio chunks) in the model's citation
+> order so `[Fuente N]` stays 1:1. `TracePanel.tsx` adds a **reference-fact** step
+> (matched fact, scope tier, validity, `structured_reference`) and a **composition**
+> step (governing-prose count; a same-point **conflict** is shown as *escalates, no
+> mezcla* — the convenio governs). The `MessageTrace`/`Citation` types gain the
+> additive `reference_fact` / `composition` blocks and `is_reference_fact` flag.
+
 ### Access control — Directory / Admins / History (Sprint 5, `src/pages/admin/`)
 
 The UI **only hides** on the new abilities (`canManageDirectory` /

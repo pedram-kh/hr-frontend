@@ -496,6 +496,18 @@ export interface MessageTrace {
     note?: string | null;
     [k: string]: unknown;
   };
+  // Composition path detail (Sprint 7c Phase 2, ADR-0023): a verified fact merged
+  // with governing convenio prose into one grounded answer. The convenio always
+  // governs; a same-point conflict escalates (never blends).
+  composition?: {
+    detected?: boolean;
+    governing_on_topic_chunks?: number;
+    governing_top_score?: number;
+    check_a?: boolean;
+    conflict?: { conflict: boolean; unit: string | null; fact_values: string[]; prose_values: string[] };
+    synthesis_error?: string;
+    [k: string]: unknown;
+  };
   retrieval?: {
     eligible_total: number;
     returned: number;

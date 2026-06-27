@@ -56,6 +56,18 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     });
   }
 
+  if (trace.composition?.detected) {
+    const c = trace.composition;
+    const conflict = c.conflict?.conflict
+      ? ` · CONFLICTO (${c.conflict.unit}: dato ${c.conflict.fact_values?.join('/')} vs convenio ${c.conflict.prose_values?.join('/')}) → escala, no mezcla`
+      : ' · el convenio gobierna';
+    steps.push({
+      label: 'Composición (dato + convenio)',
+      meta: `${c.governing_on_topic_chunks ?? 0} fragmento(s) de convenio sobre el tema${conflict}`,
+      dot: c.conflict?.conflict ? 'src-system' : 'src-ai_agent',
+    });
+  }
+
   if (trace.retrieval) {
     const r = trace.retrieval;
     const passes = r.passes && r.passes.length > 1 ? ` · ${r.passes.length} pasadas (recall)` : '';
