@@ -384,7 +384,9 @@ const FACET_LABELS: Record<string, string> = {
   topic: 'Topic',
 };
 
-function AiSuggestionsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEdit: boolean; onChanged: () => void }) {
+// `onChanged` is accepted (the caller passes `reload`) but unused: this section is
+// read-only — the Confirm action that reloads lives in the facets editor above.
+function AiSuggestionsSection({ doc, canEdit }: { doc: DocumentDetail; canEdit: boolean; onChanged: () => void }) {
   if (!doc.is_ai_proposed) return null;
 
   // The latest ai_agent suggestion per facet (the proposals to review).

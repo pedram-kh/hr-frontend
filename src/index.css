@@ -2135,3 +2135,89 @@ a {
   gap: var(--space-1);
   font-size: var(--text-sm);
 }
+
+/* =============================================================================
+   Sprint 7d (ADR-0024) — comparison surfaces
+   The semantic fence, the fact version pair and the succession proposal all show
+   the same thing: TWO PASSAGES AND A SCORE, so a human can judge the machine's
+   claim instead of trusting it. These are layout primitives only; every colour
+   comes from the existing tokens, and fuchsia (--provenance-ai) keeps its single
+   meaning of unverified AI via the existing .notice--ai.
+   ========================================================================== */
+
+/* A .notice is a flex ROW (icon + text). When its body is more than a sentence —
+   passages, a checkbox, a button — it needs to stack beside the icon. */
+.notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.passage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.passage-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* Quoted source text: readable, never truncated (a clipped passage would hide
+   the very words the human is being asked to judge). */
+.passage-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  white-space: pre-wrap;
+}
+
+/* Side-by-side comparison (the fact version pair, the succession passages). */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 760px) {
+  .compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compare-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The differing fields are the point of the comparison, so they are marked; the
+   identical ones stay quiet rather than being hidden (scope must remain visible
+   to prove the two facts really are the same fact). */
+.compare-field {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.compare-field dt {
+  color: var(--text-faint);
+  min-width: 7.5rem;
+}
+
+.compare-field dd {
+  margin: 0;
+}
+
+.compare-field.is-differing dd {
+  font-weight: 600;
+  color: var(--warning);
+}

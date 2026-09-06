@@ -4,6 +4,8 @@ import {
   listDocuments,
   listReferenceFacts,
   listVocabularyProposals,
+  proposeSuccession,
+  rejectSuccessionProposal,
   rejectVocabularyProposal,
   resolveExpiryTask,
   type DocumentRow,
@@ -13,6 +15,7 @@ import {
   type VocabularyProposal,
 } from '../../lib/api';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
+import { FactDuplicatePanel } from './FactDuplicatePanel';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 
@@ -52,6 +55,10 @@ function ReferenceFactsQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Sprint 7d — the version pair opens its own side-by-side surface, because the
+  // question ("which of these two is true, and since when?") is about the PAIR,
+  // not about either fact alone.
+  const [pairUuid, setPairUuid] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -75,7 +82,7 @@ function ReferenceFactsQueue() {
       ) : (
         <table className="docs-table">
           <thead>
-            <tr><th>Value</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th></tr>
+            <tr><th>Value</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -91,17 +98,40 @@ function ReferenceFactsQueue() {
                 <td className="flags">
                   {r.is_ai_proposed && <span className="ai-pill">AI</span>}
                   {r.uncertainty && <span className="badge badge-conflict">⚠ {r.uncertainty.field}</span>}
-                  {r.is_possible_duplicate && <span className="badge badge-conflict">≈ version</span>}
+                  {r.is_unresolved_duplicate && <span className="badge badge-conflict">≈ version</span>}
+                  {r.resolution && <span className="badge badge-historical">{r.resolution}</span>}
+                </td>
+                <td>
+                  {/* Sprint 7d — the 7b-2 flag is now actionable. Only an UNRESOLVED
+                      one offers the action; a resolved pair keeps its lineage badge. */}
+                  {r.is_unresolved_duplicate && (
+                    <button
+                      className="btn btn-ghost"
+                      onClick={(e) => { e.stopPropagation(); setPairUuid(r.uuid); }}
+                    >
+                      Resolver versión
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={5} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
+              <tr><td colSpan={6} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
             )}
           </tbody>
         </table>
       )}
-      {selected && <ReferenceFactPanel uuid={selected} onClose={() => setSelected(null)} onChanged={refresh} />}
+      {selected && (
+        <ReferenceFactPanel
+          uuid={selected}
+          onClose={() => setSelected(null)}
+          onChanged={refresh}
+          onResolveDuplicate={setPairUuid}
+        />
+      )}
+      {pairUuid && (
+        <FactDuplicatePanel uuid={pairUuid} onClose={() => setPairUuid(null)} onChanged={refresh} />
+      )}
     </>
   );
 }
@@ -289,17 +319,121 @@ function ExpiryQueue() {
   );
 }
 
+// Sprint 7d (ADR-0024) part C — the INERT AI succession suggestion.
+//
+// It is a claim with its evidence attached: the relationship, the two compared
+// passages and the score. Confirming it does not run any new write path — it
+// pre-selects the proposed successor in the SAME <select> below and calls the SAME
+// 7a `resolveExpiryTask`, which is the only writer of `predecessor_document_id`.
+// "Also retire" is never pre-checked by a proposal.
+function SuccessionProposalNotice({
+  task,
+  busy,
+  onConfirm,
+  onReject,
+  onRepropose,
+}: {
+  task: ExpiryTask;
+  busy: boolean;
+  onConfirm: (successorUuid: string) => void;
+  onReject: () => void;
+  onRepropose: () => void;
+}) {
+  const p = task.ai_proposal;
+
+  // Nothing proposed (no candidate, no text, comparison down). Say why rather
+  // than showing an empty box the human has to interpret.
+  if (p && p.relationship === null) {
+    return (
+      <p className="notice notice--neutral">
+        <span aria-hidden="true">✨</span>
+        Sin sugerencia de sucesión: {p.reason ?? '—'}
+        <button className="btn btn-ghost" disabled={busy} onClick={onRepropose}>Reintentar</button>
+      </p>
+    );
+  }
+  if (!p || !task.is_ai_proposed) {
+    // Already confirmed or rejected (or never proposed) — the row stays plain, and
+    // the human's own choice below is unaffected.
+    return task.ai_proposal_status === 'rejected' ? (
+      <p className="timeline-meta">Sugerencia de IA rechazada — sin efecto sobre el documento.</p>
+    ) : null;
+  }
+
+  const label: Record<string, string> = {
+    successor: 'Sucesor propuesto',
+    conflict: 'Posible conflicto (no sucesión)',
+    coexisting_sibling: 'Documentos que coexisten (no sucesión)',
+    uncertain: 'Sin relación afirmada',
+  };
+
+  return (
+    <div className="notice notice--ai">
+      <span aria-hidden="true">✨</span>
+      <div className="notice-body">
+        <p style={{ margin: 0 }}>
+          <span className="ai-pill">AI</span>{' '}
+          <strong>{label[p.relationship ?? 'uncertain']}</strong> — sin verificar, no se ha escrito nada.
+          {p.candidate_title && <> Candidato: <strong>{p.candidate_title}</strong></>}
+          {p.max_score != null && <span className="muted"> · solapamiento {p.max_score.toFixed(3)}</span>}
+        </p>
+        {p.validity && (
+          <p className="timeline-meta" style={{ margin: 0 }}>
+            este documento {p.validity.expiring[0] ?? '—'} → {p.validity.expiring[1] ?? '—'} ·
+            candidato {p.validity.candidate[0] ?? '—'} → {p.validity.candidate[1] ?? '—'}
+            {p.relationship === 'successor' && ' (vigencia estrictamente posterior)'}
+          </p>
+        )}
+        {p.uncertainty && <p className="ai-facet" style={{ margin: 0 }}>⚠ {p.uncertainty.reason}</p>}
+
+        {/* The compared passages, side by side. Without them the label is just an
+            assertion, and a human cannot check an assertion. */}
+        {(p.passages ?? []).map((pp, i) => (
+          <div className="compare-grid" key={pp.candidate_chunk_id ?? i}>
+            <div className="compare-side">
+              <span className="muted">Este documento</span>
+              <blockquote className="well passage-text">{pp.expiring_excerpt}</blockquote>
+            </div>
+            <div className="compare-side">
+              <span className="muted">Candidato · {pp.score.toFixed(3)}</span>
+              <blockquote className="well passage-text">{pp.candidate_excerpt}</blockquote>
+            </div>
+          </div>
+        ))}
+
+        <div className="proposal-actions">
+          {p.relationship === 'successor' && p.candidate_document_uuid && (
+            <button
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => onConfirm(p.candidate_document_uuid as string)}
+            >
+              Confirmar esta sucesión
+            </button>
+          )}
+          <button className="btn btn-ghost" disabled={busy} onClick={onReject}>Rechazar sugerencia</button>
+        </div>
+        {p.relationship !== 'successor' && (
+          <p className="timeline-meta" style={{ margin: 0 }}>
+            La IA no propone una sucesión aquí; si crees que la hay, elígela abajo a mano.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: string) => void; onError: (e: string) => void }) {
   const [successor, setSuccessor] = useState('');
   const [retire, setRetire] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const act = async (action: 'link_successor' | 'dismiss' | 'escalate') => {
+  const act = async (action: 'link_successor' | 'dismiss' | 'escalate', successorUuid = successor) => {
     setBusy(true);
     try {
       await resolveExpiryTask(task.task_id, {
         action,
-        successor_uuid: action === 'link_successor' ? successor : undefined,
+        successor_uuid: action === 'link_successor' ? successorUuid : undefined,
         retire_predecessor: action === 'link_successor' ? retire : undefined,
         confirm_scope_change: action === 'link_successor' && retire ? true : undefined,
       });
@@ -317,9 +451,35 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
     }
   };
 
+  const rejectProposal = async () => {
+    setBusy(true);
+    try {
+      await rejectSuccessionProposal(task.task_id);
+      // The task stays OPEN: the document is still expiring, so rejecting a
+      // suggestion is not resolving the queue item.
+      onDone('Sugerencia de IA rechazada — no se ha escrito ninguna relación; la tarea sigue abierta.');
+    } catch (e) {
+      onError(String((e as Error).message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const repropose = async () => {
+    setBusy(true);
+    try {
+      await proposeSuccession(task.task_id);
+      onDone('Comparación en cola — vuelve a cargar en unos segundos.');
+    } catch (e) {
+      onError(String((e as Error).message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const d = task.document;
   return (
-    <li className="proposal-card">
+    <li className={`proposal-card ${task.is_ai_proposed ? 'ai-marked' : ''}`}>
       <div className="proposal-head">
         {task.past && <span className="badge badge-conflict">⚠ Past</span>}
         <strong>{d?.title ?? '—'}</strong>
@@ -328,6 +488,19 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
       <div className="timeline-meta">
         valid {d?.validity_start ?? '—'} → {d?.validity_end ?? '—'} · {d?.retrieval_status}
       </div>
+
+      {!task.is_unscoped && (
+        <SuccessionProposalNotice
+          task={task}
+          busy={busy}
+          // Confirming pre-selects the proposal in the picker below and runs the
+          // unchanged 7a write. `retire` is whatever the human left it as — a
+          // proposal never turns it on.
+          onConfirm={(uuid) => { setSuccessor(uuid); act('link_successor', uuid); }}
+          onReject={rejectProposal}
+          onRepropose={repropose}
+        />
+      )}
 
       {task.is_unscoped ? (
         <p className="notice"><span aria-hidden="true">⚠</span> No convenio — succession is scope-based, so no same-convenio successor can be linked. Dismiss or escalate.</p>
