@@ -801,9 +801,30 @@ export interface ResolveResult {
   } | null;
 }
 
+// Sprint 7d (ADR-0024) — one overlapping passage of the scope's official convenio,
+// as the semantic fence returns it in a 409 body. The score is shown next to the
+// text because a number alone is not evidence: the human judges the passage.
+export interface SemanticPassage {
+  chunk_id: number | null;
+  document_id: number | null;
+  document_title: string | null;
+  page_from: number | null;
+  excerpt: string;
+  score: number;
+  probe_excerpt?: string | null;
+}
+
 export function resolveEscalation(
   uuid: string,
-  payload: { resolution_text: string; convert: boolean; topic_id?: number | null; confirm_scope_change?: boolean },
+  payload: {
+    resolution_text: string;
+    convert: boolean;
+    topic_id?: number | null;
+    confirm_scope_change?: boolean;
+    // Sprint 7d: satisfies ONLY the review band (`publish_requires_acknowledgement`).
+    // Per-attempt and never stored; it can never unblock `publish_blocked`.
+    acknowledge_semantic_overlap?: boolean;
+  },
 ): Promise<ResolveResult> {
   return request(`/admin/escalations/${uuid}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -1118,6 +1139,36 @@ export interface ExpiryTask {
   } | null;
   is_unscoped: boolean;
   successor_candidates: SuccessorCandidate[];
+  // Sprint 7d (ADR-0024) part C — the INERT AI succession suggestion. Rendered
+  // fuchsia while `is_ai_proposed`; confirming it goes through the unchanged 7a
+  // `resolveExpiryTask` write-side, which is the only writer of lineage.
+  ai_proposal: SuccessionProposal | null;
+  ai_proposal_status: 'proposed' | 'confirmed' | 'rejected' | null;
+  ai_proposed_at: string | null;
+  is_ai_proposed: boolean;
+}
+
+export interface SuccessionProposal {
+  // null = nothing could be proposed; `reason` says why (never an empty box).
+  relationship: 'successor' | 'conflict' | 'coexisting_sibling' | 'uncertain' | null;
+  reason?: string | null;
+  candidate_document_id?: number;
+  candidate_document_uuid?: string;
+  candidate_title?: string;
+  candidate_retrieval_status?: string;
+  max_score?: number;
+  mean_top3?: number;
+  thresholds?: { overlap: number; sibling_ceiling: number };
+  validity?: { expiring: [string | null, string | null]; candidate: [string | null, string | null] };
+  passages?: {
+    expiring_chunk_id: number | null;
+    candidate_chunk_id: number | null;
+    expiring_excerpt: string;
+    candidate_excerpt: string;
+    score: number;
+  }[];
+  uncertainty?: { field: string; reason: string } | null;
+  source: 'ai_agent';
 }
 
 export function getExpiryQueue(): Promise<{ tasks: ExpiryTask[] }> {
@@ -1134,6 +1185,23 @@ export interface ResolveExpiryPayload {
 
 export function resolveExpiryTask(taskId: number, payload: ResolveExpiryPayload): Promise<Record<string, unknown>> {
   return request(`/admin/review/expiry/${taskId}/resolve`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// Sprint 7d (ADR-0024) part C — (re-)ask for the inert successor suggestion, and
+// reject one. Neither writes lineage or retrieval_status: rejecting a suggestion
+// leaves the expiry task OPEN, because the document is still expiring.
+export function proposeSuccession(taskId: number): Promise<{ status: string; task_id: number }> {
+  return request(`/admin/review/expiry/${taskId}/propose-succession`, { method: 'POST' });
+}
+
+export function rejectSuccessionProposal(
+  taskId: number,
+  note?: string,
+): Promise<{ status: string; ai_proposal_status: string; task_status: string }> {
+  return request(`/admin/review/expiry/${taskId}/reject-proposal`, {
+    method: 'POST',
+    body: JSON.stringify(note ? { note } : {}),
+  });
 }
 
 export async function uploadDocuments(files: FileList, asReference = false): Promise<{ results: unknown[] }> {
@@ -1198,6 +1266,11 @@ export interface ReferenceFactRow {
   source_excerpt: string | null;
   is_ai_proposed: boolean;
   is_possible_duplicate: boolean;
+  // Sprint 7d — the 7b-2 flag is now actionable, so the row says whether it is
+  // still waiting on a human. A resolved duplicate keeps its lineage and leaves
+  // the "needs attention" set.
+  resolution: FactResolution | null;
+  is_unresolved_duplicate: boolean;
 }
 
 export interface ReferenceFactProvenanceEvent {
@@ -1235,6 +1308,13 @@ export interface ReferenceFactCard {
   source_excerpt: string | null;
   proposal_batch_id: string | null;
   duplicate_of: { uuid: string; value: string } | null; // the version FLAG (7d resolves)
+  // Sprint 7d — the human's verdict and the resulting version lineage. The
+  // duplicate link is RETAINED after resolution: the flag is resolved, not erased.
+  resolution: FactResolution | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  superseded_by: { uuid: string; value: string; validity_start: string | null } | null;
+  is_unresolved_duplicate: boolean;
   verified_by: string | null;
   verified_at: string | null;
   created_by: string | null;
@@ -1299,6 +1379,73 @@ export function rejectReferenceFact(uuid: string, reason?: string): Promise<{ st
   return request(`/admin/reference-facts/${uuid}/reject`, {
     method: 'POST',
     body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Sprint 7d (ADR-0024) — the fact VERSION resolution surface. 7b-2 could only
+// FLAG a duplicate; this resolves it. `supersede` closes the older fact's
+// validity window and never deletes, so a question dated in the past still gets
+// the answer that was true then.
+// ----------------------------------------------------------------------------
+
+export type FactResolution = 'superseded' | 'supersedes' | 'coexists' | 'rejected_duplicate';
+
+export interface FactPairSide {
+  uuid: string;
+  id: number;
+  value: string;
+  raw_values: Record<string, unknown> | null;
+  convenio: string | null;
+  convenio_name: string | null;
+  territory: string | null;
+  sector: string | null;
+  job_category: string | null;
+  group_label: string | null;
+  topic: string | null;
+  validity_start: string | null;
+  validity_end: string | null;
+  status: ReferenceFactStatus;
+  source: 'admin_manual' | 'ai_agent';
+  confidence: number | null;
+  uncertainty: FactUncertainty | null;
+  source_excerpt: string | null;
+  source_document: { uuid: string; title: string; source_filename: string | null } | null;
+  source_locator: string | null;
+  resolution: FactResolution | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  superseded_by_id: number | null;
+}
+
+export interface FactDuplicatePair {
+  pair: [FactPairSide, FactPairSide];
+  differing_fields: string[];
+  resolved: boolean;
+  // Only the validity dates can justify a direction, so the UI pre-selects from
+  // this and never infers one itself; `possible: false` carries the reason.
+  supersede_candidate:
+    | { possible: true; newer_uuid: string; older_uuid: string; would_close_older_at: string }
+    | { possible: false; reason: string };
+}
+
+export function getFactDuplicatePair(uuid: string): Promise<FactDuplicatePair> {
+  return request(`/admin/reference-facts/${uuid}/duplicate-pair`, { method: 'GET' });
+}
+
+export interface ResolveFactDuplicatePayload {
+  action: 'supersede' | 'coexist' | 'reject';
+  newer_uuid?: string; // required for supersede — the human names the direction
+  note?: string;
+}
+
+export function resolveFactDuplicate(
+  uuid: string,
+  payload: ResolveFactDuplicatePayload,
+): Promise<Record<string, unknown>> {
+  return request(`/admin/reference-facts/${uuid}/resolve-duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

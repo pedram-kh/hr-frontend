@@ -8,6 +8,7 @@ import {
   type ConversationMessage,
   type EscalationDetail,
   type EscalationStatus,
+  type SemanticPassage,
   type VocabularyItem,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
@@ -303,9 +304,47 @@ function ReplyBox({ uuid, disabled, onSent }: { uuid: string; disabled: boolean;
   );
 }
 
+// One overlapping convenio passage, as both fence bands return it. The passage is
+// the evidence; the score is context. Shown identically in the blocked and the
+// acknowledge case so a human learns to read the same thing in both.
+function OverlapPassages({ passages }: { passages: SemanticPassage[] }) {
+  if (passages.length === 0) return null;
+  return (
+    <ul className="passage-list">
+      {passages.map((p, i) => (
+        <li key={p.chunk_id ?? i}>
+          <div className="passage-head">
+            <strong>{p.document_title ?? 'Convenio oficial'}</strong>
+            {p.page_from !== null && <span className="muted"> · pág. {p.page_from}</span>}
+            <span className="badge badge-historical" title="Similitud semántica (0–1) entre tu texto y este pasaje">
+              {p.score.toFixed(3)}
+            </span>
+          </div>
+          <blockquote className="well passage-text">{p.excerpt}</blockquote>
+          {p.probe_excerpt && (
+            <p className="muted">
+              Tu texto comparado: <em>{p.probe_excerpt}</em>
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // Resolve → Save as knowledge. Resolve-only marks the card resolved; "Save as
 // knowledge" additionally publishes an internal_hr_ruling (requires a topic +
 // scope confirmation). The no-override fence may block the publish (409).
+//
+// Sprint 7d (ADR-0024): the fence now has three publish-time outcomes, and they
+// are NOT interchangeable in the UI either:
+//   · publish_blocked — refused. No button makes it publish. The overlapping
+//     convenio passage is shown so the refusal is legible, not just asserted.
+//   · publish_requires_acknowledgement — asked. The near-passages are shown and
+//     the human must tick an explicit acknowledgement, which is sent once with the
+//     next attempt and never remembered.
+//   · a comparison that could not be made resolves to the SAME acknowledgement
+//     prompt, worded to say so — never a clean publish.
 function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () => void }) {
   const [text, setText] = useState('');
   const [convert, setConvert] = useState(false);
@@ -313,7 +352,22 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
   const [topicId, setTopicId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<{ message: string; conflicts: { uuid: string; title: string }[] } | null>(null);
+  const [conflict, setConflict] = useState<{
+    message: string;
+    conflicts: { uuid: string; title: string }[];
+    reason: string | null;
+    passages: SemanticPassage[];
+  } | null>(null);
+  // The review band. `acknowledged` is per-attempt state that is deliberately
+  // reset on every new prompt: it is a decision about the passages just read, so
+  // it must never carry over to a different draft or a different comparison.
+  const [ack, setAck] = useState<{
+    message: string;
+    reason: string | null;
+    passages: SemanticPassage[];
+    comparisonUnavailable: boolean;
+  } | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
 
@@ -321,7 +375,7 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
     getVocabulary('topics').then((r) => setTopics(r.items)).catch(() => setTopics([]));
   }, []);
 
-  const doResolve = async (confirmScope: boolean) => {
+  const doResolve = async (confirmScope: boolean, acknowledgeOverlap = false) => {
     setBusy(true);
     setErr(null);
     setConflict(null);
@@ -331,7 +385,10 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
         convert,
         topic_id: convert && topicId ? Number(topicId) : null,
         confirm_scope_change: confirmScope,
+        acknowledge_semantic_overlap: acknowledgeOverlap,
       });
+      setAck(null);
+      setAcknowledged(false);
       setConfirming(false);
       if (res.publish) {
         setPublished(
@@ -344,9 +401,29 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && e.body?.code === 'publish_blocked') {
         setConfirming(false);
+        setAck(null);
+        setAcknowledged(false);
         setConflict({
           message: String(e.body.message ?? ''),
           conflicts: (e.body.conflicts as { uuid: string; title: string }[]) ?? [],
+          reason: (e.body.reason as string | null) ?? null,
+          passages: (e.body.passages as SemanticPassage[]) ?? [],
+        });
+      } else if (
+        e instanceof ApiError &&
+        e.status === 409 &&
+        e.body?.code === 'publish_requires_acknowledgement'
+      ) {
+        // Nothing was published and the draft is untouched. The human reads the
+        // near-passages and answers the question; the tick starts unchecked every
+        // time, so an acknowledgement is always a fresh decision.
+        setConfirming(false);
+        setAcknowledged(false);
+        setAck({
+          message: String(e.body.message ?? ''),
+          reason: (e.body.reason as string | null) ?? null,
+          passages: (e.body.passages as SemanticPassage[]) ?? [],
+          comparisonUnavailable: Boolean(e.body.comparison_unavailable),
         });
       } else {
         setErr(e instanceof ApiError ? e.message : String(e));
@@ -374,7 +451,15 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
         rows={4}
         placeholder="Redacta la resolución para esta consulta…"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          // An acknowledgement is about the text that was compared. Editing the
+          // draft invalidates both the comparison and the human's answer to it.
+          if (ack) {
+            setAck(null);
+            setAcknowledged(false);
+          }
+        }}
         disabled={busy}
       />
 
@@ -406,12 +491,46 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
       {conflict && (
         <div className="notice">
           <span aria-hidden="true">⛔</span>
-          {conflict.message}
-          {conflict.conflicts.length > 0 && (
-            <ul>
-              {conflict.conflicts.map((c) => (<li key={c.uuid}>{c.title}</li>))}
-            </ul>
-          )}
+          <div className="notice-body">
+            {conflict.message}
+            {conflict.conflicts.length > 0 && (
+              <ul>
+                {conflict.conflicts.map((c) => (<li key={c.uuid}>{c.title}</li>))}
+              </ul>
+            )}
+            {/* Sprint 7d: a semantic block shows WHICH passage already says it. There
+                is no acknowledgement offered here — this outcome cannot be clicked
+                through, by design. */}
+            {conflict.reason === 'semantic_overlap' && <OverlapPassages passages={conflict.passages} />}
+          </div>
+        </div>
+      )}
+
+      {ack && (
+        <div className="notice">
+          <span aria-hidden="true">{ack.comparisonUnavailable ? '❓' : '⚠'}</span>
+          <div className="notice-body">
+            {ack.message}
+            <OverlapPassages passages={ack.passages} />
+            <label className="board-filter-check">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                disabled={busy}
+              />
+              {ack.comparisonUnavailable
+                ? 'He revisado el convenio vigente por mi cuenta y confirmo que esta resolución no lo contradice.'
+                : 'He leído los pasajes y confirmo que esta resolución no se solapa con el convenio vigente.'}
+            </label>
+            <button
+              className="btn btn-warning"
+              onClick={() => doResolve(true, true)}
+              disabled={busy || !acknowledged}
+            >
+              {busy ? 'Publicando…' : 'Publicar con esta confirmación'}
+            </button>
+          </div>
         </div>
       )}
 

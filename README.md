@@ -76,7 +76,8 @@ npm run dev                   # http://localhost:5173
   reserved-and-unlit since 7b-1): an AI-proposed fact (`source==='ai_agent' &&
   status==='needs_review'`) renders fuchsia-accented with an **AI** pill, a notice
   showing `confidence` + structured `uncertainty`, a **possible version/duplicate**
-  notice (linking the `duplicate_of` sibling), and — the safety defense — the exact
+  notice (linking the `duplicate_of` sibling — **in 7d that notice becomes an
+  action**, see the comparison surfaces below), and — the safety defense — the exact
   **source line** (`source_excerpt`, the `ÁLAVA › COEAS ÁLAVA › Grupo 1: …` trail)
   inline so the reviewer checks the scope against the quote. Actions: **verify
   proposal** / **fix then verify** / **reject** / **re-segment source** (all
@@ -179,6 +180,38 @@ The messy-tail review console — three tabs, **AI proposes → human confirms**
 - **Expiry** — near-expiry docs + the same-convenio successor handoff
   (link-successor writes `predecessor_document_id`; dismiss; escalate) — never
   auto-retire.
+
+### The three comparison surfaces (Sprint 7d, ADR-0024)
+
+All three show the same thing — **two passages and a score** — because a human can
+only check a machine's claim if the evidence is on screen next to it. The one new
+CSS block (`.notice-body`, `.passage-list`, `.compare-grid`, `.compare-field`) is
+layout only; every colour comes from existing tokens, and fuchsia keeps its single
+meaning of unverified AI via the existing `.notice--ai`.
+
+- **The publish fence** (`EscalationCardDrawer.tsx`) — a `publish_blocked` with
+  reason `semantic_overlap` shows the overlapping convenio passages and offers **no
+  acknowledgement**: that outcome cannot be clicked through. A
+  `publish_requires_acknowledgement` shows the near-passages plus an explicit tick
+  and a separate publish button; the tick starts **unchecked every time** and is
+  cleared by editing the draft, because an acknowledgement is a decision about the
+  text that was compared. When the comparison could not be made, the same prompt
+  appears with copy that says so — never mistakable for a real near-passage.
+- **The fact version pair** (`FactDuplicatePanel.tsx`, opened from the
+  reference-facts queue row or the fact card's flag) — the two facts **side by
+  side** with the differing fields marked and the shared scope left visible (it is
+  what proves they are two versions of one fact). Three verdicts behind a confirm
+  modal: **Sustituir** (pre-selecting the direction the validity dates support —
+  pre-selecting is not deciding), **Coexisten**, **Descartar**. The supersede copy
+  states the exact date the older window will close and that nothing is deleted.
+- **The succession proposal** (`ReviewQueuePage.tsx` → `SuccessionProposalNotice`) —
+  a **fuchsia** `.notice--ai` block above the existing successor `<select>`: the
+  relationship, the score, both validity windows and the compared passages.
+  **Confirm** pre-selects the proposed successor in that same `<select>` and calls
+  the unchanged 7a resolve endpoint (the "also retire" checkbox is **never**
+  pre-checked by a proposal); **Reject** clears the fuchsia and leaves the task
+  open. A non-`successor` relationship offers no confirm button — it says plainly
+  that the AI is not proposing a succession, and the human picks by hand.
 
 **The `--provenance-ai` token is re-valued to fuchsia `#e879f9`** (was violet
 `#7c3aed`) in the vanilla-CSS token system (ADR-0012/0013, **not** Tailwind).

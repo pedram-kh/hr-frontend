@@ -34,11 +34,15 @@ export function ReferenceFactPanel({
   onClose,
   onChanged,
   onOpenDocument,
+  onResolveDuplicate,
 }: {
   uuid: string;
   onClose: () => void;
   onChanged: () => void;
   onOpenDocument?: (uuid: string) => void;
+  // Sprint 7d — hand the version pair to the side-by-side resolution surface.
+  // Optional: where it isn't wired, the flag still reads as a flag (7b-2 behaviour).
+  onResolveDuplicate?: (uuid: string) => void;
 }) {
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
@@ -160,11 +164,40 @@ export function ReferenceFactPanel({
             </div>
           )}
 
-          {fact.duplicate_of && (
-            <p className="notice">
+          {/* Sprint 7d (ADR-0024) — the 7b-2 flag is now RESOLVABLE. The link is kept
+              after resolution as the version lineage, so a resolved pair reads as
+              history rather than as an open question. */}
+          {fact.is_unresolved_duplicate && fact.duplicate_of && (
+            <div className="notice">
               <span aria-hidden="true">⚠</span>
-              <strong>Possible version/duplicate</strong> — same scope as an existing fact with a
-              different value ("{fact.duplicate_of.value}"). Flagged only; resolution is a later sprint.
+              <div className="notice-body">
+                <span>
+                  <strong>Possible version/duplicate</strong> — same scope as an existing fact with a
+                  different value ("{fact.duplicate_of.value}"). Decide which is true, and since when.
+                </span>
+                {canEdit && onResolveDuplicate && (
+                  <button className="btn btn-primary" onClick={() => onResolveDuplicate(fact.uuid)}>
+                    Resolver versión (comparar lado a lado)
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {fact.resolution && (
+            <p className="notice notice--neutral">
+              <span aria-hidden="true">✓</span>
+              {fact.resolution === 'superseded' && (
+                <>
+                  <strong>Sustituido</strong> por “{fact.superseded_by?.value ?? '—'}”
+                  {fact.superseded_by?.validity_start ? ` (desde ${fact.superseded_by.validity_start})` : ''} — este
+                  valor sigue siendo el correcto para su periodo de vigencia; no se ha borrado.
+                </>
+              )}
+              {fact.resolution === 'supersedes' && <><strong>Sustituye</strong> a una versión anterior, cuya vigencia se cerró.</>}
+              {fact.resolution === 'coexists' && <><strong>Coexiste</strong> con el hecho marcado: no son versiones del mismo dato.</>}
+              {fact.resolution === 'rejected_duplicate' && <><strong>Descartado</strong> como duplicado incorrecto.</>}
+              {fact.resolved_by && <span className="muted"> · {fact.resolved_by} · {fact.resolved_at}</span>}
             </p>
           )}
 
