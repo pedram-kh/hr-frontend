@@ -535,6 +535,15 @@ a {
   color: var(--neutral);
 }
 
+/* Sprint 7e (ADR-0026): OCR provenance badge — marks a document with at least
+   one OCR'd page. Reuses the --info tokens (like .badge-national) rather than
+   introducing a new color pair — it names a provenance fact, not a review
+   state (that's still .badge-review/.badge-empty on the same row). */
+.badge-ocr {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
 /* Sprint 7b-1 (ADR-0021): the distinct badge for a Structured Reference fact
    leaf. A NON-fuchsia accent (info-toned) — fuchsia (--provenance-ai) stays
    reserved for unverified AI (7b-2). It marks the knowledge CLASS, not a state;

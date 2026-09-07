@@ -175,6 +175,11 @@ export function DocumentDetailPanel({
         {doc.authority_level === 'internal_hr_ruling' && (
           <span className="badge badge-review">Resolución RR. HH.</span>
         )}
+        {doc.ocr_pages_count > 0 && (
+          <span className="badge badge-ocr">
+            <span aria-hidden="true">⚙</span> OCR'd ({doc.ocr_pages_count})
+          </span>
+        )}
         <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
       </div>
       <div className="detail-body">
@@ -212,7 +217,9 @@ export function DocumentDetailPanel({
       {doc.empty_text && (
         <p className="notice">
           <span aria-hidden="true">∅</span>
-          No extractable text — this looks like a scanned, image-only PDF (no OCR this sprint).
+          No extractable text — this looks like a scanned, image-only PDF. Run{' '}
+          <code>documents:ocr-backfill</code> (Sprint 7e, ADR-0026) to OCR it, or re-ingest with{' '}
+          <code>--ocr</code>.
         </p>
       )}
 
@@ -917,7 +924,14 @@ function PaginatedPageViewer({
   pages,
 }: {
   uuid: string;
-  pages: { page_number: number; text: string; has_text: boolean }[];
+  pages: {
+    page_number: number;
+    text: string;
+    has_text: boolean;
+    extraction_source?: string;
+    ocr_quality?: number | null;
+    ocr_bilingual?: boolean;
+  }[];
 }) {
   const [idx, setIdx] = useState(0);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
@@ -946,6 +960,13 @@ function PaginatedPageViewer({
         <span className="page-counter">Página {page.page_number} de {total}</span>
         <button className="btn btn-secondary" onClick={() => go(idx + 1)} disabled={idx === total - 1}>Siguiente →</button>
       </div>
+      {page.extraction_source === 'ocr' && (
+        <p className="notice notice--neutral">
+          <span aria-hidden="true">⚙</span> Texto obtenido por OCR
+          {page.ocr_quality != null ? ` · calidad ${Math.round(page.ocr_quality * 100)}%` : ''}.
+          {page.ocr_bilingual && ' Página bilingüe — revisa también la columna en euskera frente a la columna en castellano.'}
+        </p>
+      )}
       <div className="page-viewer-content">
         <div className="page-viewer-img">
           {imgLoading && <p className="muted">Cargando imagen…</p>}

@@ -164,6 +164,8 @@ export interface DocumentRow {
   // Sprint 7a: unverified-AI proposal exists on this doc (drives fuchsia).
   is_ai_proposed?: boolean;
   empty_text: boolean;
+  // Sprint 7e (ADR-0026): pages OCR'd (0 if this doc has no OCR'd pages).
+  ocr_pages_count: number;
 }
 
 export interface Paginated<T> {
@@ -189,6 +191,12 @@ export interface DocumentPage {
   text: string;
   has_text: boolean;
   image_path: string | null;
+  // Sprint 7e (ADR-0026): per-page OCR provenance. extraction_source is
+  // 'text_layer' | 'ocr_pending' | 'ocr'; ocr_quality/ocr_bilingual are only
+  // ever set when extraction_source === 'ocr'.
+  extraction_source?: string;
+  ocr_quality?: number | null;
+  ocr_bilingual?: boolean;
 }
 
 export interface ReviewTask {
@@ -252,6 +260,8 @@ export interface DocumentDetail {
   is_unscoped: boolean;
   pages: DocumentPage[];
   empty_text: boolean;
+  // Sprint 7e (ADR-0026): document-level derived count of OCR'd pages.
+  ocr_pages_count: number;
   review_tasks: ReviewTask[];
   provenance: ProvenanceEvent[];
   // Sprint 4: present only for a published internal_hr_ruling — the escalation

@@ -133,6 +133,11 @@ export function DocumentsPage() {
                         <span aria-hidden="true">∅</span> No text
                       </span>
                     )}
+                    {r.ocr_pages_count > 0 && (
+                      <span className="badge badge-ocr">
+                        <span aria-hidden="true">⚙</span> OCR'd ({r.ocr_pages_count})
+                      </span>
+                    )}
                     {r.authority_level === 'national_law' && (
                       <span className="badge badge-national">
                         <span aria-hidden="true">⚑</span> National

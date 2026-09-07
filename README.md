@@ -120,6 +120,18 @@ The only new visual primitives are the `internal_hr_ruling` badge and the
 > mezcla* — the convenio governs). The `MessageTrace`/`Citation` types gain the
 > additive `reference_fact` / `composition` blocks and `is_reference_fact` flag.
 
+> **The OCR'd badge + per-page provenance (Sprint 7e, ADR-0026) — additive, one
+> new class.** `DocumentsPage.tsx`'s list table shows a **`.badge-ocr`** "⚙ OCR'd
+> (N)" badge whenever a document's derived `ocr_pages_count > 0`; the same badge
+> appears in `DocumentDetailPanel.tsx`'s header. Its page viewer renders "⚙ Texto
+> obtenido por OCR" + the quality percentage on any page where
+> `extraction_source = 'ocr'`, plus a guidance-only note ("revisa también la
+> columna en euskera frente a la columna en castellano") on bilingual OCR'd
+> pages — text only, no second approval step (Adjustment 1: both language
+> streams ride the same `under_review → confirm → embed` path). The prior
+> "no extractable text" notice now points at `documents:ocr-backfill`/`--ocr`
+> instead of describing the gap as unfixable.
+
 ### Access control — Directory / Admins / History (Sprint 5, `src/pages/admin/`)
 
 The UI **only hides** on the new abilities (`canManageDirectory` /
