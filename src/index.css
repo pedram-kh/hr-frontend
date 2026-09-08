@@ -416,6 +416,22 @@ a {
   width: auto;
 }
 
+/* Sprint 7e verification fix: pushes the always-visible total to the
+   toolbar's trailing edge regardless of how many filters are active. */
+.docs-total {
+  margin-left: auto;
+}
+
+/* Sprint 7e verification fix: the pager beneath the table — always rendered
+   (see DocumentsPage) so "page 1 of 1" is itself visible proof of no cap. */
+.docs-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;

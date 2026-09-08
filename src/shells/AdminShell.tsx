@@ -24,7 +24,14 @@ type View = 'documents' | 'map' | 'review' | 'escalations' | 'directory' | 'admi
 // affordances on the server-provided can_manage.
 export function AdminShell() {
   const { identity, logout } = useAuth();
-  const [view, setView] = useState<View>('map');
+  // Sprint 7e verification fix (review.md §2): a `#doc=<uuid>` deep link
+  // (read/written by DocumentsPage) targets a card that only lives on the
+  // Documents view — land there on first render instead of the Map default
+  // so the link actually opens something. DocumentsPage itself reads the
+  // uuid back out of the hash; this only decides which tab is initially shown.
+  const [view, setView] = useState<View>(() =>
+    window.location.hash.includes('doc=') ? 'documents' : 'map',
+  );
   // Deep-link from a Knowledge-Center ruling card back to its escalation card.
   const [escalationFocus, setEscalationFocus] = useState<string | null>(null);
 
