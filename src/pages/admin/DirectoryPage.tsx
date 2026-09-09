@@ -3,6 +3,7 @@ import {
   ApiError,
   createEmployee,
   getEmployee,
+  getConvenioGroups,
   getJobCategories,
   getVocabulary,
   listEmployees,
@@ -12,6 +13,7 @@ import {
   type EmployeeDetail,
   type EmployeeListRow,
   type EmployeeWritePayload,
+  type ConvenioGroupOption,
   type JobCategoryOption,
   type VocabularyItem,
 } from '../../lib/api';
@@ -107,7 +109,7 @@ export function DirectoryPage() {
             <thead>
               <tr>
                 <th>Nombre</th><th>Correo</th><th>Convenio</th><th>Territorio</th>
-                <th>Categoría</th><th>Estado</th><th>Revisión</th>
+                <th>Categoría</th><th>Grupo</th><th>Estado</th><th>Revisión</th>
               </tr>
             </thead>
             <tbody>
@@ -118,6 +120,7 @@ export function DirectoryPage() {
                   <td>{r.convenio ? r.convenio.numero : '—'}</td>
                   <td>{r.territory ? r.territory.name : '—'}</td>
                   <td>{r.job_category ? r.job_category.name : '—'}</td>
+                  <td>{r.convenio_group ? r.convenio_group.path_label : <span className="muted">sin grupo</span>}</td>
                   <td>
                     <span className={`badge ${r.status === 'active' ? 'badge-verified' : 'badge-historical'}`}>
                       {r.status === 'active' ? 'Activo' : 'Inactivo'}
@@ -157,7 +160,7 @@ export function DirectoryPage() {
 
 const EMPTY_FORM: EmployeeWritePayload = {
   email: '', full_name: '', employee_external_id: '', convenio_id: 0,
-  job_category_id: null, territory_id: 0, work_location: '', employment_type: 'full_time',
+  job_category_id: null, convenio_group_id: null, territory_id: 0, work_location: '', employment_type: 'full_time',
   start_date: '', status: 'active',
 };
 
@@ -179,12 +182,24 @@ function EmployeeDrawer({
   const [audit, setAudit] = useState<EmployeeAuditEntry[]>([]);
   const [form, setForm] = useState<EmployeeWritePayload>(EMPTY_FORM);
   const [jobCategories, setJobCategories] = useState<JobCategoryOption[]>([]);
+  const [groups, setGroups] = useState<ConvenioGroupOption[]>([]);
+  // Set only when the pre-filled group came from the category mapping, so the
+  // form can say WHERE the default came from and ask for confirmation.
+  const [groupSuggested, setGroupSuggested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(isNew);
   // Email-change confirm gate (the server returns 409 if unconfirmed).
   const [emailConfirm, setEmailConfirm] = useState<{ old: string; next: string } | null>(null);
   const originalEmail = useRef<string>('');
+
+  // Always-current view of the form, so the group-suggestion effect below can ask
+  // "is this field still empty?" WITHOUT depending on the field it sets — that
+  // dependency would re-fetch the tree on every edit. Synced in an effect rather
+  // than during render, and declared before that effect so it is already current
+  // when the effect runs in the same commit.
+  const formRef = useRef(form);
+  useEffect(() => { formRef.current = form; }, [form]);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -207,6 +222,7 @@ function EmployeeDrawer({
           employee_external_id: employee.employee_external_id ?? '',
           convenio_id: employee.convenio_id ?? 0,
           job_category_id: employee.job_category_id,
+          convenio_group_id: employee.convenio_group_id,
           territory_id: employee.territory_id ?? 0,
           work_location: employee.work_location ?? '',
           employment_type: employee.employment_type,
@@ -223,6 +239,33 @@ function EmployeeDrawer({
     if (!form.convenio_id) { setJobCategories([]); return; }
     getJobCategories(form.convenio_id).then((r) => setJobCategories(r.items)).catch(() => setJobCategories([]));
   }, [form.convenio_id]);
+
+  // Sprint 7f — the APPROVED group tree for this convenio, reloaded when either
+  // the convenio or the category changes (the category is what can suggest a
+  // default). A convenio with no groups yet simply yields an empty picker, which
+  // is the honest state for most of the corpus.
+  useEffect(() => {
+    if (!form.convenio_id) { setGroups([]); setGroupSuggested(false); return; }
+    let cancelled = false;
+    getConvenioGroups(form.convenio_id, form.job_category_id)
+      .then((r) => {
+        if (cancelled) return;
+        setGroups(r.items);
+
+        // Pre-fill ONLY when the field is still empty. A suggestion must never
+        // overwrite a group an admin already chose or one already stored on the
+        // employee — and the notice must only appear when a pre-fill actually
+        // happened, otherwise it would claim an admin's own choice came from the
+        // category. Read through a ref so this sees the CURRENT value without
+        // making the effect depend on it (which would re-run it on every edit).
+        if (r.suggested_group_id && !formRef.current.convenio_group_id) {
+          setForm((f) => ({ ...f, convenio_group_id: r.suggested_group_id }));
+          setGroupSuggested(true);
+        }
+      })
+      .catch(() => { if (!cancelled) { setGroups([]); setGroupSuggested(false); } });
+    return () => { cancelled = true; };
+  }, [form.convenio_id, form.job_category_id]);
 
   const set = <K extends keyof EmployeeWritePayload>(key: K, value: EmployeeWritePayload[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -300,17 +343,58 @@ function EmployeeDrawer({
                 </div>
                 <div className="field">
                   <label className="field-label">Convenio</label>
-                  <select className="select" value={form.convenio_id || ''} onChange={(e) => { set('convenio_id', Number(e.target.value)); set('job_category_id', null); }} disabled={busy}>
+                  <select className="select" value={form.convenio_id || ''} onChange={(e) => { set('convenio_id', Number(e.target.value)); set('job_category_id', null); set('convenio_group_id', null); setGroupSuggested(false); }} disabled={busy}>
                     <option value="">Selecciona…</option>
                     {convenios.map((c) => (<option key={c.id} value={c.id}>{c.numero} — {c.name}</option>))}
                   </select>
                 </div>
                 <div className="field">
                   <label className="field-label">Categoría profesional</label>
-                  <select className="select" value={form.job_category_id ?? ''} onChange={(e) => set('job_category_id', e.target.value ? Number(e.target.value) : null)} disabled={busy || !form.convenio_id}>
+                  <select className="select" value={form.job_category_id ?? ''} onChange={(e) => {
+                      set('job_category_id', e.target.value ? Number(e.target.value) : null);
+                      // Discard a group that was only a SUGGESTION from the previous
+                      // category, so the notice never describes a default derived
+                      // from a category that is no longer selected. An admin's own
+                      // choice (groupSuggested === false) is left untouched.
+                      if (groupSuggested) { set('convenio_group_id', null); setGroupSuggested(false); }
+                    }} disabled={busy || !form.convenio_id}>
                     <option value="">{form.convenio_id ? 'Sin categoría' : 'Elige primero un convenio'}</option>
                     {jobCategories.map((j) => (<option key={j.id} value={j.id}>{j.name}</option>))}
                   </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Grupo del convenio</label>
+                  <select
+                    className="select"
+                    value={form.convenio_group_id ?? ''}
+                    onChange={(e) => { set('convenio_group_id', e.target.value ? Number(e.target.value) : null); setGroupSuggested(false); }}
+                    disabled={busy || !form.convenio_id || groups.length === 0}
+                  >
+                    <option value="">
+                      {!form.convenio_id
+                        ? 'Elige primero un convenio'
+                        : groups.length === 0
+                          ? 'Este convenio no tiene grupos aprobados'
+                          : 'Sin grupo'}
+                    </option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.depth === 1 ? `\u00a0\u00a0\u00a0\u00a0↳ ${g.label}` : g.label}
+                      </option>
+                    ))}
+                  </select>
+                  {groupSuggested && (
+                    <p className="notice">
+                      <span aria-hidden="true">💡</span> Sugerido a partir de la categoría — confírmalo.
+                      Nada se guarda hasta que envíes el formulario.
+                    </p>
+                  )}
+                  {!groupSuggested && form.convenio_group_id === null && groups.length > 0 && (
+                    <p className="muted">
+                      Sin grupo, las respuestas que dependan del grupo se derivarán a una persona
+                      de RRHH en lugar de arriesgar un dato incorrecto.
+                    </p>
+                  )}
                 </div>
                 <div className="field">
                   <label className="field-label">Territorio</label>

@@ -15,11 +15,12 @@ import {
   type VocabularyProposal,
 } from '../../lib/api';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
+import { GroupsQueue } from './GroupsQueue';
 import { FactDuplicatePanel } from './FactDuplicatePanel';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 
-type Tab = 'tagging' | 'reference-facts' | 'vocabulary' | 'expiry';
+type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry';
 
 // Sprint 7a/7b-2 — the messy-tail review surfaces, in one place: the AI tagging
 // backlog (verify reuses the Sprint-3 Confirm UI), the AI-segmented reference
@@ -33,11 +34,13 @@ export function ReviewQueuePage() {
       <div className="tabs">
         <button className={`tab ${tab === 'tagging' ? 'active' : ''}`} onClick={() => setTab('tagging')}>AI tagging</button>
         <button className={`tab ${tab === 'reference-facts' ? 'active' : ''}`} onClick={() => setTab('reference-facts')}>Reference facts</button>
+        <button className={`tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setTab('groups')}>Groups</button>
         <button className={`tab ${tab === 'vocabulary' ? 'active' : ''}`} onClick={() => setTab('vocabulary')}>Vocabulary proposals</button>
         <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>Expiry</button>
       </div>
       {tab === 'tagging' && <TaggingQueue />}
       {tab === 'reference-facts' && <ReferenceFactsQueue />}
+      {tab === 'groups' && <GroupsQueue />}
       {tab === 'vocabulary' && <VocabularyQueue />}
       {tab === 'expiry' && <ExpiryQueue />}
     </div>

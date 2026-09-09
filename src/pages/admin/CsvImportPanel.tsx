@@ -59,9 +59,19 @@ export function CsvImportPanel({ onImported }: { onImported: () => void }) {
       <h4>Importar empleados (CSV)</h4>
       <p className="timeline-meta">
         Columnas: <code>email</code>, <code>full_name</code>, <code>convenio_numero</code> (obligatorias);
-        opcionales <code>territory_code</code>, <code>job_category</code>, <code>employment_type</code>,
-        <code> work_location</code>, <code>employee_external_id</code>, <code>start_date</code>. Primero se
-        valida (sin escribir nada); las filas con error se informan, no se descartan en silencio.
+        opcionales <code>territory_code</code>, <code>job_category</code>, <code>group</code>,
+        <code> employment_type</code>, <code>work_location</code>, <code>employee_external_id</code>,
+        <code> start_date</code>. Primero se valida (sin escribir nada); las filas con error se
+        informan, no se descartan en silencio.
+      </p>
+      <p className="timeline-meta">
+        <code>group</code> acepta el grupo tal y como lo escribe el convenio (<code>Grupo 2</code>) o su
+        código (<code>2</code>); <code>Grupo I</code> y <code>Grupo 1</code> son el mismo grupo. Para un
+        área dentro de un grupo, usa <code>Grupo 2 &gt; resto áreas</code>. Solo se admiten grupos ya
+        aprobados de ese convenio: un valor que no exista, o que sea ambiguo (p. ej. <code>todas las
+        áreas</code> cuando existe en dos grupos), da error en su fila — nunca se elige uno por ti ni se
+        crea un grupo nuevo. En blanco, la persona queda sin grupo, y las preguntas que dependan del
+        grupo se derivan a RRHH.
       </p>
 
       <div className="reassign">
