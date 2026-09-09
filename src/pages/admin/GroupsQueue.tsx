@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   approveConvenioGroup,
+  bindGroupFacts,
   canEditKnowledge,
   getConvenioGroupTree,
   getGroupBindingDiff,
@@ -13,6 +14,7 @@ import {
   type ConvenioGroupTree,
   type GroupConvenioRow,
   type GroupNode,
+  type UnbindableFact,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 
@@ -176,7 +178,9 @@ function ConvenioTree({
           <h4>Datos que no se vinculan solos ({tree.unbindable_facts.length})</h4>
           <p className="muted small">
             Estas etiquetas no se pueden resolver sin criterio humano. Se listan aquí en lugar de
-            descartarse: mientras no se vinculen, esas preguntas se derivan.
+            descartarse: mientras no se vinculen, esas preguntas se derivan. Si tú sí sabes a qué
+            nodo pertenecen, elígelo — queda registrado como decisión tuya, no como lectura del
+            analizador.
           </p>
           <table className="table compact">
             <thead>
@@ -184,6 +188,7 @@ function ConvenioTree({
                 <th>Etiqueta</th>
                 <th>Valor</th>
                 <th>Motivo</th>
+                <th>Vincular a</th>
               </tr>
             </thead>
             <tbody>
@@ -197,12 +202,82 @@ function ConvenioTree({
                   </td>
                   <td className="small">{f.value}</td>
                   <td className="small muted">{f.reason}</td>
+                  <td>
+                    <ManualBindCell
+                      fact={f}
+                      nodes={tree.approved_nodes}
+                      canEdit={canEdit}
+                      onChanged={onChanged}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The manual-binding control on the unbound list.
+ *
+ * A label the planner refuses is not necessarily unknowable — it is unknowable
+ * to a parser. "Grupo 2 excepto área cinco" does mean `resto áreas`, and a
+ * reviewer who has read the convenio can say so. This is where they say it,
+ * and it is filed as their assertion, not as a reading.
+ *
+ * Convenio-wide facts are deliberately not offered: they already answer for
+ * the whole workforce, and giving one a group would narrow it.
+ */
+function ManualBindCell({
+  fact,
+  nodes,
+  canEdit,
+  onChanged,
+}: {
+  fact: UnbindableFact;
+  nodes: Array<{ id: number; path_label: string }>;
+  canEdit: boolean;
+  onChanged: () => void;
+}) {
+  const [target, setTarget] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!canEdit) return <span className="muted small">—</span>;
+  if (fact.kind === 'convenio_wide') {
+    return <span className="muted small">ámbito convenio — no se acota</span>;
+  }
+  if (nodes.length === 0) {
+    return <span className="muted small">aprueba primero un nodo</span>;
+  }
+
+  return (
+    <div className="stack-xs">
+      <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy}>
+        <option value="">Elegir nodo…</option>
+        {nodes.map((n) => (
+          <option key={n.id} value={n.id}>
+            {n.path_label}
+          </option>
+        ))}
+      </select>
+      <button
+        disabled={busy || target === ''}
+        onClick={() => {
+          setBusy(true);
+          setError(null);
+          bindGroupFacts(Number(target), { fact_ids: [fact.fact_id], override: true })
+            .then(onChanged)
+            .catch((e: Error) => setError(e.message))
+            .finally(() => setBusy(false));
+        }}
+      >
+        Vincular
+      </button>
+      {error !== null && <span className="error small">{error}</span>}
     </div>
   );
 }
@@ -288,7 +363,8 @@ function NodeCard({
                     checked={tickedCategories.has(c.job_category_id)}
                     onChange={(e) => {
                       const next = new Set(tickedCategories);
-                      e.target.checked ? next.add(c.job_category_id) : next.delete(c.job_category_id);
+                      if (e.target.checked) next.add(c.job_category_id);
+                      else next.delete(c.job_category_id);
                       setTickedCategories(next);
                     }}
                   />
@@ -304,7 +380,7 @@ function NodeCard({
       )}
 
       {node.would_bind_facts.length > 0 && (
-        <details>
+        <details open={node.status === 'approved' && node.would_bind_facts.some((f) => !f.bound)}>
           <summary>Datos que apuntan a este nodo ({node.would_bind_facts.length})</summary>
           <ul className="small">
             {node.would_bind_facts.map((f) => (
@@ -320,6 +396,18 @@ function NodeCard({
                     onClick={() => act(() => unbindGroupFact(node.id, f.fact_id))}
                   >
                     desvincular
+                  </button>
+                )}
+                {/* Binding is a decision separate from approval: approving this
+                    node with a fact unticked must not be the reviewer's only
+                    chance at it. */}
+                {!f.bound && canEdit && node.status === 'approved' && (
+                  <button
+                    className="link"
+                    disabled={busy}
+                    onClick={() => act(() => bindGroupFacts(node.id, { fact_ids: [f.fact_id] }))}
+                  >
+                    vincular
                   </button>
                 )}
               </li>
@@ -407,7 +495,8 @@ function NodeCard({
                         checked={f.already_bound || ticked.has(f.fact_id)}
                         onChange={(e) => {
                           const next = new Set(ticked);
-                          e.target.checked ? next.add(f.fact_id) : next.delete(f.fact_id);
+                          if (e.target.checked) next.add(f.fact_id);
+                          else next.delete(f.fact_id);
                           setTicked(next);
                         }}
                       />

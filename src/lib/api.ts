@@ -1053,6 +1053,8 @@ export interface ConvenioGroupTree {
   convenio: { id: number; name: string; territory: string | null };
   tree: GroupNode[];
   orphans: GroupNode[];
+  /** Flat, parent-first, for the manual-binding picker on the unbound list. */
+  approved_nodes: Array<{ id: number; path_label: string }>;
   unbindable_facts: UnbindableFact[];
 }
 
@@ -1120,6 +1122,25 @@ export function rejectConvenioGroup(groupId: number, reason?: string): Promise<{
   return request(`/admin/convenio-groups/${groupId}/reject`, {
     method: 'POST',
     body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+/**
+ * Bind facts to an already-approved node. Binding is a separate decision from
+ * approval, so approving a node with a fact unticked is not final.
+ *
+ * `override` is the lane for a label the planner refuses to read and a human
+ * decides anyway ("Grupo 2 excepto área cinco" does mean `resto áreas`, but
+ * only because someone read the convenio). It is recorded as asserted rather
+ * than read, and it cannot bind a fact whose label resolves elsewhere.
+ */
+export function bindGroupFacts(
+  groupId: number,
+  payload: { fact_ids: number[]; override?: boolean; note?: string },
+): Promise<{ status: string; group: GroupNode; bound_fact_ids: number[] }> {
+  return request(`/admin/convenio-groups/${groupId}/bind`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
