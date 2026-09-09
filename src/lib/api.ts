@@ -499,9 +499,13 @@ export interface MessageTrace {
     outcome?: string;
     topic_id?: number | null;
     fact_id?: number | null;
-    match_kind?: string; // 'job_category' | 'group_label' | 'convenio_wide'
+    match_kind?: string; // 'job_category' | 'group' | 'convenio_wide'
     validity_selection?: string | null; // 'single' | 'most_recent_validity' | 'ambiguous_conflict'
+    /** The fact's printed label, for display — not what the match was made on. */
     group_label?: string | null;
+    /** The approved node the match was actually made on (Sprint 7f, ADR-0028). */
+    group_node_id?: number | null;
+    group_node_label?: string | null;
     value?: string | null;
     note?: string | null;
     [k: string]: unknown;

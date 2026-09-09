@@ -47,7 +47,10 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
 
   if (trace.reference_fact) {
     const rf = trace.reference_fact;
-    const match = rf.match_kind ? ` · ámbito: ${rf.match_kind}` : '';
+    // Name the node a group match was made on: "ámbito: group" alone doesn't
+    // say WHICH group, and that is the thing a reviewer is checking.
+    const node = rf.group_node_label ? ` (${rf.group_node_label})` : '';
+    const match = rf.match_kind ? ` · ámbito: ${rf.match_kind}${node}` : '';
     const validity = rf.validity_selection ? ` · validez: ${rf.validity_selection}` : '';
     steps.push({
       label: 'Dato de referencia (estructurado)',
