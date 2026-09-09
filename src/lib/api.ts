@@ -851,6 +851,17 @@ export interface EmployeeRef {
   name: string;
 }
 
+// Sprint 7f (ADR-0028) — an employee's structured group scope. NULL is normal and
+// means "unresolved", which is what makes a group-scoped question escalate rather
+// than guess, so the UI states it explicitly instead of showing an empty cell.
+export interface EmployeeGroupScope {
+  id: number;
+  label: string;       // as printed in the convenio: "resto áreas"
+  path_label: string;  // "Grupo 2 › resto áreas" for a sub-area
+  code_normalized: string;
+  is_sub_area: boolean;
+}
+
 export interface EmployeeListRow {
   uuid: string;
   full_name: string;
@@ -859,6 +870,7 @@ export interface EmployeeListRow {
   convenio: { id: number; numero: string; name: string } | null;
   territory: { id: number; code: string | null; name: string } | null;
   job_category: { id: number; name: string } | null;
+  convenio_group: EmployeeGroupScope | null;
   employment_type: string;
   profile_last_reviewed_at: string | null;
 }
@@ -870,6 +882,7 @@ export interface EmployeeDetail {
   employee_external_id: string | null;
   convenio: { id: number; numero: string; name: string } | null;
   job_category: { id: number; name: string; group_code: string | null } | null;
+  convenio_group: EmployeeGroupScope | null;
   territory: { id: number; code: string | null; name: string; level: string } | null;
   work_location: string | null;
   employment_type: string;
@@ -878,6 +891,7 @@ export interface EmployeeDetail {
   profile_last_reviewed_at: string | null;
   convenio_id: number | null;
   job_category_id: number | null;
+  convenio_group_id: number | null;
   territory_id: number | null;
 }
 
@@ -895,6 +909,7 @@ export interface EmployeeWritePayload {
   employee_external_id?: string | null;
   convenio_id: number;
   job_category_id?: number | null;
+  convenio_group_id?: number | null;
   territory_id: number;
   work_location?: string | null;
   employment_type: string;
@@ -942,6 +957,178 @@ export function markEmployeeReviewed(uuid: string): Promise<{ employee: Employee
 
 export function getJobCategories(convenioId: number): Promise<{ items: JobCategoryOption[] }> {
   return request(`/admin/job-categories?convenio_id=${convenioId}`, { method: 'GET' });
+}
+
+// A node of a convenio's APPROVED group structure, flattened parent-first with a
+// depth so the picker can render two indented levels without knowing the tree
+// rules. Proposed nodes are never returned (Sprint 7f, ADR-0028).
+export interface ConvenioGroupOption {
+  id: number;
+  parent_id: number | null;
+  depth: 0 | 1;
+  code_normalized: string;
+  label: string;
+  path_label: string;
+}
+
+// `suggested_group_id` is a DEFAULT, never an assignment: where the employee's
+// job category maps to exactly one approved node, the form pre-selects it and
+// says so. Nothing is written until an admin saves.
+export function getConvenioGroups(
+  convenioId: number,
+  jobCategoryId?: number | null,
+): Promise<{ items: ConvenioGroupOption[]; suggested_group_id: number | null }> {
+  const category = jobCategoryId ? `&job_category_id=${jobCategoryId}` : '';
+  return request(`/admin/groups?convenio_id=${convenioId}${category}`, { method: 'GET' });
+}
+
+// --- Sprint 7f Phase 2 — the Groups review surface ---------------------------
+// The AI proposes a convenio's group tree; a human approves it node by node.
+// Every node arrives `ai_agent`/`needs_review` and is invisible to the answer
+// path until approved.
+
+export interface GroupConvenioRow {
+  id: number;
+  name: string;
+  territory: string | null;
+  pending: number;
+  approved: number;
+  rejected: number;
+  group_scoped_facts: number;
+}
+
+/** A fact whose `group_label` resolves to a node, as shown on that node. */
+export interface GroupBoundFact {
+  fact_id: number;
+  fact_status: string;
+  group_label: string | null;
+  value: string;
+  kind: string;
+  bound: boolean;
+}
+
+export interface GroupCategoryRow {
+  membership_id: number;
+  job_category_id: number;
+  name: string | null;
+  group_code_evidence: string | null;
+  status: string;
+  source: string;
+}
+
+export interface GroupNode {
+  id: number;
+  convenio_id: number;
+  parent_id: number | null;
+  label: string;
+  code_normalized: string;
+  /** Which `GroupCodeNormalizer` rule produced the key — shown before approval. */
+  normalization_rule: string;
+  source_excerpt: string | null;
+  status: 'needs_review' | 'approved' | 'rejected';
+  source: 'ai_agent' | 'admin_manual';
+  proposal_batch_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  bound_fact_count: number;
+  categories: GroupCategoryRow[];
+  would_bind_facts: GroupBoundFact[];
+  children: GroupNode[];
+}
+
+/** A fact the planner refuses to resolve — surfaced so it is not lost silently. */
+export interface UnbindableFact {
+  fact_id: number;
+  fact_uuid: string;
+  fact_status: string;
+  group_label: string | null;
+  value: string;
+  status: string;
+  kind: string;
+  reason: string | null;
+  already_bound: boolean;
+}
+
+export interface ConvenioGroupTree {
+  convenio: { id: number; name: string; territory: string | null };
+  tree: GroupNode[];
+  orphans: GroupNode[];
+  unbindable_facts: UnbindableFact[];
+}
+
+export interface BindingDiffFact {
+  fact_id: number;
+  fact_uuid: string;
+  fact_status: string;
+  group_label: string | null;
+  value: string;
+  validity_start: string | null;
+  validity_end: string | null;
+  kind: string;
+  /** A compound fact lands on more than one node; the reviewer must see all of them. */
+  also_binds_to_node_ids: number[];
+  already_bound: boolean;
+}
+
+export interface BindingDiff {
+  group: GroupNode;
+  would_bind: BindingDiffFact[];
+  needs_manual_binding: Array<{
+    fact_id: number;
+    group_label: string | null;
+    value: string;
+    kind: string;
+    reason: string | null;
+  }>;
+  note: string;
+}
+
+export function listGroupConvenios(): Promise<{ convenios: GroupConvenioRow[] }> {
+  return request('/admin/convenio-groups', { method: 'GET' });
+}
+
+export function getConvenioGroupTree(convenioId: number): Promise<ConvenioGroupTree> {
+  return request(`/admin/convenio-groups/convenio/${convenioId}`, { method: 'GET' });
+}
+
+/** A READ. Approving writes only the facts sent back from this diff. */
+export function getGroupBindingDiff(groupId: number): Promise<BindingDiff> {
+  return request(`/admin/convenio-groups/${groupId}/binding-diff`, { method: 'GET' });
+}
+
+export function approveConvenioGroup(
+  groupId: number,
+  payload: { confirmed_fact_ids: number[]; confirmed_category_ids?: number[]; note?: string },
+): Promise<{ status: string; group: GroupNode; bound_fact_ids: number[] }> {
+  return request(`/admin/convenio-groups/${groupId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateConvenioGroup(
+  groupId: number,
+  payload: { label?: string; source_excerpt?: string | null; parent_id?: number | null },
+): Promise<{ status: string; group: GroupNode }> {
+  return request(`/admin/convenio-groups/${groupId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function rejectConvenioGroup(groupId: number, reason?: string): Promise<{ status: string; group: GroupNode }> {
+  return request(`/admin/convenio-groups/${groupId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export function unbindGroupFact(groupId: number, factId: number): Promise<{ status: string; removed: number }> {
+  return request(`/admin/convenio-groups/${groupId}/bindings/${factId}`, { method: 'DELETE' });
+}
+
+export function proposeConvenioGroups(convenioId: number): Promise<{ status: string; convenio_id: number }> {
+  return request(`/admin/convenio-groups/convenio/${convenioId}/propose`, { method: 'POST' });
 }
 
 function uploadCsv(path: string, file: File): Promise<CsvReport> {
