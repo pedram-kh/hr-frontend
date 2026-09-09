@@ -246,6 +246,15 @@ function ManualBindCell({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Still listed, because the planner still cannot read the label — but bound,
+  // by someone who could. Saying so stops it reading as a standing verdict.
+  if (fact.already_bound) {
+    return (
+      <span className="small">
+        <span className="badge ok">vinculado a mano</span> {fact.bound_to.join(', ')}
+      </span>
+    );
+  }
   if (!canEdit) return <span className="muted small">—</span>;
   if (fact.kind === 'convenio_wide') {
     return <span className="muted small">ámbito convenio — no se acota</span>;

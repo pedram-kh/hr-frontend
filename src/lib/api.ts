@@ -1047,6 +1047,8 @@ export interface UnbindableFact {
   kind: string;
   reason: string | null;
   already_bound: boolean;
+  /** Labels of the nodes a human bound this to, despite the planner's refusal. */
+  bound_to: string[];
 }
 
 export interface ConvenioGroupTree {
