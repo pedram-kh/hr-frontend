@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/context';
-import { canManageAdmins, canManageDirectory, canViewAllHistory } from '../lib/api';
+import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage } from '../lib/api';
 import { parseAdminHash } from '../lib/adminHash';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
@@ -12,10 +12,35 @@ import { EscalationBoardPage } from '../pages/admin/EscalationBoardPage';
 import { DirectoryPage } from '../pages/admin/DirectoryPage';
 import { AdminsPage } from '../pages/admin/AdminsPage';
 import { HistoryPage } from '../pages/admin/HistoryPage';
+import { AnalyticsPage } from '../pages/admin/AnalyticsPage';
+import { CoveragePage } from '../pages/admin/CoveragePage';
 
-type View = 'documents' | 'map' | 'review' | 'escalations' | 'directory' | 'admins' | 'history' | 'guardrails' | 'settings';
+type View =
+  | 'documents'
+  | 'map'
+  | 'review'
+  | 'escalations'
+  | 'directory'
+  | 'admins'
+  | 'history'
+  | 'guardrails'
+  | 'settings'
+  | 'analytics'
+  | 'coverage';
 
-const VALID_VIEWS: readonly View[] = ['documents', 'map', 'review', 'escalations', 'directory', 'admins', 'history', 'guardrails', 'settings'];
+const VALID_VIEWS: readonly View[] = [
+  'documents',
+  'map',
+  'review',
+  'escalations',
+  'directory',
+  'admins',
+  'history',
+  'guardrails',
+  'settings',
+  'analytics',
+  'coverage',
+];
 
 function isView(v: string | null): v is View {
   return v !== null && (VALID_VIEWS as readonly string[]).includes(v);
@@ -73,6 +98,8 @@ export function AdminShell() {
   const showDirectory = canManageDirectory(identity);
   const showAdmins = canManageAdmins(identity);
   const showHistory = canViewAllHistory(identity);
+  const showAnalytics = canViewAnalytics(identity);
+  const showCoverage = canViewCoverage(identity);
 
   const openEscalation = (uuid: string) => {
     setEscalationFocus(uuid);
@@ -94,6 +121,8 @@ export function AdminShell() {
           {navBtn('documents', 'Documents')}
           {navBtn('review', 'Review')}
           {navBtn('escalations', 'Escalations')}
+          {showAnalytics && navBtn('analytics', 'Analítica')}
+          {showCoverage && navBtn('coverage', 'Cobertura')}
           {showDirectory && navBtn('directory', 'Directory')}
           {showHistory && navBtn('history', 'History')}
           {showAdmins && navBtn('admins', 'Admins')}
@@ -136,6 +165,20 @@ export function AdminShell() {
             <h2>Knowledge · Escalations</h2>
             <p className="muted">Triage escalated questions: assign, reply to the employee, and resolve — optionally publishing the answer as reusable knowledge.</p>
             <EscalationBoardPage focusUuid={escalationFocus} onFocusHandled={() => setEscalationFocus(null)} />
+          </>
+        )}
+        {view === 'analytics' && showAnalytics && (
+          <>
+            <h2>Analítica</h2>
+            <p className="muted">Deflection, escalaciones por corrección y agrupación de preguntas — todo reproducible desde los comandos <code>stats:*</code>/<code>questions:cluster</code>.</p>
+            <AnalyticsPage />
+          </>
+        )}
+        {view === 'coverage' && showCoverage && (
+          <>
+            <h2>Cobertura</h2>
+            <p className="muted">La rejilla convenio × (prosa, salario, datos, resoluciones) — la misma consulta que <code>corpus:coverage</code>.</p>
+            <CoveragePage />
           </>
         )}
         {view === 'directory' && showDirectory && (

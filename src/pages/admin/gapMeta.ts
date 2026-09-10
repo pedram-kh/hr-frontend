@@ -29,4 +29,37 @@ export const GAP_META: Record<GapKind, { label: string; cls: string; hint: strin
     cls: 'gap--neutral',
     hint: 'A non-national document with no convenio carries no scope (the scope-rides-on-convenio limitation).',
   },
+  // Sprint 8: coverage-lens leaf reason codes (CorpusCoverageService::REASON_*).
+  // These describe WHY a convenio×knowledge-type cell is uncovered, distinct
+  // from the document-lens gap kinds above but sharing the same badge system.
+  SCAN_NO_TEXT: {
+    label: 'Scan, no text',
+    cls: 'gap--danger',
+    hint: 'Active prose document(s) exist but have 0 indexed chunks (e.g. a scanned PDF) — it cannot answer.',
+  },
+  UNDER_REVIEW_SCOPE: {
+    label: 'Scope under review',
+    cls: 'gap--warning',
+    hint: 'Prose document(s) exist but tagging is not yet verified — the scope is provisional, not yet answerable.',
+  },
+  EXPIRED_NO_SUCCESSOR: {
+    label: 'Expired, no successor',
+    cls: 'gap--warning',
+    hint: 'Only historical/expired prose exists for this cell — no active successor to answer from.',
+  },
+  SALARY_PDF_NOT_IMPORTED: {
+    label: 'Salary PDF not imported',
+    cls: 'gap--danger',
+    hint: 'A PDF salary document exists but has not been converted/imported into the salary table yet.',
+  },
+  FACT_NEEDS_REVIEW: {
+    label: 'Fact needs review',
+    cls: 'gap--warning',
+    hint: 'A proposed reference fact exists but no human has verified it yet.',
+  },
+  coverage_gap_unclassified: {
+    label: 'Unclassified gap',
+    cls: 'gap--neutral',
+    hint: 'This cell is uncovered but does not match a known reason code — needs manual investigation.',
+  },
 };

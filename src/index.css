@@ -1139,6 +1139,45 @@ a {
   color: var(--text-muted);
 }
 
+/* Sprint 8, Step 8 (plan.md §7) — the thumbs up/down pair under an assistant
+   bubble. Additive; tokens-only, no new colour semantic (an active thumb
+   just reuses --accent-weak, the same tint .chat-bubble--user already uses). */
+.chat-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.chat-feedback-btn {
+  appearance: none;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-feedback-btn:hover {
+  border-color: var(--border-strong);
+}
+
+.chat-feedback-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.chat-feedback-btn.is-active {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+
+.chat-feedback-thanks {
+  font-size: var(--text-xs);
+}
+
 /* --- Citations --- */
 .citation-list {
   margin-top: var(--space-4);
@@ -2245,4 +2284,170 @@ a {
 .compare-field.is-differing dd {
   font-weight: 600;
   color: var(--warning);
+}
+
+/* =============================================================================
+   Sprint 8 — Analítica / Cobertura / Calidad (ADR-0030). Tokens-only, per
+   plan.md §10's exact styling discipline: a bordered box on --surface-raised
+   for the KPI tile; hand-rolled SVG absolutely-positioned arithmetic layout
+   for the charts, the SAME discipline as GraphForm (Hierarchy.tsx) rather
+   than a charting dependency. Both are automatic under [data-theme='dark']
+   because every rule below references only var(--…) tokens.
+   ========================================================================== */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.kpi-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.kpi-tile-label {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  color: var(--text-muted);
+}
+
+.kpi-tile-value {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl-lh);
+  font-weight: 700;
+}
+
+.kpi-tile-sub {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  color: var(--text-faint);
+}
+
+/* --- Bar chart: a fixed-height row of absolutely-positioned bars, height
+   proportional to value/max. No axis library — the label + value sit under
+   each bar, exactly as GraphForm places its nodes by arithmetic. --- */
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  height: 160px;
+  padding: var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.chart-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 48px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.chart-bar {
+  width: 28px;
+  min-height: 2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--accent);
+}
+
+.chart-bar-value {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.chart-bar-label {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  max-width: 60px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Line chart: one hand-rolled SVG polyline over an arithmetic (x, y) grid
+   (plan.md §10 — the same "no layout dependency" posture GraphForm's SVG
+   connector overlay already established for the lens graph). --- */
+.chart-line-wrap {
+  overflow-x: auto;
+}
+
+.chart-line-svg {
+  display: block;
+}
+
+.chart-line-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.chart-line-area {
+  fill: var(--accent-weak);
+  stroke: none;
+}
+
+.chart-line-dot {
+  fill: var(--accent);
+}
+
+.chart-line-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-line-tick {
+  font-size: 10px;
+  fill: var(--text-faint);
+}
+
+/* --- Ranked list (unanswered clusters / full-gap convenios) --- */
+.ranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ranked-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.ranked-rank {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-faint);
+  min-width: 1.5rem;
+}
+
+.ranked-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranked-title {
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranked-meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }

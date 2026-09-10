@@ -3,8 +3,10 @@ import {
   ApiError,
   getChatSession,
   sendChatMessage,
+  submitMessageFeedback,
   type ChatResponse,
   type ConversationMessage,
+  type FeedbackRating,
   type JobCategoryOption,
   type MessageTrace,
 } from '../../lib/api';
@@ -90,6 +92,57 @@ function AnswerBlock({ response }: { response: ChatResponse }) {
       {caption && <p className="answer-authority">{caption}</p>}
       <CitationList citations={response.citations} />
       <TracePanel trace={response.trace} />
+      <ThumbsFeedback messageId={response.message_id} />
+    </div>
+  );
+}
+
+// Sprint 8, Step 8 (plan.md §7, ADR-0030) — thumbs up/down under an assistant
+// bubble. Additive and orthogonal: a click stores a row via
+// `submitMessageFeedback`; nothing else in this screen (or the answer loop)
+// ever reads it back. A second click on the SAME rating is a no-op re-send
+// (the backend upserts either way — harmless, not worth guarding against
+// client-side, per the sprint's own "keep it minimal" framing for this item).
+function ThumbsFeedback({ messageId }: { messageId: number }) {
+  const [sent, setSent] = useState<FeedbackRating | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const rate = async (rating: FeedbackRating) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await submitMessageFeedback(messageId, rating);
+      setSent(rating);
+    } catch {
+      // Best-effort — feedback is optional and never blocks the chat itself.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="chat-feedback" role="group" aria-label="¿Te ha resultado útil esta respuesta?">
+      <button
+        type="button"
+        className={`chat-feedback-btn ${sent === 'up' ? 'is-active' : ''}`}
+        disabled={busy}
+        onClick={() => void rate('up')}
+        aria-label="Respuesta útil"
+        title="Respuesta útil"
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        className={`chat-feedback-btn ${sent === 'down' ? 'is-active' : ''}`}
+        disabled={busy}
+        onClick={() => void rate('down')}
+        aria-label="Respuesta no útil"
+        title="Respuesta no útil"
+      >
+        👎
+      </button>
+      {sent && <span className="muted chat-feedback-thanks">Gracias por tu valoración.</span>}
     </div>
   );
 }
@@ -111,6 +164,7 @@ function EscalationBlock({ response }: { response: ChatResponse }) {
     <div className="card chat-bubble chat-bubble--assistant escalation">
       <span className="badge badge-review">Escalado a Recursos Humanos</span>
       <p className="answer-prose">{response.answer}</p>
+      <ThumbsFeedback messageId={response.message_id} />
     </div>
   );
 }
