@@ -2348,7 +2348,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  min-width: 48px;
+  min-width: 72px;
   height: 100%;
   justify-content: flex-end;
 }
@@ -2365,14 +2365,26 @@ a {
   color: var(--text-muted);
 }
 
+/* Sprint 8 follow-up (found live, eyes-on 2026-09-10): a fixed 60px
+   single-line ellipsis truncated two DISTINCT authority_used_key values
+   (e.g. "national_law" vs "national_law,official_convenio") down to the
+   same visible "national…" — indistinguishable even with the `title`
+   tooltip below, since nothing on-screen hinted there was more to hover
+   for. Wraps up to 3 lines over a wider column instead of truncating;
+   `title` stays as a full-string fallback for anything longer still. */
 .chart-bar-label {
   font-size: var(--text-xs);
   color: var(--text-faint);
-  max-width: 60px;
+  max-width: 72px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
 }
 
 /* --- Line chart: one hand-rolled SVG polyline over an arithmetic (x, y) grid

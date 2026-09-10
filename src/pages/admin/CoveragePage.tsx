@@ -7,7 +7,9 @@ import {
   type CoverageGridResponse,
   type CoverageTrendPoint,
 } from '../../lib/api';
+import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { Hierarchy, type HierarchyForm } from './Hierarchy';
+import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { LineChart } from './charts';
 
 /**
@@ -26,6 +28,11 @@ export function CoveragePage() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Sprint 8 follow-up (found live, eyes-on 2026-09-10): a coverage leaf used
+  // to open nothing — `onOpenDocument`/`onOpenFact` were no-ops below. Now
+  // mirrors `KnowledgeMapPage`'s exact leaf-opens-card wiring.
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const [selectedFact, setSelectedFact] = useState<string | null>(null);
 
   useEffect(() => {
     getCoverageGrid()
@@ -72,9 +79,26 @@ export function CoveragePage() {
           lens="coverage"
           form={form}
           reloadKey={reloadKey}
-          onOpenDocument={() => {}}
+          onOpenDocument={setSelectedDoc}
+          onOpenFact={setSelectedFact}
         />
       </div>
+
+      {selectedDoc && (
+        <DocumentDetailPanel
+          uuid={selectedDoc}
+          onClose={() => setSelectedDoc(null)}
+          onChanged={() => setReloadKey((k) => k + 1)}
+        />
+      )}
+      {selectedFact && (
+        <ReferenceFactPanel
+          uuid={selectedFact}
+          onClose={() => setSelectedFact(null)}
+          onChanged={() => setReloadKey((k) => k + 1)}
+          onOpenDocument={(uuid) => { setSelectedFact(null); setSelectedDoc(uuid); }}
+        />
+      )}
 
       <section>
         <h4>Convenios con brecha total ({data.full_gap_convenios.length})</h4>

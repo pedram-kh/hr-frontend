@@ -382,6 +382,7 @@ export type GapKind =
   | 'EXPIRED_NO_SUCCESSOR'
   | 'SALARY_PDF_NOT_IMPORTED'
   | 'FACT_NEEDS_REVIEW'
+  | 'NO_SALARY_SOURCE'
   | 'coverage_gap_unclassified';
 
 export interface HierarchyNode {
@@ -408,6 +409,12 @@ export interface HierarchyNode {
   source?: string; // admin_manual | ai_agent (ai_agent is 7b-2)
   topic?: string | null;
   is_ai_proposed?: boolean; // always false in 7b-1 — fuchsia is reserved for 7b-2
+  // Sprint 8 follow-up (found live, eyes-on 2026-09-10): a coverage-lens leaf
+  // with genuinely no underlying document/fact carries a fix_link instead —
+  // the same `#view=...` hash scheme EscalationExplainer's fix_link values
+  // use (AdminLinks). Every gap leaf resolves to doc_uuid, fact_uuid, or
+  // this — never none of the three (CoverageLeafResolutionTest).
+  fix_link?: string | null;
 }
 
 export interface CoverageGaps {

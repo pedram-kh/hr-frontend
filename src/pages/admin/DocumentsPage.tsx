@@ -23,7 +23,14 @@ function writeDocHash(uuid: string | null) {
 }
 
 // Knowledge → Documents: ingestion + verification table for admins.
-export function DocumentsPage() {
+//
+// Sprint 8 follow-up (found live, eyes-on 2026-09-10): `initialConvenioId`
+// is a one-shot deep-link prop, the same pattern `GroupsQueue`/
+// `ReviewQueuePage` already use for `#view=...&convenio=<id>` links —
+// added so a Cobertura gap leaf with no underlying document/fact can send
+// the admin here, pre-filtered to the convenio in question, instead of
+// opening nothing (`AdminLinks::documents(convenioId)`).
+export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?: number | null }) {
   const [rows, setRows] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +39,7 @@ export function DocumentsPage() {
 
   const [taggingStatus, setTaggingStatus] = useState('');
   const [conflictsOnly, setConflictsOnly] = useState(false);
+  const [convenioId, setConvenioId] = useState<number | null>(initialConvenioId);
 
   // Sprint 7e verification fix: DocumentController::index paginates at 50
   // (unchanged, no backend change here) — the list previously only ever read
@@ -55,6 +63,7 @@ export function DocumentsPage() {
     const params: Record<string, string> = { page: String(pageOverride ?? page) };
     if (taggingStatus) params.tagging_status = taggingStatus;
     if (conflictsOnly) params.conflicts_only = '1';
+    if (convenioId != null) params.convenio_id = String(convenioId);
     listDocuments(params)
       .then((p) => {
         setRows(p.data);
@@ -64,7 +73,7 @@ export function DocumentsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => refresh(), [taggingStatus, conflictsOnly, page]);
+  useEffect(() => refresh(), [taggingStatus, conflictsOnly, convenioId, page]);
 
   // Filters implicitly change what page 1 means — always land back on it so
   // we never fetch e.g. page 3 of a now-much-smaller filtered result set.
@@ -136,6 +145,22 @@ export function DocumentsPage() {
             />
             Conflicts only
           </label>
+          {convenioId != null && (
+            <span className="chip">
+              Convenio #{convenioId}
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Quitar filtro de convenio"
+                onClick={() => {
+                  setPage(1);
+                  setConvenioId(null);
+                }}
+              >
+                ×
+              </button>
+            </span>
+          )}
           {uploadMsg && <span className="muted">{uploadMsg}</span>}
           {/* Sprint 7e verification fix: the total is always visible, on every
               page, so a paginate(50) cap can never again silently hide rows. */}

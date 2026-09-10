@@ -150,7 +150,7 @@ export function AdminShell() {
           <>
             <h2>Knowledge · Documents</h2>
             <p className="muted">Upload convenio folders, review auto-parsed tags, resolve conflicts, and confirm.</p>
-            <DocumentsPage />
+            <DocumentsPage key={hash.convenio ?? ''} initialConvenioId={hash.convenio} />
           </>
         )}
         {view === 'review' && (

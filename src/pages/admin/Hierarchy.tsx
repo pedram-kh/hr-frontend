@@ -70,13 +70,23 @@ export function Hierarchy({
   );
 
   // A leaf opens its card by knowledge type (ADR-0021): a reference fact opens
-  // the fact card; a document opens the document card.
+  // the fact card; a document opens the document card. Sprint 8 follow-up
+  // (found live, eyes-on 2026-09-10): a leaf with neither — the coverage
+  // lens's own case, when a cell has genuinely no document/fact yet — opens
+  // its `fix_link` instead (the same `#view=...` hash AdminShell already
+  // reads on every hashchange), rather than doing nothing on click.
   function openLeaf(node: HierarchyNode) {
     if (node.knowledge_type === 'reference_fact' && node.fact_uuid) {
       onOpenFact?.(node.fact_uuid);
       return;
     }
-    if (node.doc_uuid) onOpenDocument(node.doc_uuid);
+    if (node.doc_uuid) {
+      onOpenDocument(node.doc_uuid);
+      return;
+    }
+    if (node.fix_link) {
+      window.location.hash = node.fix_link;
+    }
   }
 }
 

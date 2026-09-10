@@ -57,6 +57,15 @@ export const GAP_META: Record<GapKind, { label: string; cls: string; hint: strin
     cls: 'gap--warning',
     hint: 'A proposed reference fact exists but no human has verified it yet.',
   },
+  // Sprint 8 follow-up (found live, eyes-on 2026-09-10): this cell used to
+  // fall to `coverage_gap_unclassified` even though the service already
+  // knows exactly why it's uncovered — see CorpusCoverageService's own
+  // REASON_NO_SALARY_SOURCE doc-comment.
+  NO_SALARY_SOURCE: {
+    label: 'No salary source',
+    cls: 'gap--danger',
+    hint: 'No salary table, and no salary PDF either — nothing to import from yet.',
+  },
   coverage_gap_unclassified: {
     label: 'Unclassified gap',
     cls: 'gap--neutral',
