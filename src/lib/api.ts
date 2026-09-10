@@ -1986,15 +1986,27 @@ export interface QualitySampleRow {
   seed: number;
   stratum_path: string | null;
   stratum_territory_id: number | null;
+  // The raw FK — kept for completeness; prefer `reviewer` below to render.
   reviewed_by: number | null;
+  // Found live, eyes-on 2026-09-11: this used to be sent as `reviewed_by`
+  // too (colliding with the FK above, since the backend eager-loaded the
+  // `reviewedBy` relation under that same key) — REVISOR always read '—'
+  // because nothing was ever actually sent under `reviewed_by_admin`. The
+  // backend now sends this as its own, unambiguous key.
+  reviewer?: { id: number; full_name: string } | null;
   verdict: QualityVerdict | null;
   failure_kind: QualityFailureKind | null;
   note: string | null;
   reviewed_at: string | null;
   escalation_card_id: number | null;
   created_at: string;
+  // The ANSWER (message_id always points at the assistant turn, §6.1) —
+  // shown as the expandable/collapsible secondary text.
   message?: { id: number; session_id: number; content: string } | null;
-  reviewed_by_admin?: { id: number; full_name: string } | null;
+  // The employee's own paired question (the primary PREGUNTA text) — found
+  // live, eyes-on 2026-09-11: this field didn't exist before; the column
+  // was rendering `message.content` (the answer) instead.
+  question?: string | null;
   stratum_territory?: { id: number; name: string } | null;
   escalation_card?: { id: number; uuid: string } | null;
 }

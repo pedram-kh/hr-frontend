@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
   canWorkEscalations,
   getQualitySample,
+  getQualityTrend,
   listQualitySamples,
   reviewQualitySample,
   type QualityFailureKind,
   type QualitySampleDetail,
   type QualitySampleRow,
+  type QualityTrendRow,
   type QualityVerdict,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
@@ -15,6 +17,7 @@ import { usePaginatedQuery } from '../../lib/usePaginatedQuery';
 import { Pager } from './Pager';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
+import { BarChart } from './charts';
 
 const VERDICT_LABELS: Record<QualityVerdict, string> = {
   correct: 'Correcta',
@@ -29,6 +32,71 @@ const FAILURE_KIND_LABELS: Record<QualityFailureKind, string> = {
   unclear: 'Poco claro',
   other: 'Otro',
 };
+
+interface MonthTotals {
+  correct: number;
+  partially: number;
+  wrong: number;
+}
+
+/**
+ * §6.5's per-month summary — sums the trend endpoint's (month, verdict,
+ * stratum) rows down to (month, verdict), the same aggregation
+ * `Sprint8QualitySampleStratificationTest::
+ * test_monthly_trend_sums_to_the_real_verdict_counts` proves the backend's
+ * raw rows are correct for.
+ */
+function aggregateByMonth(trend: QualityTrendRow[]): Record<string, MonthTotals> {
+  const out: Record<string, MonthTotals> = {};
+  for (const row of trend) {
+    if (!row.verdict) continue; // unreviewed rows aren't a verdict count.
+    const bucket = out[row.month] ?? (out[row.month] = { correct: 0, partially: 0, wrong: 0 });
+    bucket[row.verdict] += row.count;
+  }
+  return out;
+}
+
+function accuracyPct(t: MonthTotals): number | null {
+  const total = t.correct + t.partially + t.wrong;
+  return total === 0 ? null : Math.round((t.correct / total) * 1000) / 10;
+}
+
+// Sprint 8 eyes-on round 2 (2026-09-11, plan.md §6.5/§10) — the monthly
+// summary line(s) + the shared `.chart-bars` trend chart, found MISSING on
+// staging even though §10 explicitly names "quality-verdict trend §6.5" as
+// one of the `BarChart`/`LineChart` primitive's intended call sites.
+function QualityMonthlySummary({ trend }: { trend: QualityTrendRow[] }) {
+  const byMonth = useMemo(() => aggregateByMonth(trend), [trend]);
+  const months = useMemo(() => Object.keys(byMonth).sort().reverse(), [byMonth]);
+
+  if (months.length === 0) {
+    return <p className="muted">Sin veredictos registrados todavía.</p>;
+  }
+
+  const latest = byMonth[months[0]];
+
+  return (
+    <div className="quality-monthly-summary">
+      {months.map((m) => {
+        const t = byMonth[m];
+        const acc = accuracyPct(t);
+        return (
+          <p key={m} className="timeline-meta">
+            <strong>{m}</strong> — {t.correct} correcta · {t.partially} parcialmente · {t.wrong} incorrecta
+            {acc !== null && <> · <strong>{acc}%</strong> de precisión</>}
+          </p>
+        );
+      })}
+      <BarChart
+        data={[
+          { label: 'Correcta', value: latest.correct },
+          { label: 'Parcialmente', value: latest.partially },
+          { label: 'Incorrecta', value: latest.wrong },
+        ]}
+      />
+    </div>
+  );
+}
 
 // Sprint 8, Step 7 (plan.md §6.3/§6.5, ADR-0030) — the Calidad screen.
 // Promoted from a nested ReviewQueuePage tab to its own top-level AdminShell
@@ -45,6 +113,17 @@ export function QualitySampleQueue() {
   const [month, setMonth] = useState('');
   const [unreviewedOnly, setUnreviewedOnly] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [trend, setTrend] = useState<QualityTrendRow[]>([]);
+
+  const loadTrend = () => {
+    getQualityTrend()
+      .then((r) => setTrend(r.trend))
+      .catch(() => {
+        /* the summary is a supplement to the table, not load-bearing — a
+           failed fetch here shouldn't block the queue from rendering. */
+      });
+  };
+  useEffect(loadTrend, []);
 
   const { rows, loading, error, meta, setPage, refresh } = usePaginatedQuery<QualitySampleRow>(
     (page) => {
@@ -65,6 +144,7 @@ export function QualitySampleQueue() {
         {' '}
         <span className="muted docs-total">{meta.total} muestra{meta.total === 1 ? '' : 's'}</span>
       </p>
+      <QualityMonthlySummary trend={trend} />
       <div className="reassign">
         <input
           className="input"
@@ -93,7 +173,15 @@ export function QualitySampleQueue() {
             {rows.map((r) => (
               <tr key={r.uuid} className={selected === r.uuid ? 'is-selected' : ''} onClick={() => setSelected(r.uuid)}>
                 <td className="muted">{r.sampled_for_month}</td>
-                <td className="cell-clip">{r.message?.content ?? '—'}</td>
+                <td className="cell-clip">
+                  {r.question ?? '—'}
+                  {r.message?.content && (
+                    <details onClick={(e) => e.stopPropagation()}>
+                      <summary className="muted small">Ver respuesta</summary>
+                      <p className="answer-prose">{r.message.content}</p>
+                    </details>
+                  )}
+                </td>
                 <td className="muted small">{r.stratum_path ?? 'prose'}</td>
                 <td className="muted small">{r.stratum_territory?.name ?? 'nacional'}</td>
                 <td>
@@ -105,7 +193,7 @@ export function QualitySampleQueue() {
                     <span className="badge badge-review">Sin revisar</span>
                   )}
                 </td>
-                <td className="muted small">{r.reviewed_by_admin?.full_name ?? '—'}</td>
+                <td className="muted small">{r.reviewer?.full_name ?? '—'}</td>
                 <td className="muted small">{r.escalation_card ? `#${r.escalation_card.id}` : '—'}</td>
               </tr>
             ))}
@@ -121,7 +209,10 @@ export function QualitySampleQueue() {
           uuid={selected}
           canReview={canReview}
           onClose={() => setSelected(null)}
-          onChanged={refresh}
+          onChanged={() => {
+            refresh();
+            loadTrend();
+          }}
         />
       )}
     </>
@@ -303,7 +394,7 @@ function QualitySampleDrawer({
             )}
             {sample.verdict && (
               <p className="timeline-meta">
-                Ya revisada por {sample.reviewed_by_admin?.full_name ?? '—'} el {sample.reviewed_at ?? '—'} — guardar de nuevo sobrescribe el veredicto.
+                Ya revisada por {sample.reviewer?.full_name ?? '—'} el {sample.reviewed_at ?? '—'} — guardar de nuevo sobrescribe el veredicto.
               </p>
             )}
           </section>
