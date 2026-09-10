@@ -6,6 +6,7 @@ import {
   resolveEscalation,
   updateEscalation,
   type ConversationMessage,
+  type EscalationCardSummary,
   type EscalationDetail,
   type EscalationStatus,
   type SemanticPassage,
@@ -163,6 +164,8 @@ export function CardDrawer({
         </dl>
       </section>
 
+      <ExplanationBlock card={card} />
+
       {canWork && (
         <section>
           <h4>Triaje</h4>
@@ -226,6 +229,65 @@ export function CardDrawer({
     </aside>
     </div>
   );
+}
+
+// Sprint 7g Item 1 (ADR-0029) — the "Resumen IA" block: HR's explanation of
+// WHY this escalated, without the employee ever seeing any of it (the
+// employee's turn in "Conversación" above always shows the one fixed
+// neutral message, regardless of this card's reason). Structure:
+//
+//   1. The AI paragraph (labelled "Resumen IA"), when it survived the
+//      no-new-claims check — else the deterministic facts rendered as
+//      plain sentences (`factsToSentences`, mirroring
+//      `EscalationExplainer::factsToSentences()` server-side EXACTLY, so
+//      the fallback text is never surprising to someone who has seen the
+//      AI version elsewhere).
+//   2. "Corregir" — the fix action, ALWAYS structured (never the model's),
+//      linking straight to the surface that can actually fix the gap (the
+//      Sprint 7g Item 2 hash-routing scheme; `#view=review&tab=groups...`,
+//      `#view=directory&emp=...`, etc.). Some reasons have no fix surface
+//      (e.g. a guardrail-baseline privacy case) — `fix_link` is null and no
+//      button is shown, only the fix_action text.
+function ExplanationBlock({ card }: { card: EscalationCardSummary }) {
+  const facts = card.explanation_facts;
+  if (!facts) {
+    // Pre-7g card that hasn't been backfilled yet (escalations:backfill-
+    // explanations), or a card whose explanation write somehow never landed.
+    return (
+      <section>
+        <h4>Explicación</h4>
+        <p className="muted">Sin explicación estructurada todavía (tarjeta anterior a esta función, o pendiente de re-procesar).</p>
+      </section>
+    );
+  }
+
+  const paragraph = card.explanation_text ?? factsToSentences(facts);
+  const isAi = card.explanation_text !== null && card.explanation_text !== '';
+
+  return (
+    <section>
+      <h4>Explicación</h4>
+      <div className="notice notice--ai">
+        {isAi && <span className="ai-pill" title="Redactado por IA a partir de los hechos estructurados de abajo — no añade ningún dato nuevo">Resumen IA</span>}
+        <p className={isAi ? 'answer-prose' : 'answer-prose muted'} style={{ margin: isAi ? undefined : '0' }}>{paragraph}</p>
+      </div>
+      {card.fix_link ? (
+        <a className="btn btn-secondary" href={card.fix_link}>
+          Corregir{card.fix_surface ? ` · ${card.fix_surface}` : ''}
+        </a>
+      ) : card.fix_action ? (
+        <p className="timeline-meta">{card.fix_action}</p>
+      ) : null}
+    </section>
+  );
+}
+
+// Mirrors `EscalationExplainer::factsToSentences()` (hr-backend) EXACTLY —
+// the deterministic fallback shown when there is no AI paragraph (provider
+// failure, no-new-claims rejection, or not yet processed). States nothing the
+// structured facts don't already say.
+function factsToSentences(facts: NonNullable<EscalationCardSummary['explanation_facts']>): string {
+  return `${facts.asked} ${facts.found} ${facts.stopped_reason} Acción sugerida: ${facts.fix_action}.`.trim();
 }
 
 // One conversation turn. A bot answer reuses the citation list + trace; a human
