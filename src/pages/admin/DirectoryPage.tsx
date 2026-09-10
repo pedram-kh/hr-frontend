@@ -32,7 +32,13 @@ function isStale(reviewedAt: string | null): boolean {
 // The employee directory (ADR-0004). List/search/filter + an FK-picker edit
 // drawer (existing vocabulary only). Every change is audited server-side; the
 // drawer shows that timeline. Editing email warns + requires a server confirm.
-export function DirectoryPage() {
+//
+// Sprint 7g Item 2 — `initialEmployeeUuid` is the one-shot deep-link prop
+// AdminShell reads out of `#view=directory&emp=<uuid>` (ADR-0029's fix_link
+// scheme, e.g. `salary_coverage_gap.no_convenio`, `employee_group_unknown`).
+// Opens straight to that employee's edit drawer; `getEmployee` fetches by
+// uuid independently of the (possibly filtered) list below.
+export function DirectoryPage({ initialEmployeeUuid = null }: { initialEmployeeUuid?: string | null }) {
   const [rows, setRows] = useState<EmployeeListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +47,7 @@ export function DirectoryPage() {
   const [territories, setTerritories] = useState<VocabularyItem[]>([]);
   const [convenioId, setConvenioId] = useState('');
   const [status, setStatus] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialEmployeeUuid);
   const [creating, setCreating] = useState(false);
   const [showImport, setShowImport] = useState(false);
 

@@ -22,13 +22,33 @@ import { ApproveProposalControls } from './ProposeVocabularyForm';
 
 type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry';
 
+const VALID_TABS: readonly Tab[] = ['tagging', 'reference-facts', 'groups', 'vocabulary', 'expiry'];
+
+function isTab(v: string | null): v is Tab {
+  return v !== null && (VALID_TABS as readonly string[]).includes(v);
+}
+
 // Sprint 7a/7b-2 — the messy-tail review surfaces, in one place: the AI tagging
 // backlog (verify reuses the Sprint-3 Confirm UI), the AI-segmented reference
 // facts (uncertain-first — the 7b-2 safety queue), the proposed-vocabulary list
 // (approve = vocabulary.approve), and the expiry queue (human-confirmed
 // succession). Fuchsia marks unverified-AI ONLY.
-export function ReviewQueuePage() {
-  const [tab, setTab] = useState<Tab>('tagging');
+//
+// Sprint 7g Item 2 — `initialTab`/`initialFactUuid`/`initialConvenioId` are the
+// one-shot deep-link props AdminShell reads out of `#view=review&tab=...`
+// (ADR-0029's fix_link scheme). They only ever set the INITIAL selection
+// (lazy useState initializers below, same posture as the pre-existing
+// `#doc=` pattern) — never a live subscription to hash changes.
+export function ReviewQueuePage({
+  initialTab = null,
+  initialFactUuid = null,
+  initialConvenioId = null,
+}: {
+  initialTab?: string | null;
+  initialFactUuid?: string | null;
+  initialConvenioId?: number | null;
+}) {
+  const [tab, setTab] = useState<Tab>(() => (isTab(initialTab) ? initialTab : 'tagging'));
   return (
     <div className="review-queue">
       <div className="tabs">
@@ -39,8 +59,8 @@ export function ReviewQueuePage() {
         <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>Expiry</button>
       </div>
       {tab === 'tagging' && <TaggingQueue />}
-      {tab === 'reference-facts' && <ReferenceFactsQueue />}
-      {tab === 'groups' && <GroupsQueue />}
+      {tab === 'reference-facts' && <ReferenceFactsQueue initialFactUuid={initialFactUuid} />}
+      {tab === 'groups' && <GroupsQueue initialConvenioId={initialConvenioId} />}
       {tab === 'vocabulary' && <VocabularyQueue />}
       {tab === 'expiry' && <ExpiryQueue />}
     </div>
@@ -53,11 +73,15 @@ export function ReviewQueuePage() {
 // top, then the least-confident. Open one to check the source line against the
 // assigned scope, then verify / fix-then-verify / reject. Inert until verified
 // (not answerable — answering is a later sprint).
-function ReferenceFactsQueue() {
+function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: string | null }) {
   const [rows, setRows] = useState<ReferenceFactRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  // Sprint 7g Item 2 — a `#fact=<uuid>` deep link opens straight to that
+  // fact's detail panel (below), whether or not it happens to be in the
+  // CURRENT queue filter — `ReferenceFactPanel` fetches its own detail by
+  // uuid, independent of the list.
+  const [selected, setSelected] = useState<string | null>(initialFactUuid);
   // Sprint 7d — the version pair opens its own side-by-side surface, because the
   // question ("which of these two is true, and since when?") is about the PAIR,
   // not about either fact alone.

@@ -35,12 +35,18 @@ import { useAuth } from '../../auth/context';
 //      the reviewer knows there is manual work left.
 //
 // Fuchsia marks unverified AI, the same convention as every other queue here.
-export function GroupsQueue() {
+// Sprint 7g Item 2 — `initialConvenioId` is the one-shot deep-link prop
+// AdminShell reads out of `#view=review&tab=groups&convenio=<id>`
+// (ADR-0029's fix_link scheme, e.g. `group_structure_not_approved`). It only
+// sets the INITIAL selection (lazy useState initializer below); the effect
+// that loads the tree for `selected` (further down) fires exactly the same as
+// a manual click would.
+export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: number | null }) {
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
 
   const [convenios, setConvenios] = useState<GroupConvenioRow[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(initialConvenioId);
   const [tree, setTree] = useState<ConvenioGroupTree | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

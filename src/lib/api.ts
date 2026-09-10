@@ -738,6 +738,27 @@ export interface EscalationCardSummary {
   topic: { id: number; name: string } | null;
   created_at: string | null;
   resolved_at: string | null;
+  // Sprint 7g Item 1 (ADR-0029). `explanation_facts` mirrors
+  // `EscalationExplainer::explain()`'s shape server-side; `explanation_text` is
+  // the AI paragraph ("Resumen IA") when it passed the no-new-claims check,
+  // else null (the UI falls back to rendering `explanation_facts` as
+  // sentences). `fix_action`/`fix_surface`/`fix_link` are ALWAYS structured —
+  // never the AI's — computed once at card creation.
+  explanation_facts: {
+    reason: string;
+    sub_outcome: string;
+    asked: string;
+    found: string;
+    stopped_reason: string;
+    fix_action: string;
+    fix_surface: string;
+    fix_link: string | null;
+    employee_told: string;
+  } | null;
+  explanation_text: string | null;
+  fix_action: string | null;
+  fix_surface: string | null;
+  fix_link: string | null;
 }
 
 export interface EscalationEvent {
