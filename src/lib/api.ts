@@ -83,6 +83,45 @@ export function canApproveVocabulary(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['vocabulary.approve']);
 }
 
+/**
+ * Sprint-8 ability (ADR-0030 area). analytics.view gates the Analítica
+ * screen (deflection, escalations-by-fix, clusters). Granted to
+ * super_admin/hr_agent/auditor. The UI only HIDES the nav entry on this —
+ * the server enforces `ability:analytics.view` on every route.
+ */
+export function canViewAnalytics(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['analytics.view']);
+}
+
+/**
+ * Sprint-8: Cobertura is gated on analytics.view OR knowledge.edit (the
+ * server's `coverage.view` middleware alias is an OR-of-two-abilities
+ * check — Cobertura is useful both to analytics readers and to the people
+ * who fix knowledge gaps). Mirrors that OR here for nav visibility.
+ */
+export function canViewCoverage(identity: Identity | null): boolean {
+  return Boolean(identity?.abilities?.['analytics.view'] || identity?.abilities?.['knowledge.edit']);
+}
+
+/**
+ * Sprint-8 follow-up (found live, eyes-on 2026-09-10): Calidad (quality-
+ * sample review) has NO dedicated view ability — ADR-0030 §5 is explicit
+ * that quality sampling invents no new ability, and ITS OWN access-matrix
+ * test (`Sprint8AnalyticsAccessTest::test_quality_sample_reads_are_open_to_
+ * any_admin`) proves reads are open to every admin role, including
+ * knowledge_editor and auditor who have neither `analytics.view` nor
+ * `escalation.work`. Only the REVIEW WRITE (marking a sample
+ * correct/wrong) is gated server-side on `escalation.work` — enforced at
+ * the point of the write action itself, not the nav entry. So this helper
+ * mirrors the Guardrails nav precedent (`guardrails.manage` gates the
+ * WRITE only; the nav entry itself is unconditional for any logged-in
+ * admin) rather than reading a view-specific ability that doesn't and
+ * shouldn't exist.
+ */
+export function canViewQuality(identity: Identity | null): boolean {
+  return identity !== null;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -327,13 +366,24 @@ export function getPageImageUrl(uuid: string, page: number): Promise<{ url: stri
 // source viewer, sandbox (Sprint 3)
 // ----------------------------------------------------------------------------
 
-export type Lens = 'territory' | 'sector' | 'validity' | 'topic';
+export type Lens = 'territory' | 'sector' | 'validity' | 'topic' | 'coverage';
 export type GapKind =
   | 'unanswerable'
   | 'expired_no_successor'
   | 'suspected_mistag'
   | 'date_expired_active'
-  | 'unscoped';
+  | 'unscoped'
+  // Sprint 8 (ADR-0030 area): coverage lens leaf reason codes, sourced
+  // verbatim from CorpusCoverageService::REASON_* constants (deliberately
+  // UPPER_SNAKE, distinct style from the pre-existing lower_snake gap kinds
+  // above — these come straight from the backend's own constant names).
+  | 'SCAN_NO_TEXT'
+  | 'UNDER_REVIEW_SCOPE'
+  | 'EXPIRED_NO_SUCCESSOR'
+  | 'SALARY_PDF_NOT_IMPORTED'
+  | 'FACT_NEEDS_REVIEW'
+  | 'NO_SALARY_SOURCE'
+  | 'coverage_gap_unclassified';
 
 export interface HierarchyNode {
   key: string;
@@ -359,6 +409,12 @@ export interface HierarchyNode {
   source?: string; // admin_manual | ai_agent (ai_agent is 7b-2)
   topic?: string | null;
   is_ai_proposed?: boolean; // always false in 7b-1 — fuchsia is reserved for 7b-2
+  // Sprint 8 follow-up (found live, eyes-on 2026-09-10): a coverage-lens leaf
+  // with genuinely no underlying document/fact carries a fix_link instead —
+  // the same `#view=...` hash scheme EscalationExplainer's fix_link values
+  // use (AdminLinks). Every gap leaf resolves to doc_uuid, fact_uuid, or
+  // this — never none of the three (CoverageLeafResolutionTest).
+  fix_link?: string | null;
 }
 
 export interface CoverageGaps {
@@ -1725,4 +1781,303 @@ export function listReferenceSources(): Promise<{ sources: ReferenceSourceDoc[] 
 
 export function getReferenceSourceContent(uuid: string): Promise<ReferenceSourceContent> {
   return request(`/admin/reference-sources/${uuid}/content`, { method: 'GET' });
+}
+
+// ----------------------------------------------------------------------------
+// Admin — Sprint 8: Analítica / Cobertura / Calidad (ADR-0030)
+// ----------------------------------------------------------------------------
+
+export interface DeflectionSummary {
+  answered: number;
+  escalated: number;
+  needs_category: number;
+  deflection_rate: number | null;
+  path_split: Record<string, number>;
+  authority_split: Record<string, number>;
+}
+
+export interface DeflectionResponse {
+  period: { from: string; to: string };
+  summary: DeflectionSummary;
+  hr_agent_replies: { author_admin_id: number | null; reply_count: number }[];
+  // Sprint 8, Step 8 (plan.md §7) — optional/additive; always present (0/0/null
+  // when no feedback has been submitted yet), never blocking the tile.
+  satisfaction: { up: number; down: number; rate: number | null };
+}
+
+export function getDeflection(params: Record<string, string> = {}): Promise<DeflectionResponse> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/analytics/deflection${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export interface EscalationByFixRow {
+  reason: string;
+  sub_outcome: string | null;
+  fix_action: string | null;
+  fix_surface: string | null;
+  fix_link: string | null;
+  card_count: number;
+  resolved_count: number;
+}
+
+export interface BoardThroughput {
+  by_agent: { assigned_to: number | null; resolved_count: number; avg_hours_to_resolution: number }[];
+  total_resolved: number;
+  converted_to_document: number;
+  conversion_rate: number | null;
+}
+
+export interface FenceOutcome {
+  type: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EscalationsByFixResponse {
+  period: { from: string; to: string };
+  by_fix: EscalationByFixRow[];
+  unexplained_count: number;
+  board_throughput: BoardThroughput;
+  fence_outcomes: FenceOutcome[];
+}
+
+export function getEscalationsByFix(params: Record<string, string> = {}): Promise<EscalationsByFixResponse> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/analytics/escalations-by-fix${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export interface QuestionCluster {
+  id: number;
+  run_date: string;
+  medoid_text: string;
+  distinct_text_count: number;
+  member_count: number;
+  min_similarity: number | null;
+  max_similarity: number | null;
+  threshold_used: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  top_escalation_reason: string | null;
+  escalation_rate: number | null;
+  headcount_weight: number;
+}
+
+export interface UnansweredRankingRow {
+  cluster_id: number;
+  medoid_text: string;
+  score: number;
+  escalation_rate: number;
+  volume: number;
+  headcount_weight: number;
+}
+
+export interface ClustersResponse {
+  run_date: string;
+  clusters: QuestionCluster[];
+  topic_breakdown: Record<string, number>;
+  unanswered_ranking: UnansweredRankingRow[];
+}
+
+export function getClusters(params: Record<string, string> = {}): Promise<ClustersResponse> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/analytics/clusters${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+// --- Cobertura (coverage grid) ------------------------------------------------
+
+export interface CoverageCell {
+  covered: boolean;
+  reason_code?: string | null;
+  detail?: string | null;
+  amendment_only?: boolean;
+  group_only?: boolean;
+  year?: number | null;
+}
+
+export interface CoverageGridRow {
+  convenio_id: number;
+  numero: string;
+  name: string;
+  territory: string;
+  sector: string;
+  headcount: number;
+  prose: CoverageCell;
+  salary: CoverageCell;
+  facts: CoverageCell;
+  rulings: CoverageCell;
+}
+
+export interface NoRegistryRow {
+  territory_id: number;
+  territory: string;
+  sector_id: number;
+  sector: string;
+  headcount: number;
+  reason_code: string;
+  detail: string;
+}
+
+export interface FullGapConvenioRow {
+  convenio_id: number;
+  numero: string;
+  name: string;
+  territory: string;
+  sector: string;
+  headcount: number;
+  reason_codes: string[];
+  link: string;
+}
+
+export interface CoverageGridResponse {
+  as_of: string;
+  grid: CoverageGridRow[];
+  full_gap_convenios: FullGapConvenioRow[];
+  no_registry_rows: NoRegistryRow[];
+}
+
+export function getCoverageGrid(asOf?: string): Promise<CoverageGridResponse> {
+  const qs = asOf ? `?as_of=${encodeURIComponent(asOf)}` : '';
+  return request(`/admin/coverage/gaps${qs}`, { method: 'GET' });
+}
+
+/** Triggers a browser download of the exact `corpus:coverage` markdown export (byte-identical, plan.md §5.6/§11). */
+export async function downloadCoverageExport(asOf?: string): Promise<void> {
+  const qs = asOf ? `?as_of=${encodeURIComponent(asOf)}` : '';
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/admin/coverage/export${qs}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, 'Failed to export coverage.');
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const filename = match?.[1] ?? 'corpus-coverage.md';
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface CoverageTrendPoint {
+  date: string;
+  gap_count: number;
+  covered_count: number;
+}
+
+export function getCoverageTrend(limit?: number): Promise<{ trend: CoverageTrendPoint[] }> {
+  const qs = limit ? `?limit=${limit}` : '';
+  return request(`/admin/coverage/trend${qs}`, { method: 'GET' });
+}
+
+// --- Calidad (quality samples) ------------------------------------------------
+
+export type QualityVerdict = 'correct' | 'partially' | 'wrong';
+export type QualityFailureKind = 'wrong_scope' | 'wrong_figure' | 'stale_document' | 'unclear' | 'other';
+
+export interface QualitySampleRow {
+  id: number;
+  uuid: string;
+  message_id: number;
+  sampled_for_month: string;
+  seed: number;
+  stratum_path: string | null;
+  stratum_territory_id: number | null;
+  // The raw FK — kept for completeness; prefer `reviewer` below to render.
+  reviewed_by: number | null;
+  // Found live, eyes-on 2026-09-11: this used to be sent as `reviewed_by`
+  // too (colliding with the FK above, since the backend eager-loaded the
+  // `reviewedBy` relation under that same key) — REVISOR always read '—'
+  // because nothing was ever actually sent under `reviewed_by_admin`. The
+  // backend now sends this as its own, unambiguous key.
+  reviewer?: { id: number; full_name: string } | null;
+  verdict: QualityVerdict | null;
+  failure_kind: QualityFailureKind | null;
+  note: string | null;
+  reviewed_at: string | null;
+  escalation_card_id: number | null;
+  created_at: string;
+  // The ANSWER (message_id always points at the assistant turn, §6.1) —
+  // shown as the expandable/collapsible secondary text.
+  message?: { id: number; session_id: number; content: string } | null;
+  // The employee's own paired question (the primary PREGUNTA text) — found
+  // live, eyes-on 2026-09-11: this field didn't exist before; the column
+  // was rendering `message.content` (the answer) instead.
+  question?: string | null;
+  stratum_territory?: { id: number; name: string } | null;
+  escalation_card?: { id: number; uuid: string } | null;
+}
+
+export function listQualitySamples(params: Record<string, string> = {}): Promise<{ samples: Paginated<QualitySampleRow> }> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/admin/quality-samples${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export interface ConversationTurn {
+  id: number;
+  role: string;
+  content: string;
+  created_at: string | null;
+  author_label: string | null;
+  outcome: string | null;
+  escalated: boolean;
+  authority_used: string[];
+  citations: Citation[];
+  trace: MessageTrace | null;
+}
+
+export interface QualitySampleDetail {
+  sample: QualitySampleRow;
+  conversation: ConversationTurn[];
+  reviewer_barred: boolean;
+}
+
+export function getQualitySample(uuid: string): Promise<QualitySampleDetail> {
+  return request(`/admin/quality-samples/${uuid}`, { method: 'GET' });
+}
+
+export interface ReviewQualitySamplePayload {
+  verdict: QualityVerdict;
+  failure_kind?: QualityFailureKind | null;
+  note?: string | null;
+}
+
+export function reviewQualitySample(uuid: string, payload: ReviewQualitySamplePayload): Promise<{ sample: QualitySampleRow }> {
+  return request(`/admin/quality-samples/${uuid}/review`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface QualityTrendRow {
+  month: string;
+  verdict: QualityVerdict | null;
+  stratum_path: string | null;
+  stratum_territory_id: number | null;
+  count: number;
+}
+
+export function getQualityTrend(): Promise<{ trend: QualityTrendRow[] }> {
+  return request('/admin/quality-samples/trend', { method: 'GET' });
+}
+
+// ----------------------------------------------------------------------------
+// Employee chat — Sprint 8, Step 8 (plan.md §7, ADR-0030): message feedback.
+// Additive/optional; nothing else reads this back into any chat decision.
+// ----------------------------------------------------------------------------
+
+export type FeedbackRating = 'up' | 'down';
+
+export function submitMessageFeedback(
+  messageId: number,
+  rating: FeedbackRating,
+  comment?: string,
+): Promise<{ feedback: { message_id: number; rating: FeedbackRating; comment: string | null } }> {
+  return request(`/chat/message/${messageId}/feedback`, {
+    method: 'POST',
+    body: JSON.stringify({ rating, comment: comment || undefined }),
+  });
 }

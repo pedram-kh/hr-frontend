@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   getExpiryQueue,
   listDocuments,
@@ -14,6 +14,8 @@ import {
   type VocabularyFacet,
   type VocabularyProposal,
 } from '../../lib/api';
+import { usePaginatedQuery } from '../../lib/usePaginatedQuery';
+import { Pager } from './Pager';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { GroupsQueue } from './GroupsQueue';
 import { FactDuplicatePanel } from './FactDuplicatePanel';
@@ -21,6 +23,13 @@ import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 import { firstLine } from '../../lib/format';
 
+// Sprint 8 follow-up (found live, eyes-on 2026-09-10): 'quality' used to be a
+// tab nested here. Promoted to its own top-level AdminShell view (`Calidad`,
+// alongside its Analítica/Cobertura siblings — `data-model.md`'s own access
+// table already described it as a peer nav entry, not a Review sub-tab) so
+// it isn't hidden inside a page most roles have no other reason to open.
+// See `QualitySampleQueue` (now rendered directly by `AdminShell`) and
+// `canViewQuality` in `lib/api.ts`.
 type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry';
 
 const VALID_TABS: readonly Tab[] = ['tagging', 'reference-facts', 'groups', 'vocabulary', 'expiry'];
@@ -75,9 +84,6 @@ export function ReviewQueuePage({
 // assigned scope, then verify / fix-then-verify / reject. Inert until verified
 // (not answerable — answering is a later sprint).
 function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: string | null }) {
-  const [rows, setRows] = useState<ReferenceFactRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   // Sprint 7g Item 2 — a `#fact=<uuid>` deep link opens straight to that
   // fact's detail panel (below), whether or not it happens to be in the
   // CURRENT queue filter — `ReferenceFactPanel` fetches its own detail by
@@ -91,26 +97,11 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
   // Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
   // applied here): `ReferenceFactController::index` already paginates at 50
   // server-side (unchanged); this tab previously only ever read page 1
-  // (`p.facts.data`) and silently dropped everything past the cap.
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-  });
-
-  const refresh = useCallback((pageOverride?: number) => {
-    setLoading(true);
-    listReferenceFacts({ queue: 'true', page: String(pageOverride ?? page) })
-      .then((p) => {
-        setRows(p.facts.data);
-        setMeta({ current_page: p.facts.current_page, last_page: p.facts.last_page, total: p.facts.total });
-      })
-      .catch((e) => setError(String(e.message ?? e)))
-      .finally(() => setLoading(false));
-  }, [page]);
-
-  useEffect(() => refresh(), [refresh]);
+  // (`p.facts.data`) and silently dropped everything past the cap. Sprint 8:
+  // extracted into `usePaginatedQuery`.
+  const { rows, loading, error, meta, setPage, refresh } = usePaginatedQuery<ReferenceFactRow>(
+    (page) => listReferenceFacts({ queue: 'true', page: String(page) }).then((p) => p.facts),
+  );
 
   return (
     <>
@@ -171,15 +162,7 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
           </tbody>
         </table>
       )}
-      <div className="docs-pager">
-        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          ‹ Prev
-        </button>
-        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
-        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
-          Next ›
-        </button>
-      </div>
+      <Pager meta={meta} setPage={setPage} />
       {selected && (
         <ReferenceFactPanel
           uuid={selected}
@@ -203,29 +186,10 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
 // Documents page itself had before Sprint 7e. `meta` carries Laravel's
 // standard envelope so the total is always visible and a cap can't be silent.
 function TaggingQueue() {
-  const [rows, setRows] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-  });
-
-  const refresh = useCallback((pageOverride?: number) => {
-    setLoading(true);
-    listDocuments({ tagging_status: 'under_review', sort: 'confidence', page: String(pageOverride ?? page) })
-      .then((p) => {
-        setRows(p.data);
-        setMeta({ current_page: p.current_page, last_page: p.last_page, total: p.total });
-      })
-      .catch((e) => setError(String(e.message ?? e)))
-      .finally(() => setLoading(false));
-  }, [page]);
-
-  useEffect(() => refresh(), [refresh]);
+  const { rows, loading, error, meta, setPage, refresh } = usePaginatedQuery<DocumentRow>(
+    (page) => listDocuments({ tagging_status: 'under_review', sort: 'confidence', page: String(page) }),
+  );
 
   return (
     <>
@@ -269,15 +233,7 @@ function TaggingQueue() {
       )}
       {/* Always rendered (not hidden on a single page) — "page 1 of 1" is
           itself visible proof there's nothing hidden past the cap. */}
-      <div className="docs-pager">
-        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          ‹ Prev
-        </button>
-        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
-        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
-          Next ›
-        </button>
-      </div>
+      <Pager meta={meta} setPage={setPage} />
       {selected && <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={() => refresh()} />}
     </>
   );
@@ -289,38 +245,29 @@ function TaggingQueue() {
 // server-side (additive backend change this sprint, same envelope as
 // Reference-facts/Documents).
 function VocabularyQueue() {
-  const [proposals, setProposals] = useState<VocabularyProposal[]>([]);
   const [canApprove, setCanApprove] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-  });
-
-  const refresh = useCallback((pageOverride?: number) => {
-    setLoading(true);
-    listVocabularyProposals('proposed', pageOverride ?? page)
-      .then((r) => {
-        setProposals(r.proposals.data);
-        setMeta({ current_page: r.proposals.current_page, last_page: r.proposals.last_page, total: r.proposals.total });
-        setCanApprove(r.can_approve);
-      })
-      .catch((e) => setError(String(e.message ?? e)))
-      .finally(() => setLoading(false));
-  }, [page]);
-
-  useEffect(() => refresh(), [refresh]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const {
+    rows: proposals,
+    loading,
+    error,
+    meta,
+    setPage,
+    refresh,
+  } = usePaginatedQuery<VocabularyProposal>((page) =>
+    listVocabularyProposals('proposed', page).then((r) => {
+      setCanApprove(r.can_approve);
+      return r.proposals;
+    }),
+  );
 
   const reject = async (id: number) => {
     try {
       await rejectVocabularyProposal(id);
       refresh();
     } catch (e) {
-      setError(String((e as Error).message ?? e));
+      setActionError(String((e as Error).message ?? e));
     }
   };
 
@@ -332,7 +279,7 @@ function VocabularyQueue() {
         {' '}
         <span className="muted docs-total">{meta.total} proposal{meta.total === 1 ? '' : 's'}</span>
       </p>
-      {error && <p className="error">{error}</p>}
+      {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (
         <p className="muted">Loading…</p>
@@ -375,15 +322,7 @@ function VocabularyQueue() {
           ))}
         </ul>
       )}
-      <div className="docs-pager">
-        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          ‹ Prev
-        </button>
-        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
-        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
-          Next ›
-        </button>
-      </div>
+      <Pager meta={meta} setPage={setPage} />
     </>
   );
 }
@@ -393,29 +332,11 @@ function VocabularyQueue() {
 // applied here): `ReviewQueueController::expiry` now paginates at 50
 // server-side (additive backend change this sprint).
 function ExpiryQueue() {
-  const [tasks, setTasks] = useState<ExpiryTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-  });
-
-  const refresh = useCallback((pageOverride?: number) => {
-    setLoading(true);
-    getExpiryQueue(pageOverride ?? page)
-      .then((r) => {
-        setTasks(r.tasks.data);
-        setMeta({ current_page: r.tasks.current_page, last_page: r.tasks.last_page, total: r.tasks.total });
-      })
-      .catch((e) => setError(String(e.message ?? e)))
-      .finally(() => setLoading(false));
-  }, [page]);
-
-  useEffect(() => refresh(), [refresh]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { rows: tasks, loading, error, meta, setPage, refresh } = usePaginatedQuery<ExpiryTask>(
+    (page) => getExpiryQueue(page).then((r) => r.tasks),
+  );
 
   return (
     <>
@@ -425,7 +346,7 @@ function ExpiryQueue() {
         {' '}
         <span className="muted docs-total">{meta.total} task{meta.total === 1 ? '' : 's'}</span>
       </p>
-      {error && <p className="error">{error}</p>}
+      {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (
         <p className="muted">Loading…</p>
@@ -434,19 +355,11 @@ function ExpiryQueue() {
       ) : (
         <ul className="proposal-list">
           {tasks.map((t) => (
-            <ExpiryRow key={t.task_id} task={t} onDone={(m) => { setMsg(m); refresh(); }} onError={setError} />
+            <ExpiryRow key={t.task_id} task={t} onDone={(m) => { setMsg(m); refresh(); }} onError={setActionError} />
           ))}
         </ul>
       )}
-      <div className="docs-pager">
-        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          ‹ Prev
-        </button>
-        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
-        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
-          Next ›
-        </button>
-      </div>
+      <Pager meta={meta} setPage={setPage} />
     </>
   );
 }

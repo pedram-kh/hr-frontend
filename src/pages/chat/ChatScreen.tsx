@@ -3,8 +3,10 @@ import {
   ApiError,
   getChatSession,
   sendChatMessage,
+  submitMessageFeedback,
   type ChatResponse,
   type ConversationMessage,
+  type FeedbackRating,
   type JobCategoryOption,
   type MessageTrace,
 } from '../../lib/api';
@@ -35,6 +37,24 @@ interface HrAgentItem {
 }
 
 type Item = UserItem | AssistantItem | HrAgentItem;
+
+// Found live, eyes-on 2026-09-10 (real bug, pre-dates Sprint 8 — introduced
+// in Sprint 2b-1, invisible until now because nothing had loaded this screen
+// in a real browser against staging's plain-HTTP Caddyfile — ":80", no
+// domain/TLS yet, documented as the intentional first-bring-up variant).
+// `crypto.randomUUID()` requires a secure context (HTTPS or localhost); on
+// plain HTTP it is `undefined`, and calling it throws a TypeError. `submit()`
+// used to call it BEFORE its own try/catch, so the throw aborted the whole
+// send silently — the textarea cleared, but `sendChatMessage()` (and so the
+// network request) never ran at all. These ids are purely local React
+// list keys, never sent to the server — they don't need cryptographic
+// randomness, just uniqueness, so a plain fallback is the correct fix, not
+// a workaround: it behaves identically once a real HTTPS domain lands.
+function localId(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 // How often the chat re-hydrates from the server so a human reply appears
 // without a manual refresh (Q-D: session-load + polling, no websockets).
@@ -90,6 +110,57 @@ function AnswerBlock({ response }: { response: ChatResponse }) {
       {caption && <p className="answer-authority">{caption}</p>}
       <CitationList citations={response.citations} />
       <TracePanel trace={response.trace} />
+      <ThumbsFeedback messageId={response.message_id} />
+    </div>
+  );
+}
+
+// Sprint 8, Step 8 (plan.md §7, ADR-0030) — thumbs up/down under an assistant
+// bubble. Additive and orthogonal: a click stores a row via
+// `submitMessageFeedback`; nothing else in this screen (or the answer loop)
+// ever reads it back. A second click on the SAME rating is a no-op re-send
+// (the backend upserts either way — harmless, not worth guarding against
+// client-side, per the sprint's own "keep it minimal" framing for this item).
+function ThumbsFeedback({ messageId }: { messageId: number }) {
+  const [sent, setSent] = useState<FeedbackRating | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const rate = async (rating: FeedbackRating) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await submitMessageFeedback(messageId, rating);
+      setSent(rating);
+    } catch {
+      // Best-effort — feedback is optional and never blocks the chat itself.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="chat-feedback" role="group" aria-label="¿Te ha resultado útil esta respuesta?">
+      <button
+        type="button"
+        className={`chat-feedback-btn ${sent === 'up' ? 'is-active' : ''}`}
+        disabled={busy}
+        onClick={() => void rate('up')}
+        aria-label="Respuesta útil"
+        title="Respuesta útil"
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        className={`chat-feedback-btn ${sent === 'down' ? 'is-active' : ''}`}
+        disabled={busy}
+        onClick={() => void rate('down')}
+        aria-label="Respuesta no útil"
+        title="Respuesta no útil"
+      >
+        👎
+      </button>
+      {sent && <span className="muted chat-feedback-thanks">Gracias por tu valoración.</span>}
     </div>
   );
 }
@@ -111,6 +182,7 @@ function EscalationBlock({ response }: { response: ChatResponse }) {
     <div className="card chat-bubble chat-bubble--assistant escalation">
       <span className="badge badge-review">Escalado a Recursos Humanos</span>
       <p className="answer-prose">{response.answer}</p>
+      <ThumbsFeedback messageId={response.message_id} />
     </div>
   );
 }
@@ -205,7 +277,7 @@ export function ChatScreen() {
 
     setError(null);
     setInput('');
-    const userId = crypto.randomUUID();
+    const userId = localId();
     setItems((prev) => [...prev, { role: 'user', id: userId, text: question }]);
     sendingRef.current = true;
     setSending(true);
@@ -213,7 +285,7 @@ export function ChatScreen() {
     try {
       const response = await sendChatMessage(question, sessionUuid.current);
       sessionUuid.current = response.session_uuid;
-      setItems((prev) => [...prev, { role: 'assistant', id: crypto.randomUUID(), response, question }]);
+      setItems((prev) => [...prev, { role: 'assistant', id: localId(), response, question }]);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : 'No se pudo enviar la pregunta. Inténtalo de nuevo.';
@@ -232,14 +304,14 @@ export function ChatScreen() {
     setSending(true);
     setItems((prev) => [
       ...prev,
-      { role: 'user', id: crypto.randomUUID(), text: `Mi categoría: ${category.name}` },
+      { role: 'user', id: localId(), text: `Mi categoría: ${category.name}` },
     ]);
 
     try {
       const response = await sendChatMessage(turn.question, sessionUuid.current, category.id);
       sessionUuid.current = response.session_uuid;
       setResolvedPicks((prev) => [...prev, turn.response.message_id]);
-      setItems((prev) => [...prev, { role: 'assistant', id: crypto.randomUUID(), response, question: turn.question }]);
+      setItems((prev) => [...prev, { role: 'assistant', id: localId(), response, question: turn.question }]);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : 'No se pudo enviar la selección. Inténtalo de nuevo.';
