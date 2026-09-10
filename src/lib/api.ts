@@ -1028,6 +1028,9 @@ export interface GroupBoundFact {
   fact_status: string;
   group_label: string | null;
   value: string;
+  // Sprint 7g Item 2 — the source line, shown inline so a reviewer can
+  // sanity-check the fact without opening it, same as the Reference-facts queue.
+  source_excerpt: string | null;
   kind: string;
   bound: boolean;
 }
@@ -1068,6 +1071,9 @@ export interface UnbindableFact {
   fact_status: string;
   group_label: string | null;
   value: string;
+  // Sprint 7g Item 2 — the source line, shown inline so a reviewer can
+  // identify/sanity-check the fact without opening it.
+  source_excerpt: string | null;
   status: string;
   kind: string;
   reason: string | null;
@@ -1091,6 +1097,9 @@ export interface BindingDiffFact {
   fact_status: string;
   group_label: string | null;
   value: string;
+  // Sprint 7g Item 2 — the source line, shown inline so a reviewer can
+  // identify/sanity-check the fact without opening it.
+  source_excerpt: string | null;
   validity_start: string | null;
   validity_end: string | null;
   kind: string;
@@ -1106,6 +1115,7 @@ export interface BindingDiff {
     fact_id: number;
     group_label: string | null;
     value: string;
+    source_excerpt: string | null;
     kind: string;
     reason: string | null;
   }>;
@@ -1321,8 +1331,12 @@ export interface VocabularyProposal {
   created_at: string | null;
 }
 
-export function listVocabularyProposals(status = 'proposed'): Promise<{ proposals: VocabularyProposal[]; can_approve: boolean }> {
-  return request(`/admin/vocabulary-proposals?status=${encodeURIComponent(status)}`, { method: 'GET' });
+// Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+// applied here): `proposals` is now Laravel's standard paginate envelope
+// (additive backend change, matches the Reference-facts queue's shape).
+export function listVocabularyProposals(status = 'proposed', page = 1): Promise<{ proposals: Paginated<VocabularyProposal>; can_approve: boolean }> {
+  const qs = new URLSearchParams({ status, page: String(page) }).toString();
+  return request(`/admin/vocabulary-proposals?${qs}`, { method: 'GET' });
 }
 
 export function suggestVocabularyVariant(facet: VocabularyFacet, value: string): Promise<{ variant: VariantSuggestion | null; threshold: number }> {
@@ -1416,8 +1430,11 @@ export interface SuccessionProposal {
   source: 'ai_agent';
 }
 
-export function getExpiryQueue(): Promise<{ tasks: ExpiryTask[] }> {
-  return request('/admin/review/expiry', { method: 'GET' });
+// Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+// applied here): `tasks` is now Laravel's standard paginate envelope
+// (additive backend change, matches the Reference-facts queue's shape).
+export function getExpiryQueue(page = 1): Promise<{ tasks: Paginated<ExpiryTask> }> {
+  return request(`/admin/review/expiry?page=${page}`, { method: 'GET' });
 }
 
 export interface ResolveExpiryPayload {
@@ -1492,6 +1509,10 @@ export interface FactUncertainty {
 export type ReferenceFactStatus = 'needs_review' | 'verified' | 'rejected';
 
 export interface ReferenceFactRow {
+  // Sprint 7g Item 2 — the numeric id, shown inline in the queue so a
+  // reviewer can identify/cross-reference a fact (e.g. against a
+  // `facts:scan-duplicates` report, which is id-keyed) without opening it.
+  id: number;
   uuid: string;
   value: string;
   convenio: string | null;

@@ -19,6 +19,7 @@ import { GroupsQueue } from './GroupsQueue';
 import { FactDuplicatePanel } from './FactDuplicatePanel';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
+import { firstLine } from '../../lib/format';
 
 type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry';
 
@@ -87,21 +88,37 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
   // not about either fact alone.
   const [pairUuid, setPairUuid] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
+  // Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+  // applied here): `ReferenceFactController::index` already paginates at 50
+  // server-side (unchanged); this tab previously only ever read page 1
+  // (`p.facts.data`) and silently dropped everything past the cap.
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  });
+
+  const refresh = useCallback((pageOverride?: number) => {
     setLoading(true);
-    listReferenceFacts({ queue: 'true' })
-      .then((p) => setRows(p.facts.data))
+    listReferenceFacts({ queue: 'true', page: String(pageOverride ?? page) })
+      .then((p) => {
+        setRows(p.facts.data);
+        setMeta({ current_page: p.facts.current_page, last_page: p.facts.last_page, total: p.facts.total });
+      })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => refresh(), [refresh]);
 
   return (
     <>
       <p className="muted">
         AI-segmented reference facts awaiting verification — <strong>uncertain-first</strong>, then lowest-confidence.
         Inert (fuchsia, not answerable) until a human verifies. Open one to check the source line against the assigned scope.
+        {' '}
+        <span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>
       </p>
       {error && <p className="error">{error}</p>}
       {loading ? (
@@ -109,7 +126,9 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
       ) : (
         <table className="docs-table">
           <thead>
-            <tr><th>Value</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
+            {/* Sprint 7g Item 2 — id + source line inline, so a reviewer can
+                identify and sanity-check a fact from the list itself. */}
+            <tr><th className="num">Id</th><th>Value</th><th>Source</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -118,7 +137,11 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                 className={`${selected === r.uuid ? 'is-selected' : ''} ${r.is_ai_proposed ? 'ai-marked' : ''}`}
                 onClick={() => setSelected(r.uuid)}
               >
+                <td className="num muted">#{r.id}</td>
                 <td className="cell-clip">{r.value}</td>
+                <td className="cell-clip muted small" title={r.source_excerpt ?? undefined}>
+                  {firstLine(r.source_excerpt) ?? '—'}
+                </td>
                 <td>{[r.territory, r.sector].filter(Boolean).join(' · ') || r.convenio || '—'}</td>
                 <td>{r.group_label ?? r.job_category ?? '—'}</td>
                 <td className="num">{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : '—'}</td>
@@ -143,11 +166,20 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={6} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
+              <tr><td colSpan={8} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
             )}
           </tbody>
         </table>
       )}
+      <div className="docs-pager">
+        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          ‹ Prev
+        </button>
+        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
+        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
+          Next ›
+        </button>
+      </div>
       {selected && (
         <ReferenceFactPanel
           uuid={selected}
@@ -164,27 +196,44 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
 }
 
 // --- AI tagging backlog -------------------------------------------------------
+// Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+// applied here): `DocumentController::index` already paginates at 50
+// server-side (unchanged); this tab previously only ever read page 1
+// (`p.data`) and silently dropped everything past the cap, same gap the
+// Documents page itself had before Sprint 7e. `meta` carries Laravel's
+// standard envelope so the total is always visible and a cap can't be silent.
 function TaggingQueue() {
   const [rows, setRows] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  });
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((pageOverride?: number) => {
     setLoading(true);
-    listDocuments({ tagging_status: 'under_review', sort: 'confidence' })
-      .then((p) => setRows(p.data))
+    listDocuments({ tagging_status: 'under_review', sort: 'confidence', page: String(pageOverride ?? page) })
+      .then((p) => {
+        setRows(p.data);
+        setMeta({ current_page: p.current_page, last_page: p.last_page, total: p.total });
+      })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => refresh(), [refresh]);
 
   return (
     <>
       <p className="muted">
         Documents <code>under_review</code> — not retrievable until verified. The AI auto-proposes facets on ingest; lowest-confidence first.
         Open one to review the (fuchsia) AI suggestions and Confirm.
+        {' '}
+        <span className="muted docs-total">{meta.total} document{meta.total === 1 ? '' : 's'}</span>
       </p>
       {error && <p className="error">{error}</p>}
       {loading ? (
@@ -218,31 +267,53 @@ function TaggingQueue() {
           </tbody>
         </table>
       )}
-      {selected && <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={refresh} />}
+      {/* Always rendered (not hidden on a single page) — "page 1 of 1" is
+          itself visible proof there's nothing hidden past the cap. */}
+      <div className="docs-pager">
+        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          ‹ Prev
+        </button>
+        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
+        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
+          Next ›
+        </button>
+      </div>
+      {selected && <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={() => refresh()} />}
     </>
   );
 }
 
 // --- Vocabulary proposals -----------------------------------------------------
+// Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+// applied here): `VocabularyProposalController::index` now paginates at 50
+// server-side (additive backend change this sprint, same envelope as
+// Reference-facts/Documents).
 function VocabularyQueue() {
   const [proposals, setProposals] = useState<VocabularyProposal[]>([]);
   const [canApprove, setCanApprove] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  });
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((pageOverride?: number) => {
     setLoading(true);
-    listVocabularyProposals('proposed')
+    listVocabularyProposals('proposed', pageOverride ?? page)
       .then((r) => {
-        setProposals(r.proposals);
+        setProposals(r.proposals.data);
+        setMeta({ current_page: r.proposals.current_page, last_page: r.proposals.last_page, total: r.proposals.total });
         setCanApprove(r.can_approve);
       })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => refresh(), [refresh]);
 
   const reject = async (id: number) => {
     try {
@@ -258,6 +329,8 @@ function VocabularyQueue() {
       <p className="muted">
         Proposed vocabulary (variant→alias is the default; create-new is deliberate). Approving writes into the controlled vocabulary —
         gated by <code>vocabulary.approve</code> (super_admin). The AI proposes only.
+        {' '}
+        <span className="muted docs-total">{meta.total} proposal{meta.total === 1 ? '' : 's'}</span>
       </p>
       {error && <p className="error">{error}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
@@ -302,32 +375,55 @@ function VocabularyQueue() {
           ))}
         </ul>
       )}
+      <div className="docs-pager">
+        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          ‹ Prev
+        </button>
+        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
+        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
+          Next ›
+        </button>
+      </div>
     </>
   );
 }
 
 // --- Expiry queue + succession handoff ---------------------------------------
+// Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
+// applied here): `ReviewQueueController::expiry` now paginates at 50
+// server-side (additive backend change this sprint).
 function ExpiryQueue() {
   const [tasks, setTasks] = useState<ExpiryTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number }>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  });
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((pageOverride?: number) => {
     setLoading(true);
-    getExpiryQueue()
-      .then((r) => setTasks(r.tasks))
+    getExpiryQueue(pageOverride ?? page)
+      .then((r) => {
+        setTasks(r.tasks.data);
+        setMeta({ current_page: r.tasks.current_page, last_page: r.tasks.last_page, total: r.tasks.total });
+      })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => refresh(), [refresh]);
 
   return (
     <>
       <p className="muted">
         Active prose within 90 days of expiry (or already past). Confirm a successor (same convenio only) to write the lineage —
         the old document is <strong>never auto-retired</strong>.
+        {' '}
+        <span className="muted docs-total">{meta.total} task{meta.total === 1 ? '' : 's'}</span>
       </p>
       {error && <p className="error">{error}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
@@ -342,6 +438,15 @@ function ExpiryQueue() {
           ))}
         </ul>
       )}
+      <div className="docs-pager">
+        <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          ‹ Prev
+        </button>
+        <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
+        <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
+          Next ›
+        </button>
+      </div>
     </>
   );
 }

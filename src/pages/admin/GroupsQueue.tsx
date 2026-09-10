@@ -17,6 +17,7 @@ import {
   type UnbindableFact,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
+import { firstLine } from '../../lib/format';
 
 // Sprint 7f (ADR-0028) — the Groups review tab.
 //
@@ -191,8 +192,13 @@ function ConvenioTree({
           <table className="table compact">
             <thead>
               <tr>
+                {/* Sprint 7g Item 2 — id + source line inline, so a reviewer
+                    can identify/sanity-check a fact without opening it,
+                    same treatment as the Reference-facts queue. */}
+                <th className="num">Id</th>
                 <th>Etiqueta</th>
                 <th>Valor</th>
+                <th>Fuente</th>
                 <th>Motivo</th>
                 <th>Vincular a</th>
               </tr>
@@ -200,6 +206,7 @@ function ConvenioTree({
             <tbody>
               {tree.unbindable_facts.map((f) => (
                 <tr key={f.fact_id}>
+                  <td className="num muted">#{f.fact_id}</td>
                   <td>
                     <code>{f.group_label ?? '—'}</code>
                     <span className={`badge ${f.fact_status === 'verified' ? 'ok' : 'ai'}`}>
@@ -207,6 +214,9 @@ function ConvenioTree({
                     </span>
                   </td>
                   <td className="small">{f.value}</td>
+                  <td className="small muted" title={f.source_excerpt ?? undefined}>
+                    {firstLine(f.source_excerpt) ?? '—'}
+                  </td>
                   <td className="small muted">{f.reason}</td>
                   <td>
                     <ManualBindCell
@@ -400,10 +410,16 @@ function NodeCard({
           <ul className="small">
             {node.would_bind_facts.map((f) => (
               <li key={f.fact_id}>
-                <code>{f.group_label}</code> → {f.value}{' '}
+                {/* Sprint 7g Item 2 — id + source line inline. */}
+                <span className="muted">#{f.fact_id}</span> <code>{f.group_label}</code> → {f.value}{' '}
                 <span className={`badge ${f.bound ? 'ok' : 'muted'}`}>
                   {f.bound ? 'vinculado' : 'sin vincular'}
                 </span>
+                {f.source_excerpt && (
+                  <div className="muted small" title={f.source_excerpt}>
+                    {firstLine(f.source_excerpt)}
+                  </div>
+                )}
                 {f.bound && canEdit && (
                   <button
                     className="link"
@@ -494,8 +510,11 @@ function NodeCard({
               <thead>
                 <tr>
                   <th />
+                  {/* Sprint 7g Item 2 — id + source line inline. */}
+                  <th className="num">Id</th>
                   <th>Etiqueta</th>
                   <th>Valor</th>
+                  <th>Fuente</th>
                   <th>Vigencia</th>
                   <th>Estado</th>
                 </tr>
@@ -516,6 +535,7 @@ function NodeCard({
                         }}
                       />
                     </td>
+                    <td className="num muted">#{f.fact_id}</td>
                     <td>
                       <code>{f.group_label}</code>
                       {f.also_binds_to_node_ids.length > 0 && (
@@ -526,6 +546,9 @@ function NodeCard({
                       )}
                     </td>
                     <td className="small">{f.value}</td>
+                    <td className="small muted" title={f.source_excerpt ?? undefined}>
+                      {firstLine(f.source_excerpt) ?? '—'}
+                    </td>
                     <td className="small">
                       {f.validity_start ?? '—'} → {f.validity_end ?? 'abierta'}
                     </td>
@@ -547,7 +570,12 @@ function NodeCard({
               <ul className="small muted">
                 {diff.needs_manual_binding.map((f) => (
                   <li key={f.fact_id}>
-                    <code>{f.group_label}</code> — {f.reason}
+                    <span className="muted">#{f.fact_id}</span> <code>{f.group_label}</code> — {f.reason}
+                    {f.source_excerpt && (
+                      <div className="muted small" title={f.source_excerpt}>
+                        {firstLine(f.source_excerpt)}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
