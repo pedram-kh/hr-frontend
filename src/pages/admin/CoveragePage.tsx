@@ -86,8 +86,14 @@ export function CoveragePage() {
               <div className="ranked-main">
                 <div className="ranked-title">{c.numero} — {c.name}</div>
                 <div className="ranked-meta">
-                  {c.territory} · {c.sector} · {c.headcount} persona{c.headcount === 1 ? '' : 's'} ·{' '}
-                  {c.reason_codes.map((rc) => <code key={rc}>{rc}</code>)}
+                  {c.territory} · {c.sector} · {c.headcount} persona{c.headcount === 1 ? '' : 's'}
+                  {c.reason_codes.length > 0 && (
+                    <span className="reason-badges">
+                      {c.reason_codes.map((rc) => (
+                        <span className="badge badge-review" key={rc}>{rc}</span>
+                      ))}
+                    </span>
+                  )}
                 </div>
               </div>
               <a className="btn btn-ghost" href={c.link}>Ver</a>

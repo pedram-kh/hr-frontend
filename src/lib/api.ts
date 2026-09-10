@@ -103,6 +103,25 @@ export function canViewCoverage(identity: Identity | null): boolean {
   return Boolean(identity?.abilities?.['analytics.view'] || identity?.abilities?.['knowledge.edit']);
 }
 
+/**
+ * Sprint-8 follow-up (found live, eyes-on 2026-09-10): Calidad (quality-
+ * sample review) has NO dedicated view ability — ADR-0030 §5 is explicit
+ * that quality sampling invents no new ability, and ITS OWN access-matrix
+ * test (`Sprint8AnalyticsAccessTest::test_quality_sample_reads_are_open_to_
+ * any_admin`) proves reads are open to every admin role, including
+ * knowledge_editor and auditor who have neither `analytics.view` nor
+ * `escalation.work`. Only the REVIEW WRITE (marking a sample
+ * correct/wrong) is gated server-side on `escalation.work` — enforced at
+ * the point of the write action itself, not the nav entry. So this helper
+ * mirrors the Guardrails nav precedent (`guardrails.manage` gates the
+ * WRITE only; the nav entry itself is unconditional for any logged-in
+ * admin) rather than reading a view-specific ability that doesn't and
+ * shouldn't exist.
+ */
+export function canViewQuality(identity: Identity | null): boolean {
+  return identity !== null;
+}
+
 export class ApiError extends Error {
   status: number;
 

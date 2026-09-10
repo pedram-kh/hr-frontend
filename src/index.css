@@ -2451,3 +2451,17 @@ a {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Sprint 8 follow-up (found live, eyes-on 2026-09-10): a full-gap convenio's
+   reason codes were rendered as adjacent bare <code> tags with no separator
+   at all — e.g. EXPIRED_NO_SUCCESSORSALARY_PDF_NOT_IMPORTED, unreadable as
+   two codes. Each code is now its own .badge-review pill, laid out with a
+   real gap between them (and before the leading territory/sector/headcount
+   text) rather than relying on inline whitespace that React drops between
+   adjacent map()'d elements. */
+.reason-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+}

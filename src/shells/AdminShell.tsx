@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/context';
-import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage } from '../lib/api';
+import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage, canViewQuality } from '../lib/api';
 import { parseAdminHash } from '../lib/adminHash';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
@@ -14,6 +14,7 @@ import { AdminsPage } from '../pages/admin/AdminsPage';
 import { HistoryPage } from '../pages/admin/HistoryPage';
 import { AnalyticsPage } from '../pages/admin/AnalyticsPage';
 import { CoveragePage } from '../pages/admin/CoveragePage';
+import { QualitySampleQueue } from '../pages/admin/QualitySampleQueue';
 
 type View =
   | 'documents'
@@ -26,7 +27,8 @@ type View =
   | 'guardrails'
   | 'settings'
   | 'analytics'
-  | 'coverage';
+  | 'coverage'
+  | 'quality';
 
 const VALID_VIEWS: readonly View[] = [
   'documents',
@@ -40,6 +42,7 @@ const VALID_VIEWS: readonly View[] = [
   'settings',
   'analytics',
   'coverage',
+  'quality',
 ];
 
 function isView(v: string | null): v is View {
@@ -100,6 +103,7 @@ export function AdminShell() {
   const showHistory = canViewAllHistory(identity);
   const showAnalytics = canViewAnalytics(identity);
   const showCoverage = canViewCoverage(identity);
+  const showQuality = canViewQuality(identity);
 
   const openEscalation = (uuid: string) => {
     setEscalationFocus(uuid);
@@ -123,6 +127,7 @@ export function AdminShell() {
           {navBtn('escalations', 'Escalations')}
           {showAnalytics && navBtn('analytics', 'Analítica')}
           {showCoverage && navBtn('coverage', 'Cobertura')}
+          {showQuality && navBtn('quality', 'Calidad')}
           {showDirectory && navBtn('directory', 'Directory')}
           {showHistory && navBtn('history', 'History')}
           {showAdmins && navBtn('admins', 'Admins')}
@@ -179,6 +184,13 @@ export function AdminShell() {
             <h2>Cobertura</h2>
             <p className="muted">La rejilla convenio × (prosa, salario, datos, resoluciones) — la misma consulta que <code>corpus:coverage</code>.</p>
             <CoveragePage />
+          </>
+        )}
+        {view === 'quality' && showQuality && (
+          <>
+            <h2>Calidad</h2>
+            <p className="muted">Muestra mensual estratificada de turnos respondidos (<code>quality:sample</code>). Lectura abierta a cualquier admin; marcar una muestra requiere <code>escalation.work</code>.</p>
+            <QualitySampleQueue />
           </>
         )}
         {view === 'directory' && showDirectory && (

@@ -30,10 +30,14 @@ const FAILURE_KIND_LABELS: Record<QualityFailureKind, string> = {
   other: 'Otro',
 };
 
-// Sprint 8, Step 7 (plan.md §6.3/§6.5, ADR-0030) — the Calidad review tab.
-// READS are open to any admin who can see Review (mirrors every other
-// ReviewQueuePage tab); the one review-write action is gated by
-// `escalation.work` (server-enforced; this tab only hides the affordance).
+// Sprint 8, Step 7 (plan.md §6.3/§6.5, ADR-0030) — the Calidad screen.
+// Promoted from a nested ReviewQueuePage tab to its own top-level AdminShell
+// view (found live, eyes-on 2026-09-10 — see `AdminShell.tsx`/`canViewQuality`).
+// READS are open to any admin (`Sprint8AnalyticsAccessTest::
+// test_quality_sample_reads_are_open_to_any_admin` — no view ability
+// exists or should exist, ADR-0030 §5); the one review-write action is
+// gated by `escalation.work` (server-enforced; this page only hides the
+// affordance).
 export function QualitySampleQueue() {
   const { identity } = useAuth();
   const canReview = canWorkEscalations(identity);

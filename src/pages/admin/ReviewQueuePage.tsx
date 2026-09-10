@@ -21,12 +21,18 @@ import { GroupsQueue } from './GroupsQueue';
 import { FactDuplicatePanel } from './FactDuplicatePanel';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
-import { QualitySampleQueue } from './QualitySampleQueue';
 import { firstLine } from '../../lib/format';
 
-type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry' | 'quality';
+// Sprint 8 follow-up (found live, eyes-on 2026-09-10): 'quality' used to be a
+// tab nested here. Promoted to its own top-level AdminShell view (`Calidad`,
+// alongside its Analítica/Cobertura siblings — `data-model.md`'s own access
+// table already described it as a peer nav entry, not a Review sub-tab) so
+// it isn't hidden inside a page most roles have no other reason to open.
+// See `QualitySampleQueue` (now rendered directly by `AdminShell`) and
+// `canViewQuality` in `lib/api.ts`.
+type Tab = 'tagging' | 'reference-facts' | 'groups' | 'vocabulary' | 'expiry';
 
-const VALID_TABS: readonly Tab[] = ['tagging', 'reference-facts', 'groups', 'vocabulary', 'expiry', 'quality'];
+const VALID_TABS: readonly Tab[] = ['tagging', 'reference-facts', 'groups', 'vocabulary', 'expiry'];
 
 function isTab(v: string | null): v is Tab {
   return v !== null && (VALID_TABS as readonly string[]).includes(v);
@@ -61,14 +67,12 @@ export function ReviewQueuePage({
         <button className={`tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setTab('groups')}>Groups</button>
         <button className={`tab ${tab === 'vocabulary' ? 'active' : ''}`} onClick={() => setTab('vocabulary')}>Vocabulary proposals</button>
         <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>Expiry</button>
-        <button className={`tab ${tab === 'quality' ? 'active' : ''}`} onClick={() => setTab('quality')}>Calidad</button>
       </div>
       {tab === 'tagging' && <TaggingQueue />}
       {tab === 'reference-facts' && <ReferenceFactsQueue initialFactUuid={initialFactUuid} />}
       {tab === 'groups' && <GroupsQueue initialConvenioId={initialConvenioId} />}
       {tab === 'vocabulary' && <VocabularyQueue />}
       {tab === 'expiry' && <ExpiryQueue />}
-      {tab === 'quality' && <QualitySampleQueue />}
     </div>
   );
 }
