@@ -23,6 +23,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 import { CardDrawer } from './EscalationCardDrawer';
+import { ESCALATION_REASON_FILTERS } from '../../lib/escalationReasons';
 
 const COLUMN_LABELS: Record<EscalationStatus, string> = {
   new: 'Nuevas',
@@ -32,15 +33,11 @@ const COLUMN_LABELS: Record<EscalationStatus, string> = {
   closed: 'Cerradas',
 };
 
-const REASON_FILTERS = [
-  { id: '', label: 'Todos los motivos' },
-  { id: 'low_confidence', label: 'Baja confianza' },
-  { id: 'off_domain', label: 'Fuera de ámbito' },
-  { id: 'sensitive_topic', label: 'Tema sensible' },
-  { id: 'explicit_request', label: 'Petición explícita' },
-  { id: 'salary_coverage_gap', label: 'Hueco salarial' },
-  { id: 'conflict', label: 'Conflicto' },
-];
+// Correction-02 (C2-1): was a hand-copied, incomplete local array (missing
+// `reference_fact_coverage_gap`, `salary_not_in_chat`, `quality_sample_wrong`
+// as filter options entirely) — now the single shared list, also used by
+// HistoryPage's filter and by Analítica's row labels.
+const REASON_FILTERS = ESCALATION_REASON_FILTERS;
 
 // Legal transitions mirrored from the server — only for UI hinting (the server
 // enforces; we just avoid offering obviously-illegal drop targets).

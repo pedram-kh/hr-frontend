@@ -71,6 +71,28 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     });
   }
 
+  // Sprint 10a (ADR-0032). Placed before "Recuperación" because this is the
+  // decision that determines WHAT was searched: on the fallback branch the
+  // convenio filter was dropped and only the Estatuto was in scope, and on the
+  // expired branch nothing was retrieved at all. A reviewer reading the
+  // retrieval line below needs this line first to make sense of it.
+  if (trace.prose_gap) {
+    const pg = trace.prose_gap;
+    const fallback = pg.classification === 'never_ingested';
+    const evidence = pg.pending_embed
+      ? ' · pendiente de indexar'
+      : pg.reason_code
+        ? ` · ${pg.reason_code}`
+        : '';
+    steps.push({
+      label: 'Cobertura del convenio',
+      meta: fallback
+        ? 'convenio nunca cargado · se responde con el Estatuto (mínimos legales)'
+        : `el convenio existe pero no es recuperable · el Estatuto NO lo sustituye (ultraactividad) → escala${evidence}`,
+      dot: fallback ? 'src-ai_agent' : 'src-system',
+    });
+  }
+
   if (trace.retrieval) {
     const r = trace.retrieval;
     const passes = r.passes && r.passes.length > 1 ? ` · ${r.passes.length} pasadas (recall)` : '';
@@ -108,9 +130,12 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     // they have no Check A/B retrieval+citation gate to show.
     const structuredPath = f.path === 'salary_sql' || f.path === 'reference_fact' || f.path === 'reference_fact_composition';
     const checks = structuredPath ? '' : ` · A=${f.check_a_retrieval ? '✓' : '✗'} B=${f.check_b_citations ? '✓' : '✗'}`;
+    // Sprint 10a: an answer built on the Estatuto passed the same gates as any
+    // other, so nothing above distinguishes it — say so on the decision line.
+    const fallback = f.fallback === 'estatuto_gap' ? ' · base: Estatuto (mínimos legales)' : '';
     steps.push({
       label: 'Decisión',
-      meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}`,
+      meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}${fallback}`,
       dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' ? 'src-ai_agent' : 'src-system',
     });
   }

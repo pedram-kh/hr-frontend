@@ -9,6 +9,7 @@ import {
   type EscalationsByFixResponse,
 } from '../../lib/api';
 import { BarChart, KpiTile } from './charts';
+import { escalationReasonLabel } from '../../lib/escalationReasons';
 
 /**
  * Sprint 8, Step 7 (plan.md §2/§3/§4, ADR-0030) — the Analítica screen.
@@ -93,7 +94,10 @@ export function AnalyticsPage() {
           <tbody>
             {byFix.by_fix.map((row, i) => (
               <tr key={i}>
-                <td>{row.reason}</td>
+                {/* Correction-02 (C2-1): was the raw reason string (e.g.
+                    literally "estatuto_fallback_gap") — no label lookup
+                    existed on this screen at all. */}
+                <td>{escalationReasonLabel(row.reason)}</td>
                 <td className="muted">{row.sub_outcome ?? '—'}</td>
                 <td>
                   {row.fix_link ? (
@@ -129,7 +133,7 @@ export function AnalyticsPage() {
                   {c.min_similarity != null ? `${c.min_similarity.toFixed(3)}–${c.max_similarity?.toFixed(3)}` : '(único)'}
                 </td>
                 <td className="num">{c.escalation_rate != null ? `${Math.round(c.escalation_rate * 100)}%` : '—'}</td>
-                <td className="muted small">{c.top_escalation_reason ?? '—'}</td>
+                <td className="muted small">{escalationReasonLabel(c.top_escalation_reason)}</td>
               </tr>
             ))}
             {clusters.clusters.length === 0 && <tr><td colSpan={5} className="col-empty">Sin clusters (ejecuta <code>php artisan questions:cluster</code>).</td></tr>}

@@ -8,10 +8,8 @@ import {
   type ConversationMessage,
   type FeedbackRating,
   type JobCategoryOption,
-  type MessageTrace,
 } from '../../lib/api';
-import { CitationList } from './CitationList';
-import { TracePanel } from './TracePanel';
+import { stripSourceMarkers } from '../../lib/citationMarkers';
 
 interface UserItem {
   role: 'user';
@@ -73,10 +71,14 @@ function toResponse(m: ConversationMessage, sessionUuid: string | null): ChatRes
     escalation_reason: null,
     escalation_uuid: null,
     answer: m.content,
-    citations: m.citations,
+    // Correction-01/E3: the employee session-hydration endpoint no longer
+    // returns full citation excerpts or the trace object — `source_labels` is
+    // the one server-derived field this view renders. `citations`/`trace` stay
+    // in the shared type (admin surfaces need them) but are absent here.
+    citations: [],
     categories: [],
     authority_used: m.authority_used,
-    trace: m.trace ?? ({ router_decision: null } as MessageTrace),
+    source_labels: m.source_labels,
   };
 }
 
@@ -89,27 +91,27 @@ function mapMessages(messages: ConversationMessage[], sessionUuid: string | null
   });
 }
 
-const AUTHORITY_LABELS: Record<string, string> = {
-  official_convenio: 'tu convenio',
-  national_law: 'la ley nacional (Estatuto)',
-  internal_hr_ruling: 'una resolución interna de RR. HH.',
-};
-
-function authorityCaption(authorityUsed: string[]): string | null {
-  if (!authorityUsed || authorityUsed.length === 0) return null;
-  const labels = authorityUsed.map((a) => AUTHORITY_LABELS[a] ?? a);
-  return `Fundamentado en ${labels.join(' y ')}.`;
+// Sprint 10a — Correction-01 (E3). The employee view no longer renders
+// CitationList (FUENTES excerpts) or TracePanel ("Cómo llegué a esto") — those
+// are admin material (router confidence, model name, chunk counts, quoted
+// excerpts) and the server no longer sends them on this endpoint (ADR-0018
+// spirit: the server is the boundary, not CSS). One deterministic source
+// line, built server-side from the same citations admin sees in full,
+// supersedes both that and the old grey "Fundamentado en…" authority caption.
+function sourceLine(sourceLabels: string[] | undefined): string | null {
+  if (!sourceLabels || sourceLabels.length === 0) return null;
+  return `Basado en: ${sourceLabels.join(', ')}.`;
 }
 
-// The answered-turn body: prose + authority caption + citations + trace.
+// The answered-turn body: prose (display-stripped of [Fuente N] markers,
+// Correction-01/E1 — the STORED answer keeps them; Check B needs them there)
+// + the one-line source attribution.
 function AnswerBlock({ response }: { response: ChatResponse }) {
-  const caption = authorityCaption(response.authority_used);
+  const source = sourceLine(response.source_labels);
   return (
     <div className="card chat-bubble chat-bubble--assistant">
-      <p className="answer-prose">{response.answer}</p>
-      {caption && <p className="answer-authority">{caption}</p>}
-      <CitationList citations={response.citations} />
-      <TracePanel trace={response.trace} />
+      <p className="answer-prose">{stripSourceMarkers(response.answer)}</p>
+      {source && <p className="answer-source-line muted">{source}</p>}
       <ThumbsFeedback messageId={response.message_id} />
     </div>
   );

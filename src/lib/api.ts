@@ -578,6 +578,19 @@ export interface MessageTrace {
     synthesis_error?: string;
     [k: string]: unknown;
   };
+  // Prose-coverage gap detail (Sprint 10a, ADR-0032). Present only on the prose
+  // path, and only when the convenio has no retrievable prose at all. The
+  // classification decides the turn: `never_ingested` (nothing was ever loaded)
+  // permits the Estatuto fallback; `expired_only` (prose exists but is not
+  // retrievable) does NOT — it escalates, because under ultraactividad the
+  // expired convenio still governs and the statutory minimum must not stand in
+  // for it. `reason_code`/`pending_embed` are the coverage evidence behind the
+  // escalation, and are absent on the fallback branch.
+  prose_gap?: {
+    classification: 'never_ingested' | 'expired_only';
+    reason_code?: string | null;
+    pending_embed?: boolean;
+  };
   retrieval?: {
     eligible_total: number;
     returned: number;
@@ -611,6 +624,13 @@ export interface MessageTrace {
     authority_used?: string[];
     outcome?: string;
     escalation_reason?: string | null;
+    // Sprint 10a: `'estatuto_gap'` when the answer was built from the Estatuto
+    // because the employee's convenio has never been ingested. The key is
+    // ABSENT (not false, not null) on every other turn — Sprint 7c's golden
+    // trace comparison is byte-for-byte, so an always-present key would break
+    // additivity. Read it with a presence check, never a truthiness check on a
+    // value you assume exists.
+    fallback?: string;
     note?: string;
   };
 }
@@ -626,7 +646,18 @@ export interface ChatResponse {
   citations: Citation[];
   categories: JobCategoryOption[]; // populated only on a 'needs_category' outcome
   authority_used: string[];
-  trace: MessageTrace;
+  // Sprint 10a — Correction-01 (E3): `trace` and full `citations` excerpts are
+  // ADMIN material (router confidence, model name, chunk counts, quoted
+  // snippets). The employee-facing `/chat/message` response no longer sends
+  // `trace` at all (the key is absent from the JSON, not null — read this with
+  // a presence check) and sends `citations: []`; `source_labels` is the one
+  // employee-facing field, a plain list of source document display names for
+  // an answered turn, derived server-side from the same citations admin sees
+  // in full. Admin surfaces (card detail, history, quality queue) are
+  // unaffected — they read a session/card presenter that still returns full
+  // `trace`/`citations` and never reads `source_labels`.
+  trace?: MessageTrace;
+  source_labels?: string[];
 }
 
 export function sendChatMessage(
@@ -647,6 +678,15 @@ export function sendChatMessage(
 // One persisted message in a session (Sprint 4). `hr_agent` is a HUMAN reply —
 // attributed as "Recursos Humanos" (author_label), never mistakable for the bot.
 // Assistant turns carry citations + the trace; user/hr_agent turns do not.
+//
+// Shared by both audiences `ConversationPresenter` serves (Sprint 10a —
+// Correction-01/E3 note): the ADMIN session/card presenter always populates
+// `trace` and full `citations` excerpts; the EMPLOYEE session presenter
+// (`GET /chat/session`) never does — `trace` is absent (undefined, not null)
+// and `citations` is `[]`, with `source_labels` populated instead. Read
+// `trace`/`citations` with a presence check on any surface meant to render
+// for BOTH audiences; there is none today (admin views and `ChatScreen` are
+// separate components each written for one specific audience).
 export interface ConversationMessage {
   id: number;
   role: 'user' | 'assistant' | 'hr_agent';
@@ -657,7 +697,8 @@ export interface ConversationMessage {
   escalated: boolean;
   authority_used: string[];
   citations: Citation[];
-  trace: MessageTrace | null;
+  trace?: MessageTrace;
+  source_labels?: string[];
 }
 
 // Hydrate the employee's OWN most-recent session (Q-D). Self-scoped; the UI
@@ -826,6 +867,17 @@ export interface EscalationEvent {
   created_at: string | null;
 }
 
+// Correction-02 (CP-4 step 6, C2-2) — the card-detail-only employee block.
+export interface EscalationEmployeeContext {
+  full_name: string;
+  email: string;
+  territory: { id: number; name: string } | null;
+  job_category: { id: number; name: string } | null;
+  convenio_group: { id: number; path_label: string } | null;
+  // "seniority where recorded" — null when the employee has no start_date on file.
+  seniority: { start_date: string; years: number } | null;
+}
+
 export interface EscalationDetail {
   card: EscalationCardSummary;
   conversation: ConversationMessage[];
@@ -833,6 +885,12 @@ export interface EscalationDetail {
   // escalation.work AND history.view_all (e.g. knowledge_editor) — the messages
   // are withheld server-side and `conversation` arrives empty.
   conversation_restricted?: boolean;
+  // Correction-02 (CP-4 step 6, C2-2). Detail-modal-only (never on
+  // `EscalationCardSummary`, so it never reaches the board's list view).
+  // `escalation.work` only (narrower than the conversation gate above) — null
+  // + `employee_context_restricted: true` for a history.view_all-only viewer.
+  employee_context: EscalationEmployeeContext | null;
+  employee_context_restricted?: boolean;
   resolution: {
     resolution_text: string;
     converted_to_document_id: number | null;
