@@ -14,16 +14,13 @@ import {
 } from '../../lib/api';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
+import { ESCALATION_REASON_FILTERS } from '../../lib/escalationReasons';
 
-const REASONS = [
-  { id: '', label: 'Todos los motivos' },
-  { id: 'low_confidence', label: 'Baja confianza' },
-  { id: 'off_domain', label: 'Fuera de ámbito' },
-  { id: 'sensitive_topic', label: 'Tema sensible' },
-  { id: 'explicit_request', label: 'Petición explícita' },
-  { id: 'salary_coverage_gap', label: 'Hueco salarial' },
-  { id: 'conflict', label: 'Conflicto' },
-];
+// Correction-02 (C2-1): was a hand-copied, incomplete local array (missing
+// `reference_fact_coverage_gap`, `salary_not_in_chat`, `quality_sample_wrong`
+// as filter options entirely) — now the single shared list, also used by
+// EscalationBoardPage's filter and by Analítica's row labels.
+const REASONS = ESCALATION_REASON_FILTERS;
 
 // The gated full-conversation History browser (ADR-0018). Read-only over
 // existing data — there are NO actions here (acting routes through the

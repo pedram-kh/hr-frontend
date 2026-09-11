@@ -164,6 +164,8 @@ export function CardDrawer({
         </dl>
       </section>
 
+      <EmployeeContextBlock detail={detail} />
+
       <ExplanationBlock card={card} />
 
       {canWork && (
@@ -278,6 +280,54 @@ function ExplanationBlock({ card }: { card: EscalationCardSummary }) {
       ) : card.fix_action ? (
         <p className="timeline-meta">{card.fix_action}</p>
       ) : null}
+    </section>
+  );
+}
+
+// Correction-02 (CP-4 step 6, C2-2) — the card-detail-ONLY employee block
+// (name/email/territory/category-group/seniority). Detail modal only, by
+// construction: `EscalationEmployeeContext` lives on `EscalationDetail`
+// (`show()`'s response), never on `EscalationCardSummary` (shared by both the
+// board's list AND the detail header above) — so the board's list-view cards
+// are untouched. Gated server-side by the same `escalation.work` ability the
+// Triaje actions already require; a history.view_all-only viewer sees the
+// same restricted-access notice pattern already used for the conversation
+// below, rather than a new UI idiom.
+function EmployeeContextBlock({ detail }: { detail: EscalationDetail }) {
+  if (detail.employee_context_restricted) {
+    return (
+      <section>
+        <h4>Empleado</h4>
+        <p className="notice notice--neutral">
+          <span aria-hidden="true">🔒</span>
+          No tienes permiso para ver el contexto del empleado. Se requiere <code>escalation.work</code>.
+        </p>
+      </section>
+    );
+  }
+
+  const ctx = detail.employee_context;
+  if (!ctx) return null;
+
+  return (
+    <section>
+      <h4>Empleado</h4>
+      <dl className="kv">
+        <dt>Nombre</dt><dd>{ctx.full_name}</dd>
+        <dt>Email</dt><dd>{ctx.email}</dd>
+        <dt>Territorio</dt><dd>{ctx.territory?.name ?? '—'}</dd>
+        <dt>Categoría / grupo</dt>
+        <dd>
+          {ctx.job_category?.name ?? '—'}
+          {ctx.convenio_group && <span className="muted"> · {ctx.convenio_group.path_label}</span>}
+        </dd>
+        <dt>Antigüedad</dt>
+        <dd>
+          {ctx.seniority
+            ? `${ctx.seniority.years} año(s) (desde ${ctx.seniority.start_date})`
+            : <span className="muted">no registrada</span>}
+        </dd>
+      </dl>
     </section>
   );
 }
