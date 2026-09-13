@@ -534,6 +534,12 @@ export interface MessageTrace {
     confidence: number;
     source: string; // 'deterministic_salary' | 'llm' | 'fail_safe'
     subqueries?: string[];
+    // Sprint 10b (ADR-0033): a SECOND, parallel array — never a variant of
+    // subqueries. subqueries SPLITS a compound question into its constituent
+    // topics; decomposed_queries REPHRASES a (possibly single-topic)
+    // question's underlying legal concept into corpus vocabulary, for
+    // retrieval only. [] on every turn until hr-ai proposes one.
+    decomposed_queries?: string[];
     model?: string | null;
     note?: string | null;
     [k: string]: unknown;
@@ -1376,6 +1382,12 @@ export interface HistoryRow {
 export interface HistoryConversation {
   session_uuid: string;
   employee: { uuid: string; full_name: string; convenio: { numero: string; name: string } | null } | null;
+  // Sprint 10b, Correction-02 (eyes-on finding) — mirrors the escalation-card
+  // drawer's `employee_context` block (name/email/territory/category-group/
+  // seniority). No `_restricted` companion here: this whole endpoint already
+  // requires `history.view_all` (route group), unlike the escalation card's
+  // narrower `escalation.work`-only gate.
+  employee_context: EscalationEmployeeContext | null;
   started_at: string | null;
   last_activity_at: string | null;
   messages: ConversationMessage[];
