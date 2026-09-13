@@ -6,6 +6,7 @@ import {
   listHistory,
   searchHistory,
   type ConversationMessage,
+  type EscalationEmployeeContext,
   type HistoryConversation,
   type HistoryFilters,
   type HistoryRow,
@@ -220,6 +221,7 @@ function ConversationDrawer({ sessionUuid, onClose }: { sessionUuid: string; onC
                 <dt>Inicio</dt><dd>{convo.started_at?.slice(0, 16).replace('T', ' ') ?? '—'}</dd>
                 <dt>Última actividad</dt><dd>{convo.last_activity_at?.slice(0, 16).replace('T', ' ') ?? '—'}</dd>
               </dl>
+              <EmployeeContextBlock context={convo.employee_context} />
               <div className="card-convo">
                 {convo.messages.map((m) => <ConversationBubble key={m.id} message={m} />)}
               </div>
@@ -228,6 +230,36 @@ function ConversationDrawer({ sessionUuid, onClose }: { sessionUuid: string; onC
         </div>
       </aside>
     </div>
+  );
+}
+
+// Sprint 10b, Correction-02 (eyes-on finding): the History conversation modal
+// showed no employee context beyond the header name. Mirrors the escalation
+// board's `EmployeeContextBlock` (EscalationCardDrawer.tsx) exactly — same
+// four rows, same layout — but with no restricted-access branch: this whole
+// endpoint already requires `history.view_all` (server route group), so
+// there is no narrower ability to gate this specific block behind, unlike the
+// escalation card's `escalation.work`-only block.
+function EmployeeContextBlock({ context }: { context: EscalationEmployeeContext | null }) {
+  if (!context) return null;
+
+  return (
+    <dl className="kv">
+      <dt>Empleado</dt><dd>{context.full_name}</dd>
+      <dt>Email</dt><dd>{context.email}</dd>
+      <dt>Territorio</dt><dd>{context.territory?.name ?? '—'}</dd>
+      <dt>Categoría / grupo</dt>
+      <dd>
+        {context.job_category?.name ?? '—'}
+        {context.convenio_group && <span className="muted"> · {context.convenio_group.path_label}</span>}
+      </dd>
+      <dt>Antigüedad</dt>
+      <dd>
+        {context.seniority
+          ? `${context.seniority.years} año(s) (desde ${context.seniority.start_date})`
+          : <span className="muted">no registrada</span>}
+      </dd>
+    </dl>
   );
 }
 

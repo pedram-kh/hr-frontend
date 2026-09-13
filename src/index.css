@@ -1282,6 +1282,32 @@ a {
   margin-top: var(--space-2);
 }
 
+/* Sprint 10b, Correction-02 (eyes-on finding): the readable decomposed_queries
+   list nested under the "Enrutado" timeline step — collapsed by default (the
+   count alone stays in the meta line above it), expandable to read the actual
+   rewrite text. */
+.trace-decomp {
+  margin-top: var(--space-1);
+}
+
+.trace-decomp > summary {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--accent);
+}
+
+.trace-decomp-list {
+  margin: var(--space-1) 0 0 var(--space-4);
+  padding: 0;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  color: var(--text-faint);
+}
+
+.trace-decomp-list li {
+  margin-bottom: var(--space-1);
+}
+
 /* --- Input bar --- */
 .chat-input-bar {
   display: flex;

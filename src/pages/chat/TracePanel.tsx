@@ -4,7 +4,11 @@ import type { MessageTrace } from '../../lib/api';
 // pipeline as a provenance timeline. It never shows the API key or any secret —
 // the backend builds the trace without them.
 export function TracePanel({ trace }: { trace: MessageTrace }) {
-  const steps: { label: string; meta: string; dot: string }[] = [];
+  // Sprint 10b, Correction-02 (eyes-on finding): `list` is optional and, today,
+  // only ever populated by the "Enrutado" step below — the actual
+  // decomposed_queries rewrite texts, not just their count, so a reviewer can
+  // read what the rewrite said.
+  const steps: { label: string; meta: string; dot: string; list?: string[] }[] = [];
 
   if (trace.scope_filters) {
     const sf = trace.scope_filters as Record<string, unknown>;
@@ -28,10 +32,20 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
   if (trace.router_decision) {
     const rd = trace.router_decision;
     const subq = rd.subqueries && rd.subqueries.length > 0 ? ` · ${rd.subqueries.length} subconsulta(s)` : '';
+    // Sprint 10b (ADR-0033): decomposed_queries is a SEPARATE array from
+    // subqueries (rephrasing, not splitting) — rendered as its own count, not
+    // folded into the subconsulta(s) count above.
+    const decomp = rd.decomposed_queries && rd.decomposed_queries.length > 0
+      ? ` · ${rd.decomposed_queries.length} reformulación(es)`
+      : '';
     steps.push({
       label: 'Enrutado',
-      meta: `${rd.label} · confianza ${typeof rd.confidence === 'number' ? rd.confidence.toFixed(2) : rd.confidence} · ${rd.source}${subq}`,
+      meta: `${rd.label} · confianza ${typeof rd.confidence === 'number' ? rd.confidence.toFixed(2) : rd.confidence} · ${rd.source}${subq}${decomp}`,
       dot: 'src-ai_agent',
+      // Sprint 10b, Correction-02 (eyes-on finding): the actual rewrite
+      // texts, not just the count above — undefined (no list rendered) when
+      // there are none, same condition as `decomp`'s count above.
+      list: rd.decomposed_queries && rd.decomposed_queries.length > 0 ? rd.decomposed_queries : undefined,
     });
   }
 
@@ -151,6 +165,14 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
               <div>
                 <div className="timeline-action">{step.label}</div>
                 <div className="timeline-meta">{step.meta}</div>
+                {step.list && step.list.length > 0 && (
+                  <details className="trace-decomp">
+                    <summary>Ver texto de la(s) reformulación(es)</summary>
+                    <ul className="trace-decomp-list">
+                      {step.list.map((q, j) => <li key={j}>«{q}»</li>)}
+                    </ul>
+                  </details>
+                )}
               </div>
             </li>
           ))}
