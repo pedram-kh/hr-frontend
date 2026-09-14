@@ -1432,7 +1432,15 @@ export function searchHistory(q: string): Promise<{ query: string; matches: Hist
 // Admin — Sprint 7a: managed vocabulary growth (propose → approve, ADR-0011/0020)
 // ----------------------------------------------------------------------------
 
-export type VocabularyFacet = 'territory' | 'sector' | 'convenio';
+// Sprint 10c, D-topic-lane: 'topic' joined this facet — same lane, same
+// vocabulary.approve gate, reused rather than a bespoke lane (ADR-0011
+// lineage). No document carries a raw_unmatched_value for a topic the way
+// it does for territory/sector/convenio, so a topic proposal is created
+// directly (API/tinker, or a future minimal standalone "propose" entry
+// point) rather than from a document's card — `ApproveProposalControls` in
+// the review queue already renders any facet generically and needed no
+// change to approve one.
+export type VocabularyFacet = 'territory' | 'sector' | 'convenio' | 'topic';
 
 export interface VariantSuggestion {
   type: VocabularyFacet;

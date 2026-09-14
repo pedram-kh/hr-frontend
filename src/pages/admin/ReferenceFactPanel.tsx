@@ -205,7 +205,7 @@ export function ReferenceFactPanel({
             <p className="notice">
               <span aria-hidden="true">⚠</span>
               <strong>Inert until verified</strong> — this fact is not answerable until a human verifies it
-              {' '}(and answering from facts arrives in a later sprint).
+              {' '}(once verified, it can be served directly as a live answer).
             </p>
           )}
 

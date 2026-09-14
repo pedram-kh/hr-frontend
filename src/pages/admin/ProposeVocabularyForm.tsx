@@ -199,7 +199,7 @@ export function ApproveProposalControls({
 
   return (
     <div className="propose-vocab-actions">
-      <button className="btn btn-primary" disabled={busy || !hasVariant} onClick={() => approve('alias')}>
+      <button className="btn btn-primary" disabled={busy || !hasVariant || facet === 'topic'} onClick={() => approve('alias')}>
         Approve as alias
       </button>
       {facet === 'territory' && (
@@ -212,6 +212,11 @@ export function ApproveProposalControls({
       <button className="btn btn-secondary" disabled={busy || facet === 'convenio'} onClick={() => approve('new_value')}>
         Approve as new value
       </button>
+      {facet === 'topic' && (
+        <p className="notice">
+          <span aria-hidden="true">⚠</span> Topics have no alias-fold mechanism — spelling variants are resolved in code via TopicLexicon, not here.
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
     </div>
   );
