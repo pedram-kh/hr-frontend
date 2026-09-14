@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getExpiryQueue,
+  getVocabulary,
   listDocuments,
   listReferenceFacts,
   listVocabularyProposals,
@@ -12,6 +13,7 @@ import {
   type ExpiryTask,
   type ReferenceFactRow,
   type VocabularyFacet,
+  type VocabularyItem,
   type VocabularyProposal,
 } from '../../lib/api';
 import { usePaginatedQuery } from '../../lib/usePaginatedQuery';
@@ -80,9 +82,13 @@ export function ReviewQueuePage({
 // --- AI-segmented reference facts (Sprint 7b-2) -------------------------------
 // The riskiest queue: each row is an AI scope-assignment. UNCERTAIN-FIRST so a
 // flagged fact (scope unclear / compound group / possible version) floats to the
-// top, then the least-confident. Open one to check the source line against the
-// assigned scope, then verify / fix-then-verify / reject. Inert until verified
-// (not answerable — answering is a later sprint).
+// top, then the least-confident, then (Sprint 10c, D7) real employee demand for
+// that fact's topic — safety outranks demand, so demand only ever breaks ties
+// within the same uncertainty/confidence tier; presentation-only, changes
+// nothing about which facts are IN the queue. Open one to check the source
+// line against the assigned scope, then verify / fix-then-verify / reject.
+// Inert until verified (not answerable until a human verifies it; once
+// verified, it can be served directly as a live answer — 7c).
 function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: string | null }) {
   // Sprint 7g Item 2 — a `#fact=<uuid>` deep link opens straight to that
   // fact's detail panel (below), whether or not it happens to be in the
@@ -93,24 +99,52 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
   // question ("which of these two is true, and since when?") is about the PAIR,
   // not about either fact alone.
   const [pairUuid, setPairUuid] = useState<string | null>(null);
+  // Sprint 10c, D7 — the source document a fact's "Ver documento" button
+  // opens. Previously wired to nothing (`ReferenceFactPanel`'s
+  // `onOpenDocument` prop was simply never passed here, so the button was a
+  // silent no-op — found live, eyes-on 2026-09-13). Mirrors CoveragePage's/
+  // KnowledgeMapPage's identical leaf-opens-card wiring: opening the
+  // document closes the fact panel, same surface either way.
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  // Sprint 10c, D7 — the topic filter, wired to the SAME `topic_id` param
+  // `ReferenceFactController::index` already accepted (no backend change
+  // needed for the filter itself — only for the new demand-tier ordering).
+  const [topicFilter, setTopicFilter] = useState<string>('');
+  const [topics, setTopics] = useState<VocabularyItem[]>([]);
+
+  useEffect(() => {
+    getVocabulary('topics').then((r) => setTopics(r.items)).catch(() => setTopics([]));
+  }, []);
 
   // Sprint 7g Item 2 — pagination + visible total (the Documents-page fix
   // applied here): `ReferenceFactController::index` already paginates at 50
   // server-side (unchanged); this tab previously only ever read page 1
   // (`p.facts.data`) and silently dropped everything past the cap. Sprint 8:
-  // extracted into `usePaginatedQuery`.
+  // extracted into `usePaginatedQuery`. `topicFilter` in `depsKey` refetches
+  // from page 1 when the filter changes (Sprint 10c, D7).
   const { rows, loading, error, meta, setPage, refresh } = usePaginatedQuery<ReferenceFactRow>(
-    (page) => listReferenceFacts({ queue: 'true', page: String(page) }).then((p) => p.facts),
+    (page) => listReferenceFacts({
+      queue: 'true',
+      page: String(page),
+      ...(topicFilter ? { topic_id: topicFilter } : {}),
+    }).then((p) => p.facts),
+    topicFilter,
   );
 
   return (
     <>
       <p className="muted">
-        AI-segmented reference facts awaiting verification — <strong>uncertain-first</strong>, then lowest-confidence.
-        Inert (fuchsia, not answerable) until a human verifies. Open one to check the source line against the assigned scope.
-        {' '}
-        <span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>
+        AI-segmented reference facts awaiting verification — <strong>uncertain-first</strong>, then lowest-confidence,
+        then (ties only) topic demand. Inert (fuchsia, not answerable) until a human verifies. Open one to check the
+        source line against the assigned scope.
       </p>
+      <div className="docs-toolbar">
+        <select className="select" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)}>
+          <option value="">All topics</option>
+          {topics.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+        </select>
+        <span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>
+      </div>
       {error && <p className="error">{error}</p>}
       {loading ? (
         <p className="muted">Loading…</p>
@@ -118,8 +152,10 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
         <table className="docs-table">
           <thead>
             {/* Sprint 7g Item 2 — id + source line inline, so a reviewer can
-                identify and sanity-check a fact from the list itself. */}
-            <tr><th className="num">Id</th><th>Value</th><th>Source</th><th>Scope</th><th>Group</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
+                identify and sanity-check a fact from the list itself.
+                Sprint 10c, D7 — the Topic column, so the new filter above has
+                something to visually confirm against. */}
+            <tr><th className="num">Id</th><th>Value</th><th>Source</th><th>Scope</th><th>Group</th><th>Topic</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -135,6 +171,7 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                 </td>
                 <td>{[r.territory, r.sector].filter(Boolean).join(' · ') || r.convenio || '—'}</td>
                 <td>{r.group_label ?? r.job_category ?? '—'}</td>
+                <td className="cell-clip">{r.topic ?? '—'}</td>
                 <td className="num">{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : '—'}</td>
                 <td className="flags">
                   {r.is_ai_proposed && <span className="ai-pill">AI</span>}
@@ -157,7 +194,7 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
+              <tr><td colSpan={9} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
             )}
           </tbody>
         </table>
@@ -169,10 +206,14 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
           onClose={() => setSelected(null)}
           onChanged={refresh}
           onResolveDuplicate={setPairUuid}
+          onOpenDocument={(uuid) => { setSelected(null); setSelectedDoc(uuid); }}
         />
       )}
       {pairUuid && (
         <FactDuplicatePanel uuid={pairUuid} onClose={() => setPairUuid(null)} onChanged={refresh} />
+      )}
+      {selectedDoc && (
+        <DocumentDetailPanel uuid={selectedDoc} onClose={() => setSelectedDoc(null)} onChanged={refresh} />
       )}
     </>
   );
