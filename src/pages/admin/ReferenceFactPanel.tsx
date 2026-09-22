@@ -28,6 +28,11 @@ import { useAuth } from '../../auth/context';
  * the structured uncertainty flag, and a possible-version flag. The human can
  * verify / fix-then-verify / reject. The agent NEVER verifies its own output —
  * the verify action is human-only.
+ *
+ * Correction queue-source-01 — a manual create (admin_manual + needs_review,
+ * the 7b-1 path) shows the neutral "Manual" badge instead: no excerpt/
+ * confidence/uncertainty to show (only the segmentation agent ever writes
+ * those columns), and it verifies through the SAME action below.
  */
 export function ReferenceFactPanel({
   uuid,
@@ -135,6 +140,9 @@ export function ReferenceFactPanel({
           <strong>Reference fact</strong>
           <span className="badge badge-reference">dato</span>
           {isAi && <span className="ai-pill">AI proposal</span>}
+          {/* Correction queue-source-01 — the detail panel's OTHER source
+              badge, same needs_review gate as `isAi` (mutually exclusive). */}
+          {fact.is_manual_pending && <span className="badge badge-manual">Manual</span>}
           {fact.status === 'verified' && <span className="badge badge-verified">verified</span>}
           {fact.status === 'needs_review' && <span className="badge badge-review">needs review</span>}
           {fact.status === 'rejected' && <span className="badge badge-review">rejected</span>}

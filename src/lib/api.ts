@@ -1665,6 +1665,9 @@ export interface ReferenceFactRow {
   uncertainty: FactUncertainty | null;
   source_excerpt: string | null;
   is_ai_proposed: boolean;
+  // Correction queue-source-01 — the row's OTHER source badge state, same
+  // `needs_review` gate as `is_ai_proposed` (mutually exclusive with it).
+  is_manual_pending: boolean;
   is_possible_duplicate: boolean;
   // Sprint 7d — the 7b-2 flag is now actionable, so the row says whether it is
   // still waiting on a human. A resolved duplicate keeps its lineage and leaves
@@ -1702,6 +1705,9 @@ export interface ReferenceFactCard {
   source: 'admin_manual' | 'ai_agent';
   status: ReferenceFactStatus;
   is_ai_proposed: boolean; // ai_agent + needs_review → fuchsia until verified
+  // Correction queue-source-01 — the neutral "Manual" badge's condition,
+  // mutually exclusive with `is_ai_proposed` above.
+  is_manual_pending: boolean;
   // Sprint 7b-2 — the segmentation metadata the reviewer judges against.
   confidence: number | null;
   uncertainty: FactUncertainty | null;
