@@ -18,6 +18,7 @@ import {
   PanelLeftOpen,
   CircleUserRound,
   LogOut,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../auth/context';
 import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage, canViewQuality } from '../lib/api';
@@ -149,6 +150,14 @@ export function AdminShell() {
     }
   }, [collapsed]);
 
+  // Sprint 11c (§E.1 scope addition) — mobile: the sidebar overlays the
+  // content via a hamburger instead of consuming the screen. Unrelated to
+  // `collapsed` (desktop's persisted icon-rail preference): below the mobile
+  // breakpoint the sidebar is off-canvas by default regardless of
+  // `collapsed`, and while open it always renders full-width/full-text (the
+  // `--collapsed` class is simply omitted below), never the icon rail.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   const showDirectory = canManageDirectory(identity);
   const showAdmins = canManageAdmins(identity);
   const showHistory = canViewAllHistory(identity);
@@ -170,7 +179,10 @@ export function AdminShell() {
       <button
         key={id}
         className={`btn btn-ghost shell-nav-item ${view === id ? 'active' : ''}`}
-        onClick={() => setView(id)}
+        onClick={() => {
+          setView(id);
+          setMobileNavOpen(false); // a selection is also the mobile drawer's dismissal
+        }}
         aria-label={fullLabel}
         data-tooltip={fullLabel}
       >
@@ -217,7 +229,14 @@ export function AdminShell() {
 
   return (
     <div className="shell shell--with-sidebar">
-      <aside className={`shell-sidebar ${collapsed ? 'shell-sidebar--collapsed' : ''}`}>
+      {mobileNavOpen && (
+        <div className="shell-sidebar-backdrop" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
+      )}
+      <aside
+        className={`shell-sidebar ${collapsed && !mobileNavOpen ? 'shell-sidebar--collapsed' : ''} ${
+          mobileNavOpen ? 'shell-sidebar--mobile-open' : ''
+        }`}
+      >
         <div className="shell-sidebar-header">
           {/* `logo.svg` is a full wordmark (~4.86:1), not a square icon — sized
               by its natural aspect ratio, not a fixed box. It already reads
@@ -264,11 +283,19 @@ export function AdminShell() {
         </div>
       </aside>
       <main className="shell-body shell-body--wide">
+        <button
+          type="button"
+          className="btn btn-ghost shell-mobile-nav-btn"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Abrir menú"
+        >
+          <Menu size={20} aria-hidden="true" />
+        </button>
         {view === 'map' && (
           <>
             <h2>Conocimiento · Mapa</h2>
             <p className="muted">Navigate the corpus by lens, spot coverage gaps, and open a document to inspect, test, or edit its labels.</p>
-            <KnowledgeMapPage onOpenEscalation={openEscalation} />
+            <KnowledgeMapPage key={hash.tab ?? ''} onOpenEscalation={openEscalation} initialTab={hash.tab} />
           </>
         )}
         {view === 'documents' && (

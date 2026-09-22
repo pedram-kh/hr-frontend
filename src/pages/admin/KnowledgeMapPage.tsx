@@ -6,6 +6,7 @@ import { GAP_META } from './gapMeta';
 import { Hierarchy, type HierarchyForm } from './Hierarchy';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ReferenceFactCreatePanel } from './ReferenceFactCreatePanel';
+import { GrafoSection } from './grafo/GrafoSection';
 
 const LENSES: { id: Lens; label: string }[] = [
   { id: 'territory', label: 'Territory' },
@@ -14,12 +15,25 @@ const LENSES: { id: Lens; label: string }[] = [
   { id: 'topic', label: 'Topic' },
 ];
 
+type MapSection = 'hierarchy' | 'grafo';
+
+/** `#view=map&tab=grafo` → Grafo; anything else (incl. no `tab` at all) → Jerarquía (plan.md §D.1). */
+function sectionFromTab(tab: string | null): MapSection {
+  return tab === 'grafo' ? 'grafo' : 'hierarchy';
+}
+
 // Knowledge → Map: the lens hierarchy (ADR-0001) with coverage-gap markers
 // (deploy.md §5), in branching-graph and indented-list forms. A leaf opens the
-// document card on the right.
-export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uuid: string) => void } = {}) {
+// document card on the right. Sprint 11c adds a second section, Grafo — the
+// corpus's honesty-gated knowledge graph — behind the same toolbar's leading
+// `.seg` (§D.1); `initialTab` is `AdminShell`'s parsed `#view=map&tab=…`.
+export function KnowledgeMapPage({
+  onOpenEscalation,
+  initialTab = null,
+}: { onOpenEscalation?: (uuid: string) => void; initialTab?: string | null } = {}) {
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
+  const [section, setSection] = useState<MapSection>(() => sectionFromTab(initialTab));
   const [lens, setLens] = useState<Lens>('territory');
   const [form, setForm] = useState<HierarchyForm>('graph');
   const [selected, setSelected] = useState<string | null>(null);
@@ -46,27 +60,49 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
     <>
     <div className="docs-main">
         <div className="map-toolbar">
-          <div className="seg" role="tablist" aria-label="Lens">
-            {LENSES.map((l) => (
-              <button
-                key={l.id}
-                role="tab"
-                aria-selected={lens === l.id}
-                className={`seg-btn ${lens === l.id ? 'is-active' : ''}`}
-                onClick={() => setLens(l.id)}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-          <div className="seg" role="group" aria-label="View">
-            <button className={`seg-btn ${form === 'graph' ? 'is-active' : ''}`} onClick={() => setForm('graph')}>
-              Graph
+          <div className="seg" role="tablist" aria-label="Sección">
+            <button
+              role="tab"
+              aria-selected={section === 'hierarchy'}
+              className={`seg-btn ${section === 'hierarchy' ? 'is-active' : ''}`}
+              onClick={() => setSection('hierarchy')}
+            >
+              Jerarquía
             </button>
-            <button className={`seg-btn ${form === 'list' ? 'is-active' : ''}`} onClick={() => setForm('list')}>
-              List
+            <button
+              role="tab"
+              aria-selected={section === 'grafo'}
+              className={`seg-btn ${section === 'grafo' ? 'is-active' : ''}`}
+              onClick={() => setSection('grafo')}
+            >
+              Grafo
             </button>
           </div>
+          {section === 'hierarchy' && (
+            <>
+              <div className="seg" role="tablist" aria-label="Lens">
+                {LENSES.map((l) => (
+                  <button
+                    key={l.id}
+                    role="tab"
+                    aria-selected={lens === l.id}
+                    className={`seg-btn ${lens === l.id ? 'is-active' : ''}`}
+                    onClick={() => setLens(l.id)}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              <div className="seg" role="group" aria-label="View">
+                <button className={`seg-btn ${form === 'graph' ? 'is-active' : ''}`} onClick={() => setForm('graph')}>
+                  Graph
+                </button>
+                <button className={`seg-btn ${form === 'list' ? 'is-active' : ''}`} onClick={() => setForm('list')}>
+                  List
+                </button>
+              </div>
+            </>
+          )}
           {canEdit && (
             <button className="btn btn-primary map-toolbar-action" onClick={() => setCreating(true)}>
               + New reference fact
@@ -76,16 +112,20 @@ export function KnowledgeMapPage({ onOpenEscalation }: { onOpenEscalation?: (uui
 
         {gaps && <CoverageGapBar gaps={gaps} />}
 
-        <div className="map-canvas">
-          <Hierarchy
-            key={`${lens}-${reloadKey}`}
-            lens={lens}
-            form={form}
-            reloadKey={reloadKey}
-            onOpenDocument={setSelected}
-            onOpenFact={setSelectedFact}
-          />
-        </div>
+        {section === 'hierarchy' ? (
+          <div className="map-canvas">
+            <Hierarchy
+              key={`${lens}-${reloadKey}`}
+              lens={lens}
+              form={form}
+              reloadKey={reloadKey}
+              onOpenDocument={setSelected}
+              onOpenFact={setSelectedFact}
+            />
+          </div>
+        ) : (
+          <GrafoSection onOpenDocument={setSelected} onOpenFact={setSelectedFact} />
+        )}
     </div>
     {selected && (
       <DocumentDetailPanel uuid={selected} onClose={() => setSelected(null)} onChanged={onChanged} onOpenEscalation={onOpenEscalation} />
