@@ -79,16 +79,23 @@ export function ReviewQueuePage({
   );
 }
 
-// --- AI-segmented reference facts (Sprint 7b-2) -------------------------------
-// The riskiest queue: each row is an AI scope-assignment. UNCERTAIN-FIRST so a
-// flagged fact (scope unclear / compound group / possible version) floats to the
-// top, then the least-confident, then (Sprint 10c, D7) real employee demand for
+// --- Reference facts awaiting verification (Sprint 7b-2 + manual, 7b-1) ------
+// The riskiest queue: most rows are an AI scope-assignment, but a manual
+// create (7b-1's own path) lands `needs_review` exactly the same way and
+// belongs here too — Correction queue-source-01 (found live: fact #169 had
+// no UI path to verify it at all, because this queue's own filter required
+// `source = 'ai_agent'`). UNCERTAIN-FIRST so a flagged fact (scope unclear /
+// compound group / possible version — AI-only signals) floats to the top,
+// then the least-confident, then (Sprint 10c, D7) real employee demand for
 // that fact's topic — safety outranks demand, so demand only ever breaks ties
 // within the same uncertainty/confidence tier; presentation-only, changes
-// nothing about which facts are IN the queue. Open one to check the source
-// line against the assigned scope, then verify / fix-then-verify / reject.
-// Inert until verified (not answerable until a human verifies it; once
-// verified, it can be served directly as a live answer — 7c).
+// nothing about which facts are IN the queue. A manual fact has neither
+// uncertainty nor confidence, so it simply falls to the bottom of its tier,
+// same rules, not a special case. Open one to check the source (the quoted
+// line for AI, the linked document for manual) against the assigned scope,
+// then verify / fix-then-verify / reject. Inert until verified (not
+// answerable until a human verifies it; once verified, it can be served
+// directly as a live answer — 7c).
 function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: string | null }) {
   // Sprint 7g Item 2 — a `#fact=<uuid>` deep link opens straight to that
   // fact's detail panel (below), whether or not it happens to be in the
@@ -134,9 +141,11 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
   return (
     <>
       <p className="muted">
-        AI-segmented reference facts awaiting verification — <strong>uncertain-first</strong>, then lowest-confidence,
-        then (ties only) topic demand. Inert (fuchsia, not answerable) until a human verifies. Open one to check the
-        source line against the assigned scope.
+        Reference facts awaiting verification — AI-segmented or manually created — <strong>uncertain-first</strong>,
+        then lowest-confidence, then (ties only) topic demand (a manual fact carries neither signal, so it falls to
+        the bottom of its tier). Inert until a human verifies, whichever source it came from. Open one to check the
+        source (the quoted line for an AI proposal, fuchsia; the linked document for a manual fact) against the
+        assigned scope.
       </p>
       <div className="docs-toolbar">
         <select className="select" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)}>
@@ -174,7 +183,11 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                 <td className="cell-clip">{r.topic ?? '—'}</td>
                 <td className="num">{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : '—'}</td>
                 <td className="flags">
+                  {/* Correction queue-source-01 — the source badge, always one or
+                      the other: fuchsia "AI" (unchanged, unverified-AI only,
+                      ADR-0020) vs neutral "Manual". */}
                   {r.is_ai_proposed && <span className="ai-pill">AI</span>}
+                  {r.is_manual_pending && <span className="badge badge-manual">Manual</span>}
                   {r.uncertainty && <span className="badge badge-conflict">⚠ {r.uncertainty.field}</span>}
                   {r.is_unresolved_duplicate && <span className="badge badge-conflict">≈ version</span>}
                   {r.resolution && <span className="badge badge-historical">{r.resolution}</span>}
@@ -194,7 +207,7 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="col-empty">No AI-proposed facts awaiting review — the queue is clear.</td></tr>
+              <tr><td colSpan={9} className="col-empty">No facts awaiting review — the queue is clear.</td></tr>
             )}
           </tbody>
         </table>

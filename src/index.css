@@ -551,6 +551,17 @@ a {
   color: var(--neutral);
 }
 
+/* Correction queue-source-01: the Reference-facts queue's "Manual" source
+   badge — the deliberate NON-fuchsia counterpart to .ai-pill. Reuses the
+   same neutral tokens as .badge-historical (it names a provenance fact, not
+   a review state — same reasoning as .badge-ocr's comment above), so a
+   manual create never reads as more/less trustworthy than an AI proposal,
+   only as differently sourced. */
+.badge-manual {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
 /* Sprint 7e (ADR-0026): OCR provenance badge — marks a document with at least
    one OCR'd page. Reuses the --info tokens (like .badge-national) rather than
    introducing a new color pair — it names a provenance fact, not a review
