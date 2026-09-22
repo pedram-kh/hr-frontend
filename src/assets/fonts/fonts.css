@@ -1,0 +1,48 @@
+/* =============================================================================
+   Sprint 11a — self-hosted brand fonts (Montserrat, Playfair Display).
+   Source: hr-docs/sedena/{Montserrat.zip,Playfair_Display/}. Only the two
+   variable-font files per family are used (not the 18+14 static-weight
+   files) — the variable font's wght axis (100-900) covers every weight the
+   design system needs via plain `font-weight`, exactly like the discrete
+   Inter weights this replaces. Converted TTF → WOFF2 and subset to
+   latin + latin-ext (covers Spanish/Basque accented characters — á é í ó ú
+   ñ ü ç) with fontTools' pyftsubset; fvar/gvar/avar verified intact after
+   subsetting. The second, non-Display "Playfair/" family in hr-docs/sedena
+   is deliberately NOT included (§G.3 Q3 — not what the spec asked for).
+
+   Same-origin, served from /assets/ alongside the JS/CSS bundle — no CSP
+   exception needed under any policy (there is no CSP today; see
+   sprint-11a/plan.md §A.4).
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('./Montserrat-VariableFont_wght.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('./Montserrat-Italic-VariableFont_wght.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('./PlayfairDisplay-VariableFont_wght.woff2') format('woff2-variations');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('./PlayfairDisplay-Italic-VariableFont_wght.woff2') format('woff2-variations');
+  font-weight: 400 900;
+  font-style: italic;
+  font-display: swap;
+}

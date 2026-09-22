@@ -5,6 +5,20 @@ import {
   type DocumentRow,
 } from '../../lib/api';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
+import { FilterToolbar } from '../../components/FilterToolbar';
+import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels';
+
+const RETRIEVAL_BADGE_CLASS: Record<string, string> = {
+  active: 'badge-verified',
+  historical: 'badge-historical',
+  draft: 'badge-review',
+};
+
+const TAGGING_BADGE_CLASS: Record<string, string> = {
+  verified: 'badge-verified',
+  under_review: 'badge-review',
+  auto_proposed: 'badge-historical',
+};
 
 // Sprint 7e verification fix (pre-existing gap, not new scope — review.md §2):
 // reads/writes a `#doc=<uuid>` location hash so a specific document card can
@@ -114,19 +128,50 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
   return (
     <>
     <div className="docs-main">
-        <div className="docs-toolbar">
-          <label className="btn btn-primary">
-            Upload folder
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              // @ts-expect-error non-standard but widely supported folder upload
-              webkitdirectory=""
-              onChange={onUpload}
-              style={{ display: 'none' }}
-            />
-          </label>
+        <FilterToolbar
+          primary={
+            <>
+              <label className="btn btn-primary">
+                Upload folder
+                <input
+                  ref={fileInput}
+                  type="file"
+                  multiple
+                  // @ts-expect-error non-standard but widely supported folder upload
+                  webkitdirectory=""
+                  onChange={onUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {convenioId != null && (
+                <span className="chip">
+                  Convenio #{convenioId}
+                  <button
+                    type="button"
+                    className="chip-x"
+                    aria-label="Quitar filtro de convenio"
+                    onClick={() => {
+                      setPage(1);
+                      setConvenioId(null);
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {uploadMsg && <span className="muted">{uploadMsg}</span>}
+            </>
+          }
+          filters={{ taggingStatus, conflictsOnly }}
+          onClear={() => { onTaggingStatusChange(''); onConflictsOnlyChange(false); }}
+          total={
+            // Sprint 7e verification fix: the total is always visible, on every
+            // page, so a paginate(50) cap can never again silently hide rows.
+            <span className="muted docs-total">
+              {meta.total} document{meta.total === 1 ? '' : 's'}
+            </span>
+          }
+        >
           <select
             className="select"
             value={taggingStatus}
@@ -145,29 +190,7 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
             />
             Conflicts only
           </label>
-          {convenioId != null && (
-            <span className="chip">
-              Convenio #{convenioId}
-              <button
-                type="button"
-                className="chip-x"
-                aria-label="Quitar filtro de convenio"
-                onClick={() => {
-                  setPage(1);
-                  setConvenioId(null);
-                }}
-              >
-                ×
-              </button>
-            </span>
-          )}
-          {uploadMsg && <span className="muted">{uploadMsg}</span>}
-          {/* Sprint 7e verification fix: the total is always visible, on every
-              page, so a paginate(50) cap can never again silently hide rows. */}
-          <span className="muted docs-total">
-            {meta.total} document{meta.total === 1 ? '' : 's'}
-          </span>
-        </div>
+        </FilterToolbar>
 
         {error && <p className="error">{error}</p>}
         {loading ? (
@@ -200,8 +223,19 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
                   <td>{r.convenio ?? '—'}</td>
                   <td>{r.document_type ?? '—'}</td>
                   <td className="num">{r.validity_start ? `${r.validity_start} → ${r.validity_end}` : '—'}</td>
-                  <td>{r.retrieval_status}</td>
-                  <td>{r.tagging_status}</td>
+                  {/* Sprint 11a (§D.2) — was the raw enum string in both
+                      columns; label + badge mirror the pattern already used
+                      for retrieval_status in DocumentDetailPanel's own list. */}
+                  <td>
+                    <span className={`badge ${RETRIEVAL_BADGE_CLASS[r.retrieval_status] ?? 'badge-historical'}`}>
+                      {retrievalStatusLabel(r.retrieval_status)}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${TAGGING_BADGE_CLASS[r.tagging_status] ?? 'badge-historical'}`}>
+                      {taggingStatusLabel(r.tagging_status)}
+                    </span>
+                  </td>
                   <td className="flags">
                     {r.has_open_conflict && (
                       <span className="badge badge-conflict">

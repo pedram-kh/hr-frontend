@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { CardDrawer } from './EscalationCardDrawer';
 import { ESCALATION_REASON_FILTERS } from '../../lib/escalationReasons';
+import { FilterToolbar } from '../../components/FilterToolbar';
 
 const COLUMN_LABELS: Record<EscalationStatus, string> = {
   new: 'Nuevas',
@@ -152,7 +153,17 @@ export function EscalationBoardPage({
   return (
     <>
     <div className="docs-main">
-        <div className="map-toolbar">
+        <FilterToolbar
+          primary={
+            !canWork && (
+              <span className="notice notice--neutral board-readonly">
+                <span aria-hidden="true">🔒</span> Solo lectura — no tienes el permiso <code>escalation.work</code>.
+              </span>
+            )
+          }
+          filters={{ reason, mineOnly }}
+          onClear={() => { setReason(''); setMineOnly(false); }}
+        >
           <select
             className="select"
             value={reason}
@@ -172,12 +183,7 @@ export function EscalationBoardPage({
             />
             Solo asignadas a mí
           </label>
-          {!canWork && (
-            <span className="notice notice--neutral board-readonly">
-              <span aria-hidden="true">🔒</span> Solo lectura — no tienes el permiso <code>escalation.work</code>.
-            </span>
-          )}
-        </div>
+        </FilterToolbar>
 
         {error && <p className="error">{error}</p>}
 

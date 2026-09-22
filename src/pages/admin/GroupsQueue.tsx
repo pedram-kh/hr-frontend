@@ -18,6 +18,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 import { firstLine } from '../../lib/format';
+import { factStatusLabel, groupNodeStatusLabel } from '../../lib/statusLabels';
 
 // Sprint 7f (ADR-0028) — the Groups review tab.
 //
@@ -210,7 +211,7 @@ function ConvenioTree({
                   <td>
                     <code>{f.group_label ?? '—'}</code>
                     <span className={`badge ${f.fact_status === 'verified' ? 'ok' : 'ai'}`}>
-                      {f.fact_status}
+                      {factStatusLabel(f.fact_status)}
                     </span>
                   </td>
                   <td className="small">{f.value}</td>
@@ -362,7 +363,7 @@ function NodeCard({
         </code>
         <span className="muted small">({node.normalization_rule})</span>
         <span className={`badge ${pending ? 'ai' : node.status === 'approved' ? 'ok' : 'muted'}`}>
-          {node.status}
+          {groupNodeStatusLabel(node.status)}
         </span>
         <span className="muted small">{node.source}</span>
         {node.bound_fact_count > 0 && (
@@ -394,7 +395,7 @@ function NodeCard({
                     }}
                   />
                 )}{' '}
-                {c.name} <span className="badge">{c.status}</span>
+                {c.name} <span className="badge">{groupNodeStatusLabel(c.status)}</span>
                 {c.group_code_evidence && (
                   <span className="muted"> · indicio: {c.group_code_evidence}</span>
                 )}
@@ -554,7 +555,7 @@ function NodeCard({
                     </td>
                     <td>
                       <span className={`badge ${f.fact_status === 'verified' ? 'ok' : 'ai'}`}>
-                        {f.fact_status}
+                        {factStatusLabel(f.fact_status)}
                       </span>
                       {f.already_bound && <span className="badge ok">ya vinculado</span>}
                     </td>

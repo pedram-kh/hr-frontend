@@ -22,6 +22,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 import { ProposeVocabularyForm } from './ProposeVocabularyForm';
+import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels';
 
 // Right-hand document card: scope facets + inline provenance, validity/status,
 // chunk health, lineage, the provenance timeline, the real-document viewer, the
@@ -254,10 +255,14 @@ export function DocumentDetailPanel({
           <Facet label="Validity" value={doc.validity_start ? `${doc.validity_start} → ${doc.validity_end ?? '—'}` : '—'} />
         </div>
         <dl className="kv">
-          <dt>Retrieval</dt><dd>{doc.retrieval_status}</dd>
+          {/* Sprint 11a (§D.2) — a genuine detail view (spec's own carve-out),
+              but had no label at all, raw key only. Label + raw key kept
+              alongside, satisfying both the list/detail distinction and the
+              engineer's need for the exact key. */}
+          <dt>Retrieval</dt><dd>{retrievalStatusLabel(doc.retrieval_status)} ({doc.retrieval_status})</dd>
           <dt>Authority</dt><dd>{doc.authority_level}</dd>
           <dt>Language</dt><dd>{doc.language}</dd>
-          <dt>Status</dt><dd>{doc.tagging_status} ({doc.tagging_confidence ?? '—'})</dd>
+          <dt>Status</dt><dd>{taggingStatusLabel(doc.tagging_status)} ({doc.tagging_status}) · confianza {doc.tagging_confidence ?? '—'}</dd>
         </dl>
       </section>
 
@@ -588,7 +593,7 @@ function LineageRow({ item, rel }: { item: LineageRef; rel: string }) {
     <div className="lineage-row">
       <span className="lineage-rel">{rel}</span>
       <span className="lineage-title">{item.title}</span>
-      <span className={`badge badge-${item.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{item.retrieval_status}</span>
+      <span className={`badge badge-${item.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{retrievalStatusLabel(item.retrieval_status)}</span>
       <span className="timeline-meta">{item.validity_start ?? '—'} → {item.validity_end ?? '—'}</span>
     </div>
   );
@@ -893,7 +898,7 @@ function SandboxPanel({ uuid, title }: { uuid: string; title: string }) {
       {res && (
         <div className={`sandbox-result ${outcome === 'answer' ? 'is-answer' : 'is-escalate'}`}>
           <div className="sandbox-outcome">
-            <span className={`badge ${outcome === 'answer' ? 'badge-verified' : 'badge-review'}`}>{outcome ?? 'result'}</span>
+            <span className={`badge ${outcome === 'answer' ? 'badge-verified' : 'badge-review'}`}>{outcome === 'answer' ? 'Respondida' : outcome ? 'Escalada' : 'result'}</span>
             {res.trace.retrieval && <span className="timeline-meta"> retrieved {res.trace.retrieval.returned} · top {res.trace.retrieval.top_score?.toFixed?.(3)}</span>}
           </div>
           <p className="sandbox-answer">{res.answer}</p>
