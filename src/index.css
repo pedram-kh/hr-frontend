@@ -427,10 +427,6 @@ a {
   border-bottom: 1px solid var(--border);
 }
 
-.shell-header strong {
-  margin-right: auto;
-}
-
 .shell-body {
   padding: var(--space-5);
   max-width: 720px;
@@ -630,6 +626,53 @@ a {
    also rendered plain in EmployeeShell) is inert anywhere else. */
 .shell-sidebar--collapsed [data-tooltip] {
   position: relative;
+}
+
+.shell-mobile-nav-btn {
+  display: none;
+}
+
+.shell-sidebar-backdrop {
+  display: none;
+}
+
+/* --- Mobile polish (Sprint 11c §E.1 scope addition) --- Below the
+   breakpoint the sidebar is off-canvas by default and overlays the content
+   (instead of consuming it) once opened via `.shell-mobile-nav-btn`; a
+   backdrop dismisses it, same as clicking a nav item. AdminShell omits
+   `.shell-sidebar--collapsed` from the class list while
+   `.shell-sidebar--mobile-open` is set, so none of the collapsed-icon-rail
+   rules above apply here — the open drawer is always full nav text. Same
+   640px breakpoint as the employee chat header, just above. */
+@media (max-width: 640px) {
+  .shell-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 70;
+    width: var(--sidebar-width);
+    flex-basis: var(--sidebar-width);
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-panel);
+    transition: transform 0.2s ease;
+  }
+  .shell-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+  .shell-sidebar-collapse-btn {
+    display: none;
+  }
+  .shell-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-backdrop);
+    z-index: 65;
+  }
+  .shell-mobile-nav-btn {
+    display: inline-flex;
+    margin-bottom: var(--space-3);
+  }
 }
 
 .shell-sidebar--collapsed [data-tooltip]:hover::after,
@@ -1488,6 +1531,57 @@ a {
   display: flex;
 }
 
+/* Sprint 11c (§E.1 scope addition) — chat header wordmark, same sizing rule
+   as `.shell-sidebar-logo` (height-constrained, width auto, never distorts). */
+.shell-header--chat {
+  position: relative;
+}
+.shell-header-logo {
+  height: 24px;
+  width: auto;
+  max-width: 100%;
+  flex-shrink: 1;
+  margin-right: auto;
+}
+.shell-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.shell-header-menu-btn {
+  display: none;
+}
+
+/* --- Mobile polish (Sprint 11c §E.1 scope addition) --- Below this width the
+   chat header collapses to logo + hamburger; `.shell-header-actions` (email,
+   theme toggle, logout) moves from inline to a dropdown under the header,
+   opened by `.shell-header-menu-btn`. The admin sidebar gets the matching
+   treatment further below. 640px is this app's one mobile breakpoint —
+   plain px, since custom properties can't be read inside `@media`. */
+@media (max-width: 640px) {
+  .shell-header-actions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    z-index: 20;
+  }
+  .shell-header-actions.is-open {
+    display: flex;
+  }
+  .shell-header-menu-btn {
+    display: inline-flex;
+  }
+}
+
 .chat {
   display: flex;
   flex-direction: column;
@@ -1940,6 +2034,55 @@ a {
   background: var(--surface);
   padding: var(--space-3);
   min-height: 200px;
+}
+
+/* --- Grafo (Sprint 11c, plan.md §D.1) --- 3D/2D renderers need an explicit
+   pixel height (unlike Hierarchy's SVG, which sizes to content); .map-canvas's
+   200px min-height alone would render a cramped graph. */
+.grafo-canvas-wrap {
+  padding: 0;
+  overflow: hidden;
+  height: 70vh;
+  min-height: 480px;
+  position: relative;
+}
+.grafo-canvas {
+  width: 100%;
+  height: 100%;
+}
+.grafo-caption {
+  margin-top: var(--space-2);
+}
+/* Filter chips (Sprint 11c, plan.md §D.3) — `.chip`/`.chip-x` as-is
+   (DocumentsPage's convenio filter), plus a toggle-active state this section
+   is the first to need. */
+.grafo-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+.chip-toggle {
+  cursor: pointer;
+}
+.chip-toggle.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+.grafo-filters-clear {
+  font-size: var(--text-sm);
+  text-decoration: underline;
+}
+/* CSS2DRenderer label for the 46 persistent scope nodes (3D view only —
+   the 2D view draws its label text directly on canvas). */
+.grafo-label {
+  color: var(--text);
+  font: 12px var(--font-sans, sans-serif);
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface);
 }
 
 /* --- Lens list (indented disclosure tree) --- */

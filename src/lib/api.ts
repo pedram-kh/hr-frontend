@@ -461,6 +461,63 @@ export function getCoverageGaps(): Promise<CoverageGaps> {
   return request('/admin/coverage-gaps', { method: 'GET' });
 }
 
+// ----------------------------------------------------------------------------
+// Sprint 11c — the knowledge graph (plan.md §A.5). Field-for-field the shape
+// `KnowledgeGraphBuilder::build()` returns; `type`/`state`/`kind`/`provenance`
+// are the exact closed enums it emits — see that class's docblock.
+// ----------------------------------------------------------------------------
+
+export type KnowledgeGraphNodeType = 'convenio' | 'document' | 'fact' | 'territory' | 'sector' | 'topic';
+export type KnowledgeGraphEdgeKind =
+  | 'document_convenio'
+  | 'document_topic'
+  | 'fact_convenio'
+  | 'fact_topic'
+  | 'convenio_territory'
+  | 'convenio_sector';
+export type KnowledgeGraphEdgeProvenance = 'system' | 'unverified_ai';
+
+export interface KnowledgeGraphNode {
+  id: string;
+  type: KnowledgeGraphNodeType;
+  label: string;
+  state: 'scope' | 'active' | 'draft' | 'historical' | 'verified' | 'unverified_ai';
+  degree: number;
+  counts: Record<string, number>;
+  folded?: { territory: string | null; sector: string | null };
+  source_document?: { id: number; title: string } | null;
+  link: string | null;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  kind: KnowledgeGraphEdgeKind;
+  provenance: KnowledgeGraphEdgeProvenance;
+}
+
+export interface KnowledgeGraphResponse {
+  generated_at: string;
+  counts: {
+    nodes: number;
+    edges: number;
+    hidden: {
+      convenios_excluded: number;
+      documents_orphan: number;
+      facts_rejected: number;
+      territories_not_drawn: number;
+      sectors_not_drawn: number;
+      topics_not_drawn: number;
+    };
+  };
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+}
+
+export function getKnowledgeGraph(): Promise<KnowledgeGraphResponse> {
+  return request('/admin/knowledge-graph', { method: 'GET' });
+}
+
 export function getDocumentSourceUrl(uuid: string): Promise<{ url: string; content_type: string | null; filename: string | null }> {
   return request(`/admin/documents/${uuid}/source`, { method: 'GET' });
 }
