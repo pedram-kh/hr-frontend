@@ -6,23 +6,34 @@
    ========================================================================== */
 
 :root {
-  /* --- Brand / accent (shared by both themes) --- */
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-weak: #eff4ff;
+  /* --- Brand / accent (shared by both themes) ---
+     Sprint 11a: Verde Sedena remap (ADR-0012 token values only — no new
+     architecture). --teal/--teal-weak retired (§G.3 Q1); its two use sites
+     (.lens-row--ruling, .lens-node--ruling) now read --brand-warm. */
+  --accent: #2b6565;
+  --accent-hover: #224f4f;
+  --accent-weak: #dce9e6;
   --accent-contrast: #ffffff;
-  --teal: #0d9488;
-  --teal-weak: #f0fdfa;
 
-  /* --- Semantic state — LIGHT (foreground + soft tint) --- */
+  /* --- Brand warm (Arena) — icon/decoration/background only. NEVER used as
+     foreground text on any surface in either theme (fails AA even on its own
+     -bg tint) — see design-system.md, sprint-11a/plan.md §A.2.1. --brand-warm-bg
+     also stands in for the retired --teal-weak's role. */
+  --brand-warm: #d9b56d;
+  --brand-warm-bg: #f9f4e9;
+
+  /* --- Semantic state — LIGHT (foreground + soft tint) ---
+     Sprint 11a Option B (§G.3 Q2): retuned toward the palette's warmth,
+     preserving hue separation from the new teal-green accent. Every value
+     still clears AA on --surface and on its own -bg tint. */
   --danger: #b42318;
-  --danger-bg: #fef3f2;
-  --warning: #b54708;
-  --warning-bg: #fffaeb;
-  --success: #067647;
-  --success-bg: #ecfdf3;
-  --info: #175cd3;
-  --info-bg: #eff8ff;
+  --danger-bg: #f8e9e8;
+  --warning: #946200;
+  --warning-bg: #f4efe6;
+  --success: #2f7a3d;
+  --success-bg: #eaf2ec;
+  --info: #2a6ea6;
+  --info-bg: #eaf0f6;
   --neutral: #475467;
   --neutral-bg: #f2f4f7;
 
@@ -35,16 +46,36 @@
      confirmed content. fuchsia-400. */
   --provenance-ai: #e879f9;
 
-  /* --- Surfaces & text — LIGHT (default) --- */
-  --canvas: #f8fafc;
+  /* --- Surfaces & text — LIGHT (default) ---
+     Sprint 11a: Gris Claro canvas, Verde Profundo text. Cards/panels stay
+     pure white so they visibly lift off the new canvas. */
+  --canvas: #f3f4f2;
   --surface: #ffffff;
-  --surface-raised: #f2f4f7;
-  --surface-inset: #f8fafc;
-  --text: #101828;
-  --text-muted: #475467;
-  --text-faint: #98a2b3;
-  --border: #e4e7ec;
-  --border-strong: #d0d5dd;
+  --surface-raised: #e4e5e3;
+  --surface-inset: #eeefed;
+  --text: #173f3e;
+  --text-muted: #425a65;
+  --text-faint: #788996;
+  --border: #d6d7d5;
+  --border-strong: #bebebd;
+
+  /* --- Map/graph edge (non-text UI) --- CP-1 dark-mode fix: SVG connector
+     lines (lens-graph tree edges, trend-chart axes) were reading --border /
+     --border-strong, which are tuned for hairline borders next to their own
+     surface and fall near 1:1 contrast on a dark canvas — effectively
+     invisible. This token is sized for a STROKE against --canvas specifically
+     (WCAG 1.4.11 non-text target ≥3:1; here ≥2:1 per reviewer's explicit
+     floor), independent of --border so fixing this can't quietly change
+     every hairline border in the app. 2.96:1 on --surface, 2.69:1 on
+     --canvas. */
+  --map-edge: #8a9997;
+
+  /* --- Overlay --- Sprint 11a: consolidates the two ad-hoc backdrop rgba
+     literals (.detail-backdrop, .modal-backdrop) into one token (§A.3). */
+  --overlay-backdrop: rgba(16, 24, 40, 0.55);
+
+  /* --- Shadow (medium — modal/dropdown elevation) --- */
+  --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.18);
 
   /* --- Spacing scale (4px base) --- */
   --space-1: 4px;
@@ -77,8 +108,12 @@
   --text-xl: 22px;
   --text-xl-lh: 1.3;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+  /* Sprint 11a: Montserrat replaces Inter (self-hosted variable font, see
+     src/assets/fonts/fonts.css). --font-display is new — Sedena's brand
+     serif, applied to headings only (§A.4). */
+  --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
     Arial, sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
 
   font-family: var(--font-sans);
   color: var(--text);
@@ -86,23 +121,48 @@
   color-scheme: light;
 }
 
-/* --- DARK theme: same token names, shifted values --- */
+/* --- DARK theme: same token names, shifted values ---
+   Sprint 11a: Verde Profundo itself becomes the dark "surface" (already a
+   near-black green), so dark mode reads as genuinely brand-colored rather
+   than a generic slate. See sprint-11a/plan.md §A.2 for every ratio. */
 [data-theme='dark'] {
   /* Surfaces & text */
-  --canvas: #0b1220;
-  --surface: #161b26;
-  --surface-raised: #222936;
+  --canvas: #0f2b2a;
+  --surface: #173f3e;
+  --surface-raised: #335655;
   --surface-inset: #0e131c;
-  --text: #f4f6fa;
-  --text-muted: #9aa4b2;
+  --text: #edf3f1;
+  /* Corrected by Pedram from the original proposal (#e7f0ed, ~same as --text,
+     which lost the hierarchy) — 6.31:1 on --surface, still clearly a step
+     below --text while staying comfortably AA-normal. */
+  --text-muted: #afc4bf;
   --text-faint: #667085;
   --border: #222936;
   --border-strong: #333c4a;
+  /* 3.22:1 on --canvas, 2.48:1 on --surface — both clear the reviewer's ≥2:1
+     floor for non-text UI, unlike --border-strong's 1.04–1.35:1 here. */
+  --map-edge: #5c7a78;
+  --overlay-backdrop: rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
 
-  /* Accent: keep role; lift tint onto dark surface */
-  --accent-weak: rgba(37, 99, 235, 0.18);
-  --teal: #2dd4bf;
-  --teal-weak: rgba(13, 148, 136, 0.18);
+  /* Accent: Corrected by Pedram from the original proposal (#759b9b, an
+     AA-large-only 3.81:1) to #94b9b8 — this token IS used as text (links,
+     active nav), so it must clear AA-normal. 5.44:1 on --surface, 7.07:1 on
+     --canvas. --accent-hover lightens further for a "brighten on hover" dark
+     UI convention; --accent-contrast is the dark foreground for a
+     solid-fill accent button (8.01:1 on --accent, 9.13:1 on --accent-hover).
+     --accent-weak is retinted from the old blue (rgba(37,99,235,…)) to match
+     the new teal-green hue — leaving it blue would have painted every
+     selected row/filter chip the *old* accent's color in dark mode. */
+  --accent: #94b9b8;
+  --accent-hover: #a4c4c3;
+  --accent-contrast: #06201f;
+  --accent-weak: rgba(43, 101, 101, 0.22);
+
+  /* Brand warm (Arena), lightened for dark-surface legibility — icon/bg only,
+     same restriction as light (never used as foreground text). */
+  --brand-warm: #debe7f;
+  --brand-warm-bg: rgba(217, 181, 109, 0.16);
 
   /* Semantic state: brighter foregrounds + low-alpha tints */
   --danger: #ff9a8d;
@@ -140,12 +200,14 @@ body {
 }
 
 h1 {
+  font-family: var(--font-display);
   font-size: var(--text-xl);
   line-height: var(--text-xl-lh);
   font-weight: 700;
 }
 
 h2 {
+  font-family: var(--font-display);
   font-size: var(--text-xl);
   line-height: var(--text-xl-lh);
   font-weight: 700;
@@ -378,16 +440,216 @@ a {
   max-width: none;
 }
 
-.shell-nav {
+/* =============================================================================
+   Admin shell — collapsible left sidebar (Sprint 11a CP-2 revision, §B.2)
+   Replaces the CP-2-round-1 top-bar nav. `.shell`/`.shell-header`/`.shell-body`
+   above are untouched and still used verbatim by EmployeeShell (chat) — this
+   block is additive, entered only via `.shell--with-sidebar` on the root div,
+   so nothing here can affect the employee-facing shell.
+   ========================================================================== */
+.shell--with-sidebar {
   display: flex;
-  gap: var(--space-1);
+  align-items: stretch;
+}
+
+.shell--with-sidebar > .shell-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell-sidebar {
+  --sidebar-width: 230px;
+  --sidebar-width-collapsed: 56px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--map-edge);
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: flex-basis 0.15s ease, width 0.15s ease;
+}
+
+.shell-sidebar--collapsed {
+  flex-basis: var(--sidebar-width-collapsed);
+  width: var(--sidebar-width-collapsed);
+}
+
+.shell-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.shell-sidebar--collapsed .shell-sidebar-header {
+  justify-content: center;
+}
+
+/* logo.svg is a wide wordmark (~4.86:1) — sized by height, width auto, so it
+   never distorts. .shell-sidebar-title (the separate BRAND.productName text)
+   was intentionally dropped in favor of this image's own `alt`; see the
+   comment at its call site in AdminShell.tsx. */
+.shell-sidebar-logo {
+  height: 24px;
+  width: auto;
+  max-width: 100%;
+  flex-shrink: 1;
   margin-right: auto;
 }
 
-.shell-nav .btn.active {
-  font-weight: 700;
-  color: var(--text);
+.shell-sidebar--collapsed .shell-sidebar-logo {
+  display: none;
+}
+
+.shell-sidebar-collapse-btn {
+  flex-shrink: 0;
+  min-height: 28px;
+  min-width: 28px;
+  padding: var(--space-1);
+  margin-left: auto;
+}
+
+.shell-sidebar--collapsed .shell-sidebar-collapse-btn {
+  margin-left: 0;
+}
+
+/* The nav itself — vertical groups, replacing the old horizontal .shell-nav
+   bar entirely (the class names are kept for continuity with the concepts
+   they name, but this is the only place that renders one). */
+.shell-nav--sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  overflow-y: auto;
+}
+
+.shell-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shell-nav-group + .shell-nav-group {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.shell-nav-group-label {
+  padding: 0 var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.shell-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+}
+
+.shell-sidebar--collapsed .shell-nav-item {
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+.shell-nav-item:hover {
   background: var(--surface-raised);
+  color: var(--text);
+}
+
+.shell-nav-item.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
+.shell-nav-item.active:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.shell-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.shell-sidebar-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.shell-sidebar--collapsed .shell-sidebar-user {
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+/* Any text this sidebar hides when collapsed — nav item labels, the group
+   header, the product name, the theme-toggle/logout labels, the email. Inert
+   everywhere else in the app (no `.shell-sidebar--collapsed` ancestor). */
+.shell-sidebar-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shell-sidebar--collapsed .shell-sidebar-text {
+  display: none;
+}
+
+/* Instant, token-styled tooltip for collapsed-sidebar icon-only items — no
+   native `title` delay. Scoped strictly under `.shell-sidebar--collapsed`,
+   so a `data-tooltip` attribute on a shared component (e.g. ThemeToggle,
+   also rendered plain in EmployeeShell) is inert anywhere else. */
+.shell-sidebar--collapsed [data-tooltip] {
+  position: relative;
+}
+
+.shell-sidebar--collapsed [data-tooltip]:hover::after,
+.shell-sidebar--collapsed [data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--map-edge);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  z-index: 20;
+  pointer-events: none;
 }
 
 /* =============================================================================
@@ -420,6 +682,37 @@ a {
    toolbar's trailing edge regardless of how many filters are active. */
 .docs-total {
   margin-left: auto;
+}
+
+/* Sprint 11a (§C.2) — FilterToolbar chrome. Reuses .docs-toolbar's own flex
+   layout for both rows so wrapping a screen in this component changes
+   nothing about how its existing controls look. */
+.filter-toolbar {
+  margin-bottom: var(--space-3);
+}
+
+.filter-toolbar .docs-toolbar {
+  margin-bottom: 0;
+}
+
+.filter-toolbar-filters {
+  margin-top: var(--space-2);
+}
+
+.filter-toolbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
 }
 
 /* Sprint 7e verification fix: the pager beneath the table — always rendered
@@ -723,7 +1016,7 @@ a {
 .detail-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(16, 24, 40, 0.55);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1006,6 +1299,119 @@ a {
   border-radius: 6px;
   padding: 0.05rem 0.4rem;
   font-weight: 600;
+}
+
+/* Sprint 11a fix (pre-existing gap, §G.3 Q5): GroupsQueue.tsx renders
+   className="badge ai" and className="panel node ai" for pending-AI rows,
+   but no ".badge.ai"/".node.ai" rule existed — these rendered with no
+   provenance styling at all. Mirrors .ai-pill / .ai-marked exactly. */
+.badge.ai {
+  color: var(--provenance-ai);
+  background: color-mix(in srgb, var(--provenance-ai) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--provenance-ai) 60%, transparent);
+}
+.node.ai {
+  border-left: 3px solid var(--provenance-ai);
+}
+
+/* CP-1 fix: GroupsQueue.tsx also renders className="badge ok"/"badge muted"
+   (approved/bound-fact and rejected-or-unbound states) — same gap as
+   .badge.ai above, just not yet noticed because the base .badge still gave
+   these SOME shape. Mirrors .badge-verified / .badge-historical exactly. */
+.badge.ok {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.badge.muted {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
+/* =============================================================================
+   CP-1 dark-mode polish — Review > Groups tab (GroupsQueue.tsx)
+   Reviewer feedback: group panels, proposal cards and the unlinked-facts
+   table blur together in dark mode. Root cause is the same family as the
+   .lens-edge/.chart-line-axis fix above: several elements this page renders
+   (`.panel`'s border-left-only card, the `table compact` grid, `.excerpt`)
+   had no real edge or background step in EITHER theme — just not noticeable
+   in light, where surface-vs-canvas already carries enough contrast on its
+   own. --map-edge is reused here (not --border/--border-strong, which read
+   at ~1:1–1.35:1 against the dark canvas/surface — see the token's own
+   comment) anywhere an edge needs to actually be seen, not just imply a
+   hairline. Scoped to .groups-queue so it cannot touch the reference-fact
+   create modal, which also uses the bare .panel class. Structure/layout is
+   unchanged, per instruction — surfaces and borders only. */
+
+.groups-queue .panel {
+  /* Level 2 surface: the card floats off the page (--canvas, level 1) on
+     --surface, with a real, visible border instead of border-left-only +
+     a shadow that's near-invisible dark-on-dark. */
+  border: 1px solid var(--map-edge);
+  border-radius: var(--radius-md);
+}
+
+.groups-queue .excerpt {
+  /* Level 3 surface: the quoted convenio line, nested inside a level-2 card. */
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border-left: 3px solid var(--map-edge);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-lh);
+  color: var(--text-muted);
+}
+
+.groups-queue .table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--map-edge);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.groups-queue .table th,
+.groups-queue .table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.groups-queue .table.compact th,
+.groups-queue .table.compact td {
+  padding: var(--space-1) var(--space-2);
+}
+
+.groups-queue .table thead th {
+  /* Level 3 surface: the header sits one step up from the table's own
+     level-2 body — the same convention .docs-table already established. */
+  background: var(--surface-raised);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-lh);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.groups-queue .table tbody tr:hover {
+  background: var(--surface-raised);
+}
+
+.groups-queue .table tbody tr.selected {
+  background: var(--accent-weak);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.groups-queue .table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.groups-queue .table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline-action {
@@ -1565,8 +1971,11 @@ a {
   color: var(--text-muted);
 }
 .lens-row--ruling {
-  border-left: 2px solid var(--teal);
-  background: var(--teal-weak);
+  /* Sprint 11a: --teal/--teal-weak retired (§G.3 Q1); this was their one
+     other use site (see .lens-node--ruling below), repointed to the new
+     --brand-warm role — decorative border/tint only, never text. */
+  border-left: 2px solid var(--brand-warm);
+  background: var(--brand-warm-bg);
 }
 .lens-caret {
   font-size: 9px;
@@ -1620,7 +2029,7 @@ a {
   pointer-events: none;
 }
 .lens-edge {
-  stroke: var(--border-strong);
+  stroke: var(--map-edge);
   stroke-width: 1.5;
 }
 .lens-edge--gap {
@@ -1653,7 +2062,7 @@ a {
   background: var(--surface-inset);
 }
 .lens-node--ruling {
-  border: 2px solid var(--teal) !important;
+  border: 2px solid var(--brand-warm) !important;
 }
 .lens-node.has-gap {
   border-color: var(--warning);
@@ -1776,7 +2185,7 @@ a {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(16, 24, 40, 0.45);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1949,7 +2358,7 @@ a {
 .board-card--ghost {
   opacity: 0.9;
   cursor: grabbing;
-  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.25));
+  box-shadow: var(--shadow-md);
   pointer-events: none;
 }
 .board-col--over .board-col-body {
@@ -2451,7 +2860,11 @@ a {
 }
 
 .chart-line-axis {
-  stroke: var(--border);
+  /* CP-1 fix: was --border (1.03–1.26:1 in dark, near-invisible against
+     --canvas/--surface). This is the shared trend-chart primitive, so this
+     one change also fixes it wherever it's used — Cobertura's trend charts
+     included. */
+  stroke: var(--map-edge);
   stroke-width: 1;
 }
 

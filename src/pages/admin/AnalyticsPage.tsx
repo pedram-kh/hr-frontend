@@ -10,6 +10,7 @@ import {
 } from '../../lib/api';
 import { BarChart, KpiTile } from './charts';
 import { escalationReasonLabel } from '../../lib/escalationReasons';
+import { subOutcomeLabel } from '../../lib/statusLabels';
 
 /**
  * Sprint 8, Step 7 (plan.md §2/§3/§4, ADR-0030) — the Analítica screen.
@@ -98,7 +99,10 @@ export function AnalyticsPage() {
                     literally "estatuto_fallback_gap") — no label lookup
                     existed on this screen at all. */}
                 <td>{escalationReasonLabel(row.reason)}</td>
-                <td className="muted">{row.sub_outcome ?? '—'}</td>
+                {/* Sprint 11a (§D.2) — was the raw sub_outcome enum key
+                    (e.g. "subarea_not_recorded"); short labels sourced from
+                    EscalationExplainer::MATRIX's own registry. */}
+                <td className="muted">{subOutcomeLabel(row.reason, row.sub_outcome)}</td>
                 <td>
                   {row.fix_link ? (
                     <a href={row.fix_link}>{row.fix_action ?? row.fix_surface ?? 'Corregir'}</a>

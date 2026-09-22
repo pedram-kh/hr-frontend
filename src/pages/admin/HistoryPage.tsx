@@ -15,7 +15,8 @@ import {
 } from '../../lib/api';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
-import { ESCALATION_REASON_FILTERS } from '../../lib/escalationReasons';
+import { ESCALATION_REASON_FILTERS, escalationReasonLabel } from '../../lib/escalationReasons';
+import { FilterToolbar } from '../../components/FilterToolbar';
 
 // Correction-02 (C2-1): was a hand-copied, incomplete local array (missing
 // `reference_fact_coverage_gap`, `salary_not_in_chat`, `quality_sample_wrong`
@@ -78,25 +79,29 @@ export function HistoryPage() {
   return (
     <>
       <div className="docs-main">
-        <div className="docs-toolbar">
-          <form onSubmit={runSearch} style={{ display: 'contents' }}>
-            <input
-              className="input"
-              placeholder="Buscar en el contenido de las conversaciones…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Buscar en conversaciones"
-            />
-            <button className="btn btn-secondary" type="submit" disabled={searching || query.trim().length < 2}>
-              {searching ? 'Buscando…' : 'Buscar'}
-            </button>
-          </form>
-          {matches !== null && (
-            <button className="btn btn-ghost" onClick={() => { setMatches(null); setQuery(''); }}>Ver listado</button>
-          )}
-        </div>
-
-        <div className="docs-toolbar">
+        <FilterToolbar
+          primary={
+            <>
+              <form onSubmit={runSearch} style={{ display: 'contents' }}>
+                <input
+                  className="input"
+                  placeholder="Buscar en el contenido de las conversaciones…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Buscar en conversaciones"
+                />
+                <button className="btn btn-secondary" type="submit" disabled={searching || query.trim().length < 2}>
+                  {searching ? 'Buscando…' : 'Buscar'}
+                </button>
+              </form>
+              {matches !== null && (
+                <button className="btn btn-ghost" onClick={() => { setMatches(null); setQuery(''); }}>Ver listado</button>
+              )}
+            </>
+          }
+          filters={filters}
+          onClear={() => setFilters({})}
+        >
           <select className="select" value={filters.convenio_id ?? ''} onChange={(e) => setFilter('convenio_id', e.target.value ? Number(e.target.value) : undefined)} aria-label="Convenio">
             <option value="">Todos los convenios</option>
             {convenios.map((c) => (<option key={c.id} value={c.id}>{c.numero} — {c.name}</option>))}
@@ -115,7 +120,7 @@ export function HistoryPage() {
           </select>
           <input className="input" type="date" value={filters.from ?? ''} onChange={(e) => setFilter('from', e.target.value)} aria-label="Desde" />
           <input className="input" type="date" value={filters.to ?? ''} onChange={(e) => setFilter('to', e.target.value)} aria-label="Hasta" />
-        </div>
+        </FilterToolbar>
 
         {error && <p className="error">{error}</p>}
 
@@ -137,7 +142,10 @@ export function HistoryPage() {
                   <td>{r.last_activity_at?.slice(0, 16).replace('T', ' ') ?? '—'}</td>
                   <td>
                     {r.escalated ? (
-                      <span className="badge badge-review">Escalada{r.escalation_reason ? ` · ${r.escalation_reason}` : ''}</span>
+                      // Sprint 11a (§D.2) — was the raw enum key
+                      // (e.g. "estatuto_fallback_gap"); the shared helper
+                      // Correction-02 already built for this exact reason set.
+                      <span className="badge badge-review">Escalada{r.escalation_reason ? ` · ${escalationReasonLabel(r.escalation_reason)}` : ''}</span>
                     ) : (
                       <span className="badge badge-verified">Respondida</span>
                     )}

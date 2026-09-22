@@ -1,6 +1,7 @@
 import { useAuth } from '../auth/context';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { ChatScreen } from '../pages/chat/ChatScreen';
+import { BRAND } from '../theme/brand';
 
 // Employee chat shell (Sprint 2b-1): the chat surface, built on the design system.
 export function EmployeeShell() {
@@ -9,7 +10,7 @@ export function EmployeeShell() {
   return (
     <div className="shell shell--chat">
       <header className="shell-header">
-        <strong>HR Platform — Chat</strong>
+        <strong>{BRAND.productName} — Chat</strong>
         <span className="muted">{identity?.email}</span>
         <ThemeToggle />
         <button className="btn btn-ghost" onClick={logout}>

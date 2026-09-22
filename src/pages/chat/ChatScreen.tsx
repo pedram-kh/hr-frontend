@@ -10,6 +10,7 @@ import {
   type JobCategoryOption,
 } from '../../lib/api';
 import { stripSourceMarkers } from '../../lib/citationMarkers';
+import { SUGGESTED_QUESTIONS } from '../../lib/suggestedQuestions';
 
 interface UserItem {
   role: 'user';
@@ -225,6 +226,34 @@ function CategoryPickBlock({
   );
 }
 
+// Sprint 11a (§E.2) — the empty-state welcome screen. Reuses `.category-pick`/
+// `.category-pick-option` verbatim (the one existing quick-reply pattern,
+// `CategoryPickBlock` above) rather than inventing new chip CSS. `onPick`
+// sends the question through the exact same `submit()` path as anything
+// typed by hand — no new API surface, no answer-loop touch.
+function WelcomeScreen({ onPick }: { onPick: (question: string) => void }) {
+  return (
+    <div className="chat-empty">
+      <p className="muted">
+        Pregúntame sobre tu convenio: jornada, vacaciones, permisos, festivos… Te
+        respondo según tu ámbito, citando las fuentes.
+      </p>
+      <div className="category-pick" role="group" aria-label="Preguntas frecuentes">
+        {SUGGESTED_QUESTIONS.map((q) => (
+          <button
+            key={q}
+            type="button"
+            className="btn btn-secondary category-pick-option"
+            onClick={() => onPick(q)}
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ChatScreen() {
   const [items, setItems] = useState<Item[]>([]);
   const [input, setInput] = useState('');
@@ -273,8 +302,12 @@ export function ChatScreen() {
     };
   }, []);
 
-  async function submit() {
-    const question = input.trim();
+  // `overrideText` (Sprint 11a §E.2, WelcomeScreen chips) lets a caller submit
+  // a question that never went through the `input` textarea/state — reading
+  // `input` here would otherwise race a same-tick `setInput`, since state
+  // updates aren't applied synchronously.
+  async function submit(overrideText?: string) {
+    const question = (overrideText ?? input).trim();
     if (!question || sending) return;
 
     setError(null);
@@ -334,12 +367,7 @@ export function ChatScreen() {
   return (
     <div className="chat">
       <div className="chat-list">
-        {items.length === 0 && (
-          <p className="muted chat-empty">
-            Pregúntame sobre tu convenio: jornada, vacaciones, permisos, festivos… Te
-            respondo según tu ámbito, citando las fuentes.
-          </p>
-        )}
+        {items.length === 0 && <WelcomeScreen onPick={(q) => void submit(q)} />}
 
         {items.map((item) =>
           item.role === 'user' ? (

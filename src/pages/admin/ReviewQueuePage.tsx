@@ -24,6 +24,7 @@ import { FactDuplicatePanel } from './FactDuplicatePanel';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 import { firstLine } from '../../lib/format';
+import { FilterToolbar } from '../../components/FilterToolbar';
 
 // Sprint 8 follow-up (found live, eyes-on 2026-09-10): 'quality' used to be a
 // tab nested here. Promoted to its own top-level AdminShell view (`Calidad`,
@@ -147,13 +148,16 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
         source (the quoted line for an AI proposal, fuchsia; the linked document for a manual fact) against the
         assigned scope.
       </p>
-      <div className="docs-toolbar">
+      <FilterToolbar
+        filters={{ topicFilter }}
+        onClear={() => setTopicFilter('')}
+        total={<span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>}
+      >
         <select className="select" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)}>
           <option value="">All topics</option>
           {topics.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
         </select>
-        <span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>
-      </div>
+      </FilterToolbar>
       {error && <p className="error">{error}</p>}
       {loading ? (
         <p className="muted">Loading…</p>
@@ -250,9 +254,12 @@ function TaggingQueue() {
       <p className="muted">
         Documents <code>under_review</code> — not retrievable until verified. The AI auto-proposes facets on ingest; lowest-confidence first.
         Open one to review the (fuchsia) AI suggestions and Confirm.
-        {' '}
-        <span className="muted docs-total">{meta.total} document{meta.total === 1 ? '' : 's'}</span>
       </p>
+      {/* Sprint 11a (§C.2) — chrome-only wrap: this tab has no filter controls
+          (§C.1), so FilterToolbar renders no "Filtros" button at all — only
+          the always-visible total, same chrome position as every other
+          filtered/filterless admin screen. */}
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} document{meta.total === 1 ? '' : 's'}</span>} />
       {error && <p className="error">{error}</p>}
       {loading ? (
         <p className="muted">Loading…</p>
@@ -330,9 +337,8 @@ function VocabularyQueue() {
       <p className="muted">
         Proposed vocabulary (variant→alias is the default; create-new is deliberate). Approving writes into the controlled vocabulary —
         gated by <code>vocabulary.approve</code> (super_admin). The AI proposes only.
-        {' '}
-        <span className="muted docs-total">{meta.total} proposal{meta.total === 1 ? '' : 's'}</span>
       </p>
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} proposal{meta.total === 1 ? '' : 's'}</span>} />
       {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (
@@ -397,9 +403,8 @@ function ExpiryQueue() {
       <p className="muted">
         Active prose within 90 days of expiry (or already past). Confirm a successor (same convenio only) to write the lineage —
         the old document is <strong>never auto-retired</strong>.
-        {' '}
-        <span className="muted docs-total">{meta.total} task{meta.total === 1 ? '' : 's'}</span>
       </p>
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} task{meta.total === 1 ? '' : 's'}</span>} />
       {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (

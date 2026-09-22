@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { ApiError, requestCode, verifyCode } from '../lib/api';
+import { BRAND } from '../theme/brand';
 
 type Step = 'email' | 'code';
 
@@ -46,7 +47,7 @@ export function LoginPage() {
   return (
     <div className="centered">
       <div className="card">
-        <h1>HR Platform</h1>
+        <h1>{BRAND.productName}</h1>
         <p className="muted">Sign in with a one-time email code (email OTP).</p>
 
         {step === 'email' && (
