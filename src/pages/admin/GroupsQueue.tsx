@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { firstLine } from '../../lib/format';
 import { factStatusLabel, groupNodeStatusLabel } from '../../lib/statusLabels';
+import { useT } from '../../i18n/context';
 
 // Sprint 7f (ADR-0028) — the Groups review tab.
 //
@@ -44,6 +45,7 @@ import { factStatusLabel, groupNodeStatusLabel } from '../../lib/statusLabels';
 // that loads the tree for `selected` (further down) fires exactly the same as
 // a manual click would.
 export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: number | null }) {
+  const t = useT();
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
 
@@ -77,23 +79,22 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
     if (selected !== null) loadTree(selected);
   }, [loadConvenios, loadTree, selected]);
 
-  if (loading) return <p className="muted">Cargando…</p>;
+  if (loading) return <p className="muted">{t.common.loading}</p>;
   if (error) return <p className="error">{error}</p>;
 
   return (
     <div className="groups-queue two-pane">
       <div className="pane-list">
         <p className="muted small">
-          Estructura de grupos por convenio. Los nodos propuestos por la IA son inertes: no los
-          usa nadie hasta que se aprueban.
+          {t.groupsQueue.introText}
         </p>
         <table className="table compact">
           <thead>
             <tr>
-              <th>Convenio</th>
-              <th>Pendientes</th>
-              <th>Aprobados</th>
-              <th>Datos con grupo</th>
+              <th>{t.common.convenio}</th>
+              <th>{t.groupsQueue.colPending}</th>
+              <th>{t.groupsQueue.colApproved}</th>
+              <th>{t.groupsQueue.colFactsWithGroup}</th>
             </tr>
           </thead>
           <tbody>
@@ -108,9 +109,9 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
                   {c.name}
                   {c.territory ? <span className="muted small"> · {c.territory}</span> : null}
                 </td>
-                <td>{c.pending > 0 ? <span className="badge ai">{c.pending}</span> : '—'}</td>
-                <td>{c.approved || '—'}</td>
-                <td>{c.group_scoped_facts || '—'}</td>
+                <td>{c.pending > 0 ? <span className="badge ai">{c.pending}</span> : t.common.dash}</td>
+                <td>{c.approved || t.common.dash}</td>
+                <td>{c.group_scoped_facts || t.common.dash}</td>
               </tr>
             ))}
           </tbody>
@@ -119,9 +120,9 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
 
       <div className="pane-detail">
         {selected === null ? (
-          <p className="muted">Elige un convenio.</p>
+          <p className="muted">{t.groupsQueue.chooseConvenioPrompt}</p>
         ) : tree === null ? (
-          <p className="muted">Cargando estructura…</p>
+          <p className="muted">{t.groupsQueue.loadingStructure}</p>
         ) : (
           <ConvenioTree tree={tree} canEdit={canEdit} onChanged={refresh} />
         )}
@@ -139,6 +140,7 @@ function ConvenioTree({
   canEdit: boolean;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const nodeCount = tree.tree.length + tree.tree.reduce((n, r) => n + r.children.length, 0);
 
@@ -156,15 +158,14 @@ function ConvenioTree({
                 .finally(() => setBusy(false));
             }}
           >
-            {busy ? 'Encolando…' : 'Proponer estructura con IA'}
-          </button>
+          {busy ? t.groupsQueue.enqueueing : t.groupsQueue.proposeStructureButton}
+        </button>
         )}
       </div>
 
       {nodeCount === 0 && tree.orphans.length === 0 ? (
         <p className="muted">
-          Este convenio no tiene ninguna estructura de grupos todavía. Sin ella, un dato con
-          grupo no puede vincularse y la pregunta se deriva a una persona.
+          {t.groupsQueue.noStructureYet}
         </p>
       ) : (
         tree.tree.map((node) => (
@@ -174,7 +175,7 @@ function ConvenioTree({
 
       {tree.orphans.length > 0 && (
         <>
-          <h4>Áreas sin grupo padre visible</h4>
+          <h4>{t.groupsQueue.orphanAreasHeading}</h4>
           {tree.orphans.map((node) => (
             <NodeCard key={node.id} node={node} canEdit={canEdit} onChanged={onChanged} depth={0} />
           ))}
@@ -183,12 +184,9 @@ function ConvenioTree({
 
       {tree.unbindable_facts.length > 0 && (
         <div className="panel warn">
-          <h4>Datos que no se vinculan solos ({tree.unbindable_facts.length})</h4>
+          <h4>{t.groupsQueue.unbindableHeading} ({tree.unbindable_facts.length})</h4>
           <p className="muted small">
-            Estas etiquetas no se pueden resolver sin criterio humano. Se listan aquí en lugar de
-            descartarse: mientras no se vinculen, esas preguntas se derivan. Si tú sí sabes a qué
-            nodo pertenecen, elígelo — queda registrado como decisión tuya, no como lectura del
-            analizador.
+            {t.groupsQueue.unbindableIntro}
           </p>
           <table className="table compact">
             <thead>
@@ -196,12 +194,12 @@ function ConvenioTree({
                 {/* Sprint 7g Item 2 — id + source line inline, so a reviewer
                     can identify/sanity-check a fact without opening it,
                     same treatment as the Reference-facts queue. */}
-                <th className="num">Id</th>
-                <th>Etiqueta</th>
-                <th>Valor</th>
-                <th>Fuente</th>
-                <th>Motivo</th>
-                <th>Vincular a</th>
+                <th className="num">{t.groupsQueue.colId}</th>
+                <th>{t.groupsQueue.colLabel}</th>
+                <th>{t.groupsQueue.colValue}</th>
+                <th>{t.groupsQueue.colSource}</th>
+                <th>{t.groupsQueue.colReason}</th>
+                <th>{t.groupsQueue.colBindTo}</th>
               </tr>
             </thead>
             <tbody>
@@ -209,14 +207,14 @@ function ConvenioTree({
                 <tr key={f.fact_id}>
                   <td className="num muted">#{f.fact_id}</td>
                   <td>
-                    <code>{f.group_label ?? '—'}</code>
+                    <code>{f.group_label ?? t.common.dash}</code>
                     <span className={`badge ${f.fact_status === 'verified' ? 'ok' : 'ai'}`}>
-                      {factStatusLabel(f.fact_status)}
+                      {factStatusLabel(t, f.fact_status)}
                     </span>
                   </td>
                   <td className="small">{f.value}</td>
                   <td className="small muted" title={f.source_excerpt ?? undefined}>
-                    {firstLine(f.source_excerpt) ?? '—'}
+                    {firstLine(f.source_excerpt) ?? t.common.dash}
                   </td>
                   <td className="small muted">{f.reason}</td>
                   <td>
@@ -259,6 +257,7 @@ function ManualBindCell({
   canEdit: boolean;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -268,22 +267,22 @@ function ManualBindCell({
   if (fact.already_bound) {
     return (
       <span className="small">
-        <span className="badge ok">vinculado a mano</span> {fact.bound_to.join(', ')}
+        <span className="badge ok">{t.groupsQueue.boundManuallyBadge}</span> {fact.bound_to.join(', ')}
       </span>
     );
   }
-  if (!canEdit) return <span className="muted small">—</span>;
+  if (!canEdit) return <span className="muted small">{t.common.dash}</span>;
   if (fact.kind === 'convenio_wide') {
-    return <span className="muted small">ámbito convenio — no se acota</span>;
+    return <span className="muted small">{t.groupsQueue.convenioWideScopeNotice}</span>;
   }
   if (nodes.length === 0) {
-    return <span className="muted small">aprueba primero un nodo</span>;
+    return <span className="muted small">{t.groupsQueue.approveNodeFirstNotice}</span>;
   }
 
   return (
     <div className="stack-xs">
       <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy}>
-        <option value="">Elegir nodo…</option>
+        <option value="">{t.groupsQueue.chooseNodePlaceholder}</option>
         {nodes.map((n) => (
           <option key={n.id} value={n.id}>
             {n.path_label}
@@ -301,7 +300,7 @@ function ManualBindCell({
             .finally(() => setBusy(false));
         }}
       >
-        Vincular
+        {t.groupsQueue.bindButton}
       </button>
       {error !== null && <span className="error small">{error}</span>}
     </div>
@@ -319,6 +318,7 @@ function NodeCard({
   onChanged: () => void;
   depth: number;
 }) {
+  const t = useT();
   const [diff, setDiff] = useState<BindingDiff | null>(null);
   const [ticked, setTicked] = useState<Set<number>>(new Set());
   const [tickedCategories, setTickedCategories] = useState<Set<number>>(new Set());
@@ -358,28 +358,28 @@ function NodeCard({
     <div className={`panel node ${pending ? 'ai' : node.status}`} style={{ marginLeft: depth * 24 }}>
       <div className="node-head">
         <strong>{node.label}</strong>
-        <code className="key" title="La clave que comparará el emparejador">
+        <code className="key" title={t.groupsQueue.matcherKeyTitle}>
           {node.code_normalized}
         </code>
         <span className="muted small">({node.normalization_rule})</span>
         <span className={`badge ${pending ? 'ai' : node.status === 'approved' ? 'ok' : 'muted'}`}>
-          {groupNodeStatusLabel(node.status)}
+          {groupNodeStatusLabel(t, node.status)}
         </span>
         <span className="muted small">{node.source}</span>
         {node.bound_fact_count > 0 && (
-          <span className="badge ok">{node.bound_fact_count} dato(s) vinculados</span>
+          <span className="badge ok">{node.bound_fact_count} {t.groupsQueue.boundFactsSuffix}</span>
         )}
       </div>
 
       {node.source_excerpt ? (
         <blockquote className="excerpt">{node.source_excerpt}</blockquote>
       ) : (
-        <p className="muted small">Sin cita del convenio.</p>
+        <p className="muted small">{t.groupsQueue.noConvenioQuoteNotice}</p>
       )}
 
       {node.categories.length > 0 && (
         <details>
-          <summary>Categorías propuestas ({node.categories.length})</summary>
+          <summary>{t.groupsQueue.proposedCategoriesHeading} ({node.categories.length})</summary>
           <ul className="small">
             {node.categories.map((c) => (
               <li key={c.membership_id}>
@@ -395,9 +395,9 @@ function NodeCard({
                     }}
                   />
                 )}{' '}
-                {c.name} <span className="badge">{groupNodeStatusLabel(c.status)}</span>
+                {c.name} <span className="badge">{groupNodeStatusLabel(t, c.status)}</span>
                 {c.group_code_evidence && (
-                  <span className="muted"> · indicio: {c.group_code_evidence}</span>
+                  <span className="muted"> · {t.groupsQueue.evidencePrefix} {c.group_code_evidence}</span>
                 )}
               </li>
             ))}
@@ -407,14 +407,14 @@ function NodeCard({
 
       {node.would_bind_facts.length > 0 && (
         <details open={node.status === 'approved' && node.would_bind_facts.some((f) => !f.bound)}>
-          <summary>Datos que apuntan a este nodo ({node.would_bind_facts.length})</summary>
+          <summary>{t.groupsQueue.factsPointingHeading} ({node.would_bind_facts.length})</summary>
           <ul className="small">
             {node.would_bind_facts.map((f) => (
               <li key={f.fact_id}>
                 {/* Sprint 7g Item 2 — id + source line inline. */}
                 <span className="muted">#{f.fact_id}</span> <code>{f.group_label}</code> → {f.value}{' '}
                 <span className={`badge ${f.bound ? 'ok' : 'muted'}`}>
-                  {f.bound ? 'vinculado' : 'sin vincular'}
+                  {f.bound ? t.groupsQueue.boundLabel : t.groupsQueue.unboundLabel}
                 </span>
                 {f.source_excerpt && (
                   <div className="muted small" title={f.source_excerpt}>
@@ -427,7 +427,7 @@ function NodeCard({
                     disabled={busy}
                     onClick={() => act(() => unbindGroupFact(node.id, f.fact_id))}
                   >
-                    desvincular
+                    {t.groupsQueue.unbindButton}
                   </button>
                 )}
                 {/* Binding is a decision separate from approval: approving this
@@ -439,7 +439,7 @@ function NodeCard({
                     disabled={busy}
                     onClick={() => act(() => bindGroupFacts(node.id, { fact_ids: [f.fact_id] }))}
                   >
-                    vincular
+                    {t.groupsQueue.bindLinkLabel}
                   </button>
                 )}
               </li>
@@ -455,19 +455,19 @@ function NodeCard({
           {pending && !editing && (
             <>
               <button disabled={busy} onClick={openDiff}>
-                Revisar y aprobar…
+                {t.groupsQueue.reviewAndApproveButton}
               </button>
               <button disabled={busy} onClick={() => setEditing(true)}>
-                Editar
+                {t.groupsQueue.editButton}
               </button>
               <button disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
-                Rechazar
+                {t.groupsQueue.rejectButton}
               </button>
             </>
           )}
           {!pending && node.status === 'approved' && (
             <button disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
-              Rechazar
+              {t.groupsQueue.rejectButton}
             </button>
           )}
         </div>
@@ -477,7 +477,7 @@ function NodeCard({
         <div className="edit-row">
           <input value={label} onChange={(e) => setLabel(e.target.value)} />
           <span className="muted small">
-            Escribe la etiqueta tal como la imprime el convenio; la clave se recalcula sola.
+            {t.groupsQueue.editLabelHint}
           </span>
           <button
             disabled={busy}
@@ -485,7 +485,7 @@ function NodeCard({
               act(() => updateConvenioGroup(node.id, { label }).then(() => setEditing(false)))
             }
           >
-            Guardar
+            {t.common.save}
           </button>
           <button
             disabled={busy}
@@ -494,30 +494,30 @@ function NodeCard({
               setEditing(false);
             }}
           >
-            Cancelar
+            {t.common.cancel}
           </button>
         </div>
       )}
 
       {diff && (
         <div className="panel diff">
-          <h4>Qué vinculará esta aprobación</h4>
+          <h4>{t.groupsQueue.diffHeading}</h4>
           <p className="muted small">{diff.note}</p>
 
           {diff.would_bind.length === 0 ? (
-            <p className="muted">Ningún dato apunta a este nodo. Se puede aprobar igualmente.</p>
+            <p className="muted">{t.groupsQueue.noFactsPointNotice}</p>
           ) : (
             <table className="table compact">
               <thead>
                 <tr>
                   <th />
                   {/* Sprint 7g Item 2 — id + source line inline. */}
-                  <th className="num">Id</th>
-                  <th>Etiqueta</th>
-                  <th>Valor</th>
-                  <th>Fuente</th>
-                  <th>Vigencia</th>
-                  <th>Estado</th>
+                  <th className="num">{t.groupsQueue.colId}</th>
+                  <th>{t.groupsQueue.colLabel}</th>
+                  <th>{t.groupsQueue.colValue}</th>
+                  <th>{t.groupsQueue.colSource}</th>
+                  <th>{t.groupsQueue.colValidity}</th>
+                  <th>{t.groupsQueue.colStatus}</th>
                 </tr>
               </thead>
               <tbody>
@@ -541,23 +541,23 @@ function NodeCard({
                       <code>{f.group_label}</code>
                       {f.also_binds_to_node_ids.length > 0 && (
                         <div className="muted small">
-                          Este dato abarca también otro(s) nodo(s): {f.also_binds_to_node_ids.join(', ')}.
-                          Vincúlalo allí también o su ámbito quedará incompleto.
+                          {t.groupsQueue.alsoBindsPrefix} {f.also_binds_to_node_ids.join(', ')}.
+                          {' '}{t.groupsQueue.alsoBindsSuffix}
                         </div>
                       )}
                     </td>
                     <td className="small">{f.value}</td>
                     <td className="small muted" title={f.source_excerpt ?? undefined}>
-                      {firstLine(f.source_excerpt) ?? '—'}
+                      {firstLine(f.source_excerpt) ?? t.common.dash}
                     </td>
                     <td className="small">
-                      {f.validity_start ?? '—'} → {f.validity_end ?? 'abierta'}
+                      {f.validity_start ?? t.common.dash} → {f.validity_end ?? t.groupsQueue.openEndedFallback}
                     </td>
                     <td>
                       <span className={`badge ${f.fact_status === 'verified' ? 'ok' : 'ai'}`}>
-                        {factStatusLabel(f.fact_status)}
+                        {factStatusLabel(t, f.fact_status)}
                       </span>
-                      {f.already_bound && <span className="badge ok">ya vinculado</span>}
+                      {f.already_bound && <span className="badge ok">{t.groupsQueue.alreadyBoundBadge}</span>}
                     </td>
                   </tr>
                 ))}
@@ -567,7 +567,7 @@ function NodeCard({
 
           {diff.needs_manual_binding.length > 0 && (
             <>
-              <h5>No se resuelven solos</h5>
+              <h5>{t.groupsQueue.manualBindingNeededHeading}</h5>
               <ul className="small muted">
                 {diff.needs_manual_binding.map((f) => (
                   <li key={f.fact_id}>
@@ -595,10 +595,10 @@ function NodeCard({
                 )
               }
             >
-              Aprobar nodo y vincular {ticked.size} dato(s)
+              {t.groupsQueue.approveAndBindPrefix} {ticked.size} {t.groupsQueue.approveAndBindSuffix}
             </button>
             <button disabled={busy} onClick={() => setDiff(null)}>
-              Cancelar
+              {t.common.cancel}
             </button>
           </div>
         </div>

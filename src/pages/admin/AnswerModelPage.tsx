@@ -6,12 +6,14 @@ import {
   setAnswerModelKey,
   type AnswerModelStatus,
 } from '../../lib/api';
+import { useT } from '../../i18n/context';
 
 // Admin "Answer model" screen (ADR-0015). Set once → encrypted at rest → shown
 // masked (••••1234) → rotatable, never read back. The raw key is only ever held
 // in the controlled input below and is cleared on submit; the browser never sees
 // a stored key and never calls the provider.
 export function AnswerModelPage() {
+  const t = useT();
   const [status, setStatus] = useState<AnswerModelStatus | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [editing, setEditing] = useState(false);
@@ -22,7 +24,7 @@ export function AnswerModelPage() {
   function refresh() {
     return getAnswerModelStatus()
       .then((s) => setStatus(s))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'No se pudo cargar el estado.'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.answerModelPage.loadFailed))
       .finally(() => setLoading(false));
   }
 
@@ -41,7 +43,7 @@ export function AnswerModelPage() {
       setKeyInput(''); // never keep the raw key in state
       setEditing(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo guardar la clave.');
+      setError(err instanceof ApiError ? err.message : t.answerModelPage.saveFailed);
     } finally {
       setBusy(false);
     }
@@ -56,39 +58,38 @@ export function AnswerModelPage() {
       await refresh();
       setEditing(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo eliminar la clave.');
+      setError(err instanceof ApiError ? err.message : t.answerModelPage.removeFailed);
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <p className="muted">Cargando…</p>;
+  if (loading) return <p className="muted">{t.common.loading}</p>;
 
   const configured = status?.configured ?? false;
   const showForm = !configured || editing;
 
   return (
     <div className="card answer-model">
-      <h3>Modelo de respuesta</h3>
+      <h3>{t.answerModelPage.heading}</h3>
       <p className="muted">
-        La clave del proveedor se guarda cifrada, se muestra enmascarada y se puede rotar, pero
-        nunca se vuelve a mostrar. El navegador nunca ve la clave ni llama al proveedor.
+        {t.answerModelPage.intro}
       </p>
 
       <dl className="kv answer-model-status">
-        <dt>Estado</dt>
+        <dt>{t.answerModelPage.statusLabel}</dt>
         <dd>
           {configured ? (
-            <span className="badge badge-verified">Configurado ✓</span>
+            <span className="badge badge-verified">{t.answerModelPage.configuredBadge}</span>
           ) : (
-            <span className="badge badge-review">Sin configurar</span>
+            <span className="badge badge-review">{t.answerModelPage.notConfiguredBadge}</span>
           )}
         </dd>
-        <dt>Proveedor</dt>
-        <dd>{status?.provider ?? '—'}</dd>
+        <dt>{t.answerModelPage.providerLabel}</dt>
+        <dd>{status?.provider ?? t.common.dash}</dd>
         {configured && (
           <>
-            <dt>Clave</dt>
+            <dt>{t.answerModelPage.keyLabel}</dt>
             <dd className="answer-model-key">{status?.masked_key ?? '••••'}</dd>
           </>
         )}
@@ -96,7 +97,7 @@ export function AnswerModelPage() {
 
       {showForm ? (
         <div className="field answer-model-form">
-          <label htmlFor="answer-model-key">{configured ? 'Nueva clave (rotar)' : 'Clave del proveedor'}</label>
+          <label htmlFor="answer-model-key">{configured ? t.answerModelPage.newKeyRotateLabel : t.answerModelPage.providerKeyLabel}</label>
           <input
             id="answer-model-key"
             className="input"
@@ -109,11 +110,11 @@ export function AnswerModelPage() {
           />
           <div className="answer-model-actions">
             <button className="btn btn-primary" onClick={() => void save()} disabled={busy || !keyInput.trim()}>
-              {busy ? 'Guardando…' : 'Guardar clave'}
+              {busy ? t.answerModelPage.savingButton : t.answerModelPage.saveKeyButton}
             </button>
             {configured && (
               <button className="btn btn-ghost" onClick={() => { setEditing(false); setKeyInput(''); }} disabled={busy}>
-                Cancelar
+                {t.common.cancel}
               </button>
             )}
           </div>
@@ -121,10 +122,10 @@ export function AnswerModelPage() {
       ) : (
         <div className="answer-model-actions">
           <button className="btn btn-secondary" onClick={() => setEditing(true)} disabled={busy}>
-            Rotar clave
+            {t.answerModelPage.rotateKeyButton}
           </button>
           <button className="btn btn-ghost" onClick={() => void remove()} disabled={busy}>
-            Eliminar clave
+            {t.answerModelPage.removeKeyButton}
           </button>
         </div>
       )}

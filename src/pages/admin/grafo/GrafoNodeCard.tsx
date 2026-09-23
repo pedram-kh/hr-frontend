@@ -1,22 +1,24 @@
+import { useT } from '../../../i18n/context';
+import type { Dict } from '../../../i18n/es';
 import type { RenderNode } from './graphTypes';
 
-const TYPE_LABEL: Record<RenderNode['type'], string> = {
-  convenio: 'Convenio',
-  document: 'Documento',
-  fact: 'Dato de referencia',
-  territory: 'Territorio',
-  sector: 'Sector',
-  topic: 'Tema',
+// Badge CSS classes stay in code (not chrome) — same split as `gapMeta`.
+const STATE_BADGE_CLS: Record<RenderNode['state'], string> = {
+  scope: 'badge-national',
+  active: 'badge-verified',
+  verified: 'badge-verified',
+  draft: 'badge-review',
+  historical: 'badge-historical',
+  unverified_ai: 'ai-pill',
 };
 
-const STATE_BADGE: Record<RenderNode['state'], { cls: string; label: string }> = {
-  scope: { cls: 'badge-national', label: 'Ámbito' },
-  active: { cls: 'badge-verified', label: 'Vigente' },
-  verified: { cls: 'badge-verified', label: 'Verificado' },
-  draft: { cls: 'badge-review', label: 'Borrador' },
-  historical: { cls: 'badge-historical', label: 'Histórico' },
-  unverified_ai: { cls: 'ai-pill', label: 'IA sin verificar' },
-};
+function typeLabel(t: Dict, type: RenderNode['type']): string {
+  return t.grafo.typeLabels[type];
+}
+
+function stateBadge(t: Dict, state: RenderNode['state']): { cls: string; label: string } {
+  return { cls: STATE_BADGE_CLS[state], label: t.grafo.stateLabels[state] };
+}
 
 function idWithoutPrefix(id: string): string {
   return id.slice(id.indexOf(':') + 1);
@@ -43,19 +45,20 @@ export function GrafoNodeCard({
   onOpenDocument: (uuid: string) => void;
   onOpenFact: (uuid: string) => void;
 }) {
+  const t = useT();
   if (!node) return null;
-  const badge = STATE_BADGE[node.state];
+  const badge = stateBadge(t, node.state);
 
   return (
     <div className="detail-backdrop" onClick={onClose}>
       <div className="detail panel grafo-node-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="detail-head">
           <strong>{node.label}</strong>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+          <button className="btn btn-ghost" onClick={onClose} aria-label={t.common.close}>✕</button>
         </div>
         <div className="detail-body">
           <p>
-            <span className="muted">{TYPE_LABEL[node.type]}</span>{' '}
+            <span className="muted">{typeLabel(t, node.type)}</span>{' '}
             <span className={`badge ${badge.cls}`}>{badge.label}</span>
           </p>
 
@@ -67,33 +70,50 @@ export function GrafoNodeCard({
 
           {node.type === 'convenio' && node.folded && (node.folded.territory || node.folded.sector) && (
             <p className="muted">
-              {node.folded.territory && <>Territorio: {node.folded.territory} (sin hub propio — muy pocos convenios). </>}
-              {node.folded.sector && <>Sector: {node.folded.sector} (sin hub propio — muy pocos convenios).</>}
+              {node.folded.territory && (
+                <>
+                  {t.grafo.foldedTerritoryPrefix}
+                  {node.folded.territory}
+                  {t.grafo.foldedNoHubSuffix}{' '}
+                </>
+              )}
+              {node.folded.sector && (
+                <>
+                  {t.grafo.foldedSectorPrefix}
+                  {node.folded.sector}
+                  {t.grafo.foldedNoHubSuffix}
+                </>
+              )}
             </p>
           )}
 
           {node.type === 'fact' && node.source_document && (
             <p className="muted">
-              Fuente compartida: «{node.source_document.title}» — no dibujada como nodo (ver honestidad del grafo).
+              {t.grafo.sharedSourcePrefix}
+              {node.source_document.title}
+              {t.grafo.sharedSourceSuffix}
             </p>
           )}
 
-          <p className="muted">Conexiones: {node.degree}</p>
+          <p className="muted">
+            {t.grafo.connectionsPrefix}
+            {node.degree}
+          </p>
 
           <div className="grafo-node-card-actions">
             {node.type === 'document' && (
               <button className="btn btn-primary" onClick={() => onOpenDocument(idWithoutPrefix(node.id))}>
-                Abrir documento
+                {t.grafo.openDocumentButton}
               </button>
             )}
             {node.type === 'fact' && (
               <button className="btn btn-primary" onClick={() => onOpenFact(idWithoutPrefix(node.id))}>
-                Abrir dato de referencia
+                {t.grafo.openReferenceFactButton}
               </button>
             )}
             {node.type === 'convenio' && node.link && (
               <a className="btn btn-primary" href={node.link}>
-                Ver cobertura
+                {t.grafo.viewCoverageButton}
               </a>
             )}
           </div>

@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
+import { useT } from '../../i18n/context';
 
 // Legal status transitions (mirrors EscalationService::TRANSITIONS — the server
 // validates; this only shapes the picker so an illegal move isn't offered).
@@ -24,14 +25,6 @@ const TRANSITIONS: Record<EscalationStatus, EscalationStatus[]> = {
   in_progress: ['resolved', 'assigned', 'closed'],
   resolved: ['closed', 'in_progress'],
   closed: ['in_progress'],
-};
-
-const STATUS_LABELS: Record<EscalationStatus, string> = {
-  new: 'Nueva',
-  assigned: 'Asignada',
-  in_progress: 'En curso',
-  resolved: 'Resuelta',
-  closed: 'Cerrada',
 };
 
 // The card-scoped detail drawer: the conversation + trace for THIS card only
@@ -51,6 +44,8 @@ export function CardDrawer({
   fetchDetail: (uuid: string) => Promise<EscalationDetail>;
 }) {
   const { identity } = useAuth();
+  const t = useT();
+  const statusLabels: Record<EscalationStatus, string> = t.escalationCard.statusLabels;
   const [detail, setDetail] = useState<EscalationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,8 +79,8 @@ export function CardDrawer({
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="detail-head">
-            <strong>Error</strong>
-            <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+            <strong>{t.escalationCard.error}</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label={t.escalationCard.close}>✕</button>
           </div>
           <div className="detail-body"><p className="error">{error}</p></div>
         </aside>
@@ -96,10 +91,10 @@ export function CardDrawer({
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="detail-head">
-            <strong>Cargando…</strong>
-            <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+            <strong>{t.escalationCard.loading}</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label={t.escalationCard.close}>✕</button>
           </div>
-          <div className="detail-body"><p className="muted">Cargando…</p></div>
+          <div className="detail-body"><p className="muted">{t.escalationCard.loading}</p></div>
         </aside>
       </div>
     );
@@ -135,32 +130,32 @@ export function CardDrawer({
 
   return (
     <div className="detail-backdrop" onClick={onClose}>
-    <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Escalación · ${card.reason_label}`}>
+    <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${t.escalationCard.cardHeadingPrefix} ${card.reason_label}`}>
       <div className="detail-head">
-        <strong>Escalación · {card.reason_label}</strong>
-        <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+        <strong>{t.escalationCard.cardHeadingPrefix} {card.reason_label}</strong>
+        <button className="btn btn-ghost" onClick={onClose} aria-label={t.escalationCard.close}>✕</button>
       </div>
       <div className="detail-body">
 
       {!canWork && (
         <p className="notice notice--neutral">
           <span aria-hidden="true">🔒</span>
-          Solo lectura — puedes ver la conversación y el razonamiento, pero no asignar, responder ni resolver.
+          {t.escalationCard.readOnlyNotice}
         </p>
       )}
 
       <section>
         <div className="card-trigger">
           <span className="badge badge-review">{card.reason_label}</span>
-          <p className="card-trigger-q">{card.question ?? '(sin pregunta de origen)'}</p>
-          {card.created_at && <p className="timeline-meta">Escalada el {card.created_at}</p>}
+          <p className="card-trigger-q">{card.question ?? t.escalationCard.noOriginQuestion}</p>
+          {card.created_at && <p className="timeline-meta">{t.escalationCard.escalatedOnPrefix} {card.created_at}</p>}
         </div>
         <dl className="kv">
-          <dt>Estado</dt><dd>{STATUS_LABELS[card.status]}</dd>
-          <dt>Empleado</dt><dd>{card.employee?.full_name ?? '—'}</dd>
-          <dt>Convenio</dt><dd>{card.employee?.convenio ? `${card.employee.convenio.numero} — ${card.employee.convenio.name}` : '—'}</dd>
-          <dt>Asignada a</dt><dd>{card.assigned_to?.full_name ?? 'Sin asignar'}</dd>
-          {card.topic && (<><dt>Tema</dt><dd>{card.topic.name}</dd></>)}
+          <dt>{t.escalationCard.colStatus}</dt><dd>{statusLabels[card.status]}</dd>
+          <dt>{t.escalationCard.colEmployee}</dt><dd>{card.employee?.full_name ?? t.common.dash}</dd>
+          <dt>{t.escalationCard.colConvenio}</dt><dd>{card.employee?.convenio ? `${card.employee.convenio.numero} — ${card.employee.convenio.name}` : t.common.dash}</dd>
+          <dt>{t.escalationCard.colAssignedTo}</dt><dd>{card.assigned_to?.full_name ?? t.escalationCard.unassigned}</dd>
+          {card.topic && (<><dt>{t.escalationCard.colTopic}</dt><dd>{card.topic.name}</dd></>)}
         </dl>
       </section>
 
@@ -170,15 +165,15 @@ export function CardDrawer({
 
       {canWork && (
         <section>
-          <h4>Triaje</h4>
+          <h4>{t.escalationCard.triageHeading}</h4>
           <div className="reassign">
             {!assignedToMe ? (
               <button className="btn btn-secondary" onClick={() => setAssignee(mineId ?? null)} disabled={busy || !mineId}>
-                Asignarme
+                {t.escalationCard.assignToMe}
               </button>
             ) : (
               <button className="btn btn-ghost" onClick={() => setAssignee(null)} disabled={busy}>
-                Quitar asignación
+                {t.escalationCard.unassignButton}
               </button>
             )}
             <select
@@ -186,11 +181,11 @@ export function CardDrawer({
               value=""
               onChange={(e) => e.target.value && moveStatus(e.target.value as EscalationStatus)}
               disabled={busy}
-              aria-label="Mover estado"
+              aria-label={t.escalationCard.moveStatusAriaLabel}
             >
-              <option value="">Mover a…</option>
+              <option value="">{t.escalationCard.moveToPlaceholder}</option>
               {(TRANSITIONS[card.status] ?? []).map((s) => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                <option key={s} value={s}>{statusLabels[s]}</option>
               ))}
             </select>
           </div>
@@ -198,22 +193,21 @@ export function CardDrawer({
       )}
 
       <section>
-        <h4>Conversación</h4>
+        <h4>{t.escalationCard.conversationHeading}</h4>
         {detail.conversation_restricted ? (
           // Sprint-5 tightening (ADR-0018 §4.4): a knowledge_editor sees the card
           // meta but NOT the conversation content (gated server-side; the payload
           // arrives empty). The hr_agent boundary is unchanged.
           <p className="notice notice--neutral">
             <span aria-hidden="true">🔒</span>
-            No tienes permiso para ver el contenido de la conversación. Se requiere{' '}
-            <code>escalation.work</code> o <code>history.view_all</code>.
+            {t.escalationCard.conversationRestrictedNotice}{' '}
+            <code>escalation.work</code> {t.escalationCard.conversationRestrictedOr} <code>history.view_all</code>.
           </p>
         ) : (
           <>
             <p className="timeline-meta">
-              La conversación completa de la sesión de esta tarjeta (no es un histórico general). Una misma
-              sesión puede generar varias tarjetas, que comparten esta conversación; la pregunta que originó
-              <em> esta</em> tarjeta se muestra arriba.
+              {t.escalationCard.conversationIntro}
+              <em> {t.escalationCard.conversationIntroThis}</em> {t.escalationCard.conversationIntroSuffix}
             </p>
             <div className="card-convo">
               {detail.conversation.map((m) => <ConversationBubble key={m.id} message={m} />)}
@@ -251,31 +245,32 @@ export function CardDrawer({
 //      (e.g. a guardrail-baseline privacy case) — `fix_link` is null and no
 //      button is shown, only the fix_action text.
 function ExplanationBlock({ card }: { card: EscalationCardSummary }) {
+  const t = useT();
   const facts = card.explanation_facts;
   if (!facts) {
     // Pre-7g card that hasn't been backfilled yet (escalations:backfill-
     // explanations), or a card whose explanation write somehow never landed.
     return (
       <section>
-        <h4>Explicación</h4>
-        <p className="muted">Sin explicación estructurada todavía (tarjeta anterior a esta función, o pendiente de re-procesar).</p>
+        <h4>{t.escalationCard.explanationHeading}</h4>
+        <p className="muted">{t.escalationCard.noStructuredExplanation}</p>
       </section>
     );
   }
 
-  const paragraph = card.explanation_text ?? factsToSentences(facts);
+  const paragraph = card.explanation_text ?? factsToSentences(facts, t);
   const isAi = card.explanation_text !== null && card.explanation_text !== '';
 
   return (
     <section>
-      <h4>Explicación</h4>
+      <h4>{t.escalationCard.explanationHeading}</h4>
       <div className="notice notice--ai">
-        {isAi && <span className="ai-pill" title="Redactado por IA a partir de los hechos estructurados de abajo — no añade ningún dato nuevo">Resumen IA</span>}
+        {isAi && <span className="ai-pill" title={t.escalationCard.aiSummaryBadgeTitle}>{t.escalationCard.aiSummaryBadge}</span>}
         <p className={isAi ? 'answer-prose' : 'answer-prose muted'} style={{ margin: isAi ? undefined : '0' }}>{paragraph}</p>
       </div>
       {card.fix_link ? (
         <a className="btn btn-secondary" href={card.fix_link}>
-          Corregir{card.fix_surface ? ` · ${card.fix_surface}` : ''}
+          {t.escalationCard.fixLinkLabel}{card.fix_surface ? ` · ${card.fix_surface}` : ''}
         </a>
       ) : card.fix_action ? (
         <p className="timeline-meta">{card.fix_action}</p>
@@ -294,13 +289,14 @@ function ExplanationBlock({ card }: { card: EscalationCardSummary }) {
 // same restricted-access notice pattern already used for the conversation
 // below, rather than a new UI idiom.
 function EmployeeContextBlock({ detail }: { detail: EscalationDetail }) {
+  const t = useT();
   if (detail.employee_context_restricted) {
     return (
       <section>
-        <h4>Empleado</h4>
+        <h4>{t.escalationCard.employeeHeading}</h4>
         <p className="notice notice--neutral">
           <span aria-hidden="true">🔒</span>
-          No tienes permiso para ver el contexto del empleado. Se requiere <code>escalation.work</code>.
+          {t.escalationCard.employeeContextRestrictedNotice} <code>escalation.work</code>.
         </p>
       </section>
     );
@@ -311,21 +307,21 @@ function EmployeeContextBlock({ detail }: { detail: EscalationDetail }) {
 
   return (
     <section>
-      <h4>Empleado</h4>
+      <h4>{t.escalationCard.employeeHeading}</h4>
       <dl className="kv">
-        <dt>Nombre</dt><dd>{ctx.full_name}</dd>
-        <dt>Email</dt><dd>{ctx.email}</dd>
-        <dt>Territorio</dt><dd>{ctx.territory?.name ?? '—'}</dd>
-        <dt>Categoría / grupo</dt>
+        <dt>{t.escalationCard.colName}</dt><dd>{ctx.full_name}</dd>
+        <dt>{t.escalationCard.colEmail}</dt><dd>{ctx.email}</dd>
+        <dt>{t.escalationCard.colTerritory}</dt><dd>{ctx.territory?.name ?? t.common.dash}</dd>
+        <dt>{t.escalationCard.colCategoryGroup}</dt>
         <dd>
-          {ctx.job_category?.name ?? '—'}
+          {ctx.job_category?.name ?? t.common.dash}
           {ctx.convenio_group && <span className="muted"> · {ctx.convenio_group.path_label}</span>}
         </dd>
-        <dt>Antigüedad</dt>
+        <dt>{t.escalationCard.colSeniority}</dt>
         <dd>
           {ctx.seniority
-            ? `${ctx.seniority.years} año(s) (desde ${ctx.seniority.start_date})`
-            : <span className="muted">no registrada</span>}
+            ? `${ctx.seniority.years} ${t.escalationCard.seniorityYearsSuffix} ${ctx.seniority.start_date})`
+            : <span className="muted">{t.escalationCard.notRegistered}</span>}
         </dd>
       </dl>
     </section>
@@ -336,14 +332,15 @@ function EmployeeContextBlock({ detail }: { detail: EscalationDetail }) {
 // the deterministic fallback shown when there is no AI paragraph (provider
 // failure, no-new-claims rejection, or not yet processed). States nothing the
 // structured facts don't already say.
-function factsToSentences(facts: NonNullable<EscalationCardSummary['explanation_facts']>): string {
-  return `${facts.asked} ${facts.found} ${facts.stopped_reason} Acción sugerida: ${facts.fix_action}.`.trim();
+function factsToSentences(facts: NonNullable<EscalationCardSummary['explanation_facts']>, t: ReturnType<typeof useT>): string {
+  return `${facts.asked} ${facts.found} ${facts.stopped_reason} ${t.escalationCard.suggestedActionPrefix} ${facts.fix_action}.`.trim();
 }
 
 // One conversation turn. A bot answer reuses the citation list + trace; a human
 // (hr_agent) reply is a clearly-attributed distinct bubble — never mistakable
 // for the bot. A user turn is the employee's question.
 function ConversationBubble({ message }: { message: ConversationMessage }) {
+  const t = useT();
   if (message.role === 'user') {
     return (
       <div className="chat-row chat-row--user">
@@ -356,7 +353,9 @@ function ConversationBubble({ message }: { message: ConversationMessage }) {
     return (
       <div className="chat-row chat-row--assistant">
         <div className="card chat-bubble chat-bubble--assistant chat-bubble--agent">
-          <span className="badge badge-agent">Respuesta de {message.author_label ?? 'Recursos Humanos'} (persona)</span>
+          <span className="badge badge-agent">
+            {t.escalationCard.hrReplyBadgePrefix} {message.author_label ?? t.escalationCard.hrAgentDefaultLabel} {t.escalationCard.hrReplyBadgeSuffix}
+          </span>
           <p className="answer-prose">{message.content}</p>
         </div>
       </div>
@@ -367,7 +366,7 @@ function ConversationBubble({ message }: { message: ConversationMessage }) {
   return (
     <div className="chat-row chat-row--assistant">
       <div className={`card chat-bubble chat-bubble--assistant ${message.escalated ? 'escalation' : ''}`}>
-        {message.escalated && <span className="badge badge-review">Escalado a Recursos Humanos</span>}
+        {message.escalated && <span className="badge badge-review">{t.escalationCard.escalatedToHrBadge}</span>}
         <p className="answer-prose">{message.content}</p>
         <CitationList citations={message.citations} />
         {message.trace && <TracePanel trace={message.trace} />}
@@ -377,6 +376,7 @@ function ConversationBubble({ message }: { message: ConversationMessage }) {
 }
 
 function ReplyBox({ uuid, disabled, onSent }: { uuid: string; disabled: boolean; onSent: () => void }) {
+  const t = useT();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -398,19 +398,19 @@ function ReplyBox({ uuid, disabled, onSent }: { uuid: string; disabled: boolean;
 
   return (
     <section>
-      <h4>Responder a la persona</h4>
-      <p className="timeline-meta">Se enviará al chat del empleado como respuesta humana, claramente atribuida a Recursos Humanos.</p>
+      <h4>{t.escalationCard.replyHeading}</h4>
+      <p className="timeline-meta">{t.escalationCard.replyIntro}</p>
       <textarea
         className="textarea"
         rows={3}
-        placeholder="Escribe la respuesta para el empleado…"
+        placeholder={t.escalationCard.replyPlaceholder}
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={busy || disabled}
       />
       {err && <p className="error">{err}</p>}
       <button className="btn btn-primary" onClick={send} disabled={busy || disabled || !text.trim()}>
-        {busy ? 'Enviando…' : 'Enviar respuesta'}
+        {busy ? t.escalationCard.sending : t.escalationCard.sendReply}
       </button>
     </section>
   );
@@ -420,22 +420,23 @@ function ReplyBox({ uuid, disabled, onSent }: { uuid: string; disabled: boolean;
 // the evidence; the score is context. Shown identically in the blocked and the
 // acknowledge case so a human learns to read the same thing in both.
 function OverlapPassages({ passages }: { passages: SemanticPassage[] }) {
+  const t = useT();
   if (passages.length === 0) return null;
   return (
     <ul className="passage-list">
       {passages.map((p, i) => (
         <li key={p.chunk_id ?? i}>
           <div className="passage-head">
-            <strong>{p.document_title ?? 'Convenio oficial'}</strong>
-            {p.page_from !== null && <span className="muted"> · pág. {p.page_from}</span>}
-            <span className="badge badge-historical" title="Similitud semántica (0–1) entre tu texto y este pasaje">
+            <strong>{p.document_title ?? t.escalationCard.officialConvenioFallback}</strong>
+            {p.page_from !== null && <span className="muted"> · {t.escalationCard.pagePrefix} {p.page_from}</span>}
+            <span className="badge badge-historical" title={t.escalationCard.similarityTitle}>
               {p.score.toFixed(3)}
             </span>
           </div>
           <blockquote className="well passage-text">{p.excerpt}</blockquote>
           {p.probe_excerpt && (
             <p className="muted">
-              Tu texto comparado: <em>{p.probe_excerpt}</em>
+              {t.escalationCard.yourTextCompared} <em>{p.probe_excerpt}</em>
             </p>
           )}
         </li>
@@ -458,6 +459,7 @@ function OverlapPassages({ passages }: { passages: SemanticPassage[] }) {
 //   · a comparison that could not be made resolves to the SAME acknowledgement
 //     prompt, worded to say so — never a clean publish.
 function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () => void }) {
+  const t = useT();
   const [text, setText] = useState('');
   const [convert, setConvert] = useState(false);
   const [topics, setTopics] = useState<VocabularyItem[]>([]);
@@ -505,8 +507,8 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
       if (res.publish) {
         setPublished(
           res.publish.round_trip.lossless
-            ? `Publicada — ${res.publish.chunks_written} fragmento(s) indexados (texto íntegro verificado).`
-            : `Publicada, pero el texto indexado NO coincide exactamente con el escrito (revisar — posible mangling).`,
+            ? `${t.escalationCard.publishedLosslessPrefix} ${res.publish.chunks_written} ${t.escalationCard.publishedLosslessSuffix}`
+            : t.escalationCard.publishedMismatch,
         );
       }
       onResolved();
@@ -557,11 +559,11 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
 
   return (
     <section className="edit-block">
-      <h4>Resolver / Guardar como conocimiento</h4>
+      <h4>{t.escalationCard.resolveHeading}</h4>
       <textarea
         className="textarea"
         rows={4}
-        placeholder="Redacta la resolución para esta consulta…"
+        placeholder={t.escalationCard.resolutionPlaceholder}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -577,15 +579,15 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
 
       <label className="board-filter-check" style={{ marginTop: 'var(--space-2)' }}>
         <input type="checkbox" checked={convert} onChange={(e) => setConvert(e.target.checked)} disabled={busy} />
-        Publicar como conocimiento (resolución interna de RR. HH.)
+        {t.escalationCard.publishAsKnowledge}
       </label>
 
       {convert && (
         <div className="reassign" style={{ marginTop: 'var(--space-2)' }}>
           <select className="select" value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={busy}>
-            <option value="">Tema… (recomendado)</option>
-            {topics.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            <option value="">{t.escalationCard.topicPlaceholder}</option>
+            {topics.map((topic) => (
+              <option key={topic.id} value={topic.id}>{topic.name}</option>
             ))}
           </select>
         </div>
@@ -593,7 +595,7 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
       {convert && !topicId && (
         <p className="notice">
           <span aria-hidden="true">⚠</span>
-          Sin tema, la verja de conflicto bloquea por ámbito completo (sobreprotege). Asigna un tema para afinarla.
+          {t.escalationCard.noTopicScopeWarning}
         </p>
       )}
 
@@ -632,36 +634,34 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
                 disabled={busy}
               />
               {ack.comparisonUnavailable
-                ? 'He revisado el convenio vigente por mi cuenta y confirmo que esta resolución no lo contradice.'
-                : 'He leído los pasajes y confirmo que esta resolución no se solapa con el convenio vigente.'}
+                ? t.escalationCard.acknowledgeComparisonUnavailable
+                : t.escalationCard.acknowledgeReadPassages}
             </label>
             <button
               className="btn btn-warning"
               onClick={() => doResolve(true, true)}
               disabled={busy || !acknowledged}
             >
-              {busy ? 'Publicando…' : 'Publicar con esta confirmación'}
+              {busy ? t.escalationCard.publishing : t.escalationCard.publishWithConfirmation}
             </button>
           </div>
         </div>
       )}
 
       <button className={`btn ${convert ? 'btn-warning' : 'btn-primary'}`} onClick={onSubmit} disabled={busy || !text.trim()}>
-        {convert ? 'Publicar como conocimiento' : 'Marcar como resuelta'}
+        {convert ? t.escalationCard.publishAsKnowledgeButton : t.escalationCard.markResolved}
       </button>
 
       {confirming && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar ámbito">
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t.escalationCard.confirmScopeAriaLabel}>
           <div className="modal">
-            <h4 className="modal-title"><span aria-hidden="true">⚠</span> ¿Publicar e heredar el ámbito del empleado?</h4>
+            <h4 className="modal-title"><span aria-hidden="true">⚠</span> {t.escalationCard.confirmScopeTitle}</h4>
             <p className="modal-body">
-              La resolución se publicará como <code>internal_hr_ruling</code> heredando el convenio del empleado
-              (territorio y sector incluidos) y pasará a responder a otras personas de ese ámbito. No puede prevalecer
-              sobre un convenio oficial vigente para el mismo ámbito y tema (se bloqueará si lo hace).
+              {t.escalationCard.confirmScopeBody}
             </p>
             <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>Cancelar</button>
-              <button className="btn btn-warning" onClick={() => doResolve(true)} disabled={busy}>Confirmar y publicar</button>
+              <button className="btn btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>{t.common.cancel}</button>
+              <button className="btn btn-warning" onClick={() => doResolve(true)} disabled={busy}>{t.escalationCard.confirmAndPublish}</button>
             </div>
           </div>
         </div>
@@ -671,10 +671,11 @@ function SaveAsKnowledge({ uuid, onResolved }: { uuid: string; onResolved: () =>
 }
 
 function EventsLog({ events }: { events: EscalationDetail['events'] }) {
+  const t = useT();
   if (events.length === 0) return null;
   return (
     <section>
-      <h4>Actividad</h4>
+      <h4>{t.escalationCard.activityHeading}</h4>
       <ol className="timeline">
         {events.map((e, i) => (
           <li key={i} className="timeline-item">
@@ -682,7 +683,7 @@ function EventsLog({ events }: { events: EscalationDetail['events'] }) {
             <div>
               <div className="timeline-action">
                 {e.type.replace(/_/g, ' ')}
-                {e.old_value || e.new_value ? <span className="timeline-value"> {e.old_value ?? '—'} → {e.new_value ?? '—'}</span> : null}
+                {e.old_value || e.new_value ? <span className="timeline-value"> {e.old_value ?? t.common.dash} → {e.new_value ?? t.common.dash}</span> : null}
               </div>
               {e.note && <div className="timeline-meta">{e.note}</div>}
               <div className="timeline-meta">{e.created_at}{e.actor ? ` · ${e.actor}` : ''}</div>

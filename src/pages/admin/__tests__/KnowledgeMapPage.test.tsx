@@ -10,6 +10,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../../../auth/context';
+import { LocaleProvider } from '../../../i18n/LocaleProvider';
 import type { Identity } from '../../../lib/api';
 
 vi.mock('../Hierarchy', () => ({
@@ -36,9 +37,11 @@ const identity: Identity = {
 
 function renderPage(initialTab: string | null) {
   render(
-    <AuthContext.Provider value={{ identity, loading: false, login: vi.fn(), logout: vi.fn() }}>
-      <KnowledgeMapPage initialTab={initialTab} />
-    </AuthContext.Provider>,
+    <LocaleProvider>
+      <AuthContext.Provider value={{ identity, loading: false, login: vi.fn(), logout: vi.fn() }}>
+        <KnowledgeMapPage initialTab={initialTab} />
+      </AuthContext.Provider>
+    </LocaleProvider>,
   );
 }
 

@@ -1,4 +1,5 @@
 import type { PaginationMeta } from '../../lib/usePaginatedQuery';
+import { useT } from '../../i18n/context';
 
 /**
  * Sprint 8 — the pager JSX itself, extracted alongside `usePaginatedQuery`
@@ -7,14 +8,15 @@ import type { PaginationMeta } from '../../lib/usePaginatedQuery';
  * nothing hidden past the cap (the Sprint 7g Documents-page fix's own framing).
  */
 export function Pager({ meta, setPage }: { meta: PaginationMeta; setPage: (fn: (p: number) => number) => void }) {
+  const t = useT();
   return (
     <div className="docs-pager">
       <button className="btn btn-ghost" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-        ‹ Prev
+        {t.pager.prevButton}
       </button>
-      <span className="muted">Page {meta.current_page} of {meta.last_page}</span>
+      <span className="muted">{t.pager.pagePrefix} {meta.current_page} {t.pager.pageOfConnector} {meta.last_page}</span>
       <button className="btn btn-ghost" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
-        Next ›
+        {t.pager.nextButton}
       </button>
     </div>
   );

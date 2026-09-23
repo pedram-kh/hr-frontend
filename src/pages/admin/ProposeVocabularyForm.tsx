@@ -8,6 +8,7 @@ import {
   type VocabularyFacet,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
+import { useT } from '../../i18n/context';
 
 /**
  * The propose-new-vocabulary chooser (Sprint 7a, ADR-0011/0020).
@@ -33,6 +34,7 @@ export function ProposeVocabularyForm({
   reviewTaskId?: number | null;
   onDone: (msg: string) => void;
 }) {
+  const t = useT();
   const { identity } = useAuth();
   const canApprove = canApproveVocabulary(identity);
   const [variant, setVariant] = useState<VariantSuggestion | null>(null);
@@ -74,7 +76,11 @@ export function ProposeVocabularyForm({
           target_id: resolution === 'alias' ? variant?.id ?? null : null,
           level: resolution === 'new_value' && facet === 'territory' ? level : undefined,
         });
-        onDone(resolution === 'alias' ? `Folded “${value}” into ${variant?.name}.` : `Created new ${facet} “${value}”.`);
+        onDone(
+          resolution === 'alias'
+            ? `${t.proposeVocabularyForm.foldedMsgPrefix}${value}${t.proposeVocabularyForm.foldedMsgMid} ${variant?.name}${t.proposeVocabularyForm.foldedMsgSuffix}`
+            : `${t.proposeVocabularyForm.createdNewMsgPrefix} ${facet} ${t.proposeVocabularyForm.createdNewMsgMid}${value}${t.proposeVocabularyForm.createdNewMsgSuffix}`,
+        );
       } else {
         await proposeVocabulary({
           facet,
@@ -82,7 +88,7 @@ export function ProposeVocabularyForm({
           source_document_uuid: sourceDocumentUuid ?? null,
           review_task_id: reviewTaskId ?? null,
         });
-        onDone(`Proposed “${value}” — a super_admin will approve it.`);
+        onDone(`${t.proposeVocabularyForm.proposedMsgPrefix}${value}${t.proposeVocabularyForm.proposedMsgSuffix}`);
       }
     } catch (e) {
       setError(String((e as Error).message ?? e));
@@ -94,7 +100,7 @@ export function ProposeVocabularyForm({
   return (
     <div className="propose-vocab ai-marked">
       <p className="timeline-meta">
-        Propose vocabulary for <code>{facet}</code>: <strong>{value}</strong>
+        {t.proposeVocabularyForm.proposeForPrefix} <code>{facet}</code>: <strong>{value}</strong>
       </p>
 
       <div className="propose-vocab-choice">
@@ -107,9 +113,9 @@ export function ProposeVocabularyForm({
             onChange={() => setResolution('alias')}
           />
           {variant ? (
-            <>Fold into <strong>{variant.name}</strong> as an alias <span className="muted">(similarity {Math.round(variant.similarity * 100)}%)</span></>
+            <>{t.proposeVocabularyForm.foldIntoPrefix} <strong>{variant.name}</strong> {t.proposeVocabularyForm.foldAsAliasLabel} <span className="muted">{t.proposeVocabularyForm.similarityPrefix} {Math.round(variant.similarity * 100)}{t.proposeVocabularyForm.percentCloseParen}</span></>
           ) : (
-            <>Fold into an existing value <span className="muted">(nothing close enough was found)</span></>
+            <>{t.proposeVocabularyForm.foldIntoExistingLabel} <span className="muted">{t.proposeVocabularyForm.nothingCloseFoundHint}</span></>
           )}
         </label>
         <label className="radio">
@@ -119,13 +125,13 @@ export function ProposeVocabularyForm({
             checked={resolution === 'new_value'}
             onChange={() => setResolution('new_value')}
           />
-          Create a new {facet} <span className="muted">(deliberate)</span>
+          {t.proposeVocabularyForm.createNewPrefix} {facet} <span className="muted">{t.proposeVocabularyForm.deliberateHint}</span>
         </label>
       </div>
 
       {resolution === 'new_value' && facet === 'territory' && (
         <label className="propose-vocab-level">
-          Level
+          {t.proposeVocabularyForm.levelLabel}
           <select className="select" value={level} onChange={(e) => setLevel(e.target.value as typeof level)}>
             <option value="provincial">provincial</option>
             <option value="regional">regional</option>
@@ -137,7 +143,7 @@ export function ProposeVocabularyForm({
       {newValueBlocked && (
         <p className="notice">
           <span aria-hidden="true">⚠</span>
-          Convenios are created by the registry import, not this flow. Fold the spelling into an existing convenio instead.
+          {t.proposeVocabularyForm.convenioBlockedNotice}
         </p>
       )}
 
@@ -150,11 +156,11 @@ export function ProposeVocabularyForm({
             disabled={busy || newValueBlocked || (resolution === 'alias' && !variant)}
             onClick={() => run(true)}
           >
-            {resolution === 'alias' ? 'Approve as alias' : 'Approve as new value'}
+            {resolution === 'alias' ? t.proposeVocabularyForm.approveAsAliasButton : t.proposeVocabularyForm.approveAsNewValueButton}
           </button>
         ) : (
           <button className="btn btn-secondary" disabled={busy} onClick={() => run(false)}>
-            Propose (a super_admin approves)
+            {t.proposeVocabularyForm.proposeOnlyButton}
           </button>
         )}
       </div>
@@ -176,6 +182,7 @@ export function ApproveProposalControls({
   hasVariant: boolean;
   onDone: (msg: string) => void;
 }) {
+  const t = useT();
   const [level, setLevel] = useState<'national' | 'regional' | 'provincial'>('provincial');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +196,7 @@ export function ApproveProposalControls({
         target_id: resolution === 'alias' ? variantId : null,
         level: resolution === 'new_value' && facet === 'territory' ? level : undefined,
       });
-      onDone(resolution === 'alias' ? 'Folded into the existing value.' : 'Created the new value.');
+      onDone(resolution === 'alias' ? t.proposeVocabularyForm.foldedExistingMsg : t.proposeVocabularyForm.createdNewValueMsg);
     } catch (e) {
       setError(String((e as Error).message ?? e));
     } finally {
@@ -200,7 +207,7 @@ export function ApproveProposalControls({
   return (
     <div className="propose-vocab-actions">
       <button className="btn btn-primary" disabled={busy || !hasVariant || facet === 'topic'} onClick={() => approve('alias')}>
-        Approve as alias
+        {t.proposeVocabularyForm.approveAsAliasButton}
       </button>
       {facet === 'territory' && (
         <select className="select" value={level} onChange={(e) => setLevel(e.target.value as typeof level)}>
@@ -210,11 +217,11 @@ export function ApproveProposalControls({
         </select>
       )}
       <button className="btn btn-secondary" disabled={busy || facet === 'convenio'} onClick={() => approve('new_value')}>
-        Approve as new value
+        {t.proposeVocabularyForm.approveAsNewValueButton}
       </button>
       {facet === 'topic' && (
         <p className="notice">
-          <span aria-hidden="true">⚠</span> Topics have no alias-fold mechanism — spelling variants are resolved in code via TopicLexicon, not here.
+          <span aria-hidden="true">⚠</span> {t.proposeVocabularyForm.topicNoAliasNotice}
         </p>
       )}
       {error && <p className="error">{error}</p>}

@@ -3,6 +3,8 @@
 // charting dependency, the same "no layout dependency" discipline `GraphForm`
 // (Hierarchy.tsx) already established for the lens graph's SVG connectors.
 
+import { useT } from '../../i18n/context';
+
 export function KpiTile({ label, value, sub }: { label: string; value: string; sub?: string | null }) {
   return (
     <div className="kpi-tile">
@@ -15,7 +17,8 @@ export function KpiTile({ label, value, sub }: { label: string; value: string; s
 
 /** A fixed-height row of bars, height proportional to value/max (plan.md §10). */
 export function BarChart({ data }: { data: { label: string; value: number }[] }) {
-  if (data.length === 0) return <p className="muted">Sin datos.</p>;
+  const t = useT();
+  if (data.length === 0) return <p className="muted">{t.charts.noDataText}</p>;
   const max = Math.max(1, ...data.map((d) => d.value));
 
   return (
@@ -48,7 +51,8 @@ export function LineChart({
   width?: number;
   formatValue?: (v: number) => string;
 }) {
-  if (data.length === 0) return <p className="muted">Sin datos.</p>;
+  const t = useT();
+  if (data.length === 0) return <p className="muted">{t.charts.noDataText}</p>;
 
   const max = Math.max(1, ...data.map((d) => d.value));
   const plotH = height - 20; // leave room for the x-axis tick labels
@@ -64,7 +68,7 @@ export function LineChart({
 
   return (
     <div className="chart-line-wrap">
-      <svg className="chart-line-svg" width={width} height={height} role="img" aria-label="trend chart">
+      <svg className="chart-line-svg" width={width} height={height} role="img" aria-label={t.charts.trendChartAriaLabel}>
         <line className="chart-line-axis" x1={0} y1={plotH} x2={width} y2={plotH} />
         <path className="chart-line-area" d={areaD} />
         <path className="chart-line-path" d={pathD} />

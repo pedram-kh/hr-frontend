@@ -31,6 +31,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../../auth/context';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { LocaleProvider } from '../../i18n/LocaleProvider';
 import type { Identity } from '../../lib/api';
 import { AdminShell } from '../AdminShell';
 
@@ -151,11 +152,13 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
   for (const [role, identity] of Object.entries(ROLES)) {
     it(`renders the correct group→item structure for ${role}`, () => {
       render(
+        <LocaleProvider>
         <ThemeProvider>
           <AuthContext.Provider value={{ identity, loading: false, login: vi.fn(), logout: vi.fn() }}>
             <AdminShell />
           </AuthContext.Provider>
-        </ThemeProvider>,
+        </ThemeProvider>
+        </LocaleProvider>,
       );
 
       expect(renderedGroups()).toEqual(EXPECTED[role]);
@@ -164,11 +167,13 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
 
   it('never renders "brand-preview" in the visible nav for any role (CP-1 §G.1 step 3)', () => {
     render(
-      <ThemeProvider>
-        <AuthContext.Provider value={{ identity: ROLES.super_admin, loading: false, login: vi.fn(), logout: vi.fn() }}>
-          <AdminShell />
-        </AuthContext.Provider>
-      </ThemeProvider>,
+      <LocaleProvider>
+        <ThemeProvider>
+          <AuthContext.Provider value={{ identity: ROLES.super_admin, loading: false, login: vi.fn(), logout: vi.fn() }}>
+            <AdminShell />
+          </AuthContext.Provider>
+        </ThemeProvider>
+      </LocaleProvider>,
     );
     expect(screen.queryByText(/brand.preview/i)).not.toBeInTheDocument();
   });
@@ -176,11 +181,13 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
   describe('collapsible sidebar (Sprint 11a CP-2 revision, §B.2)', () => {
     it('defaults to expanded (no persisted choice)', () => {
       render(
+        <LocaleProvider>
         <ThemeProvider>
           <AuthContext.Provider value={{ identity: ROLES.super_admin, loading: false, login: vi.fn(), logout: vi.fn() }}>
             <AdminShell />
           </AuthContext.Provider>
-        </ThemeProvider>,
+        </ThemeProvider>
+        </LocaleProvider>,
       );
       expect(document.querySelector('.shell-sidebar')).not.toHaveClass('shell-sidebar--collapsed');
     });
@@ -188,11 +195,13 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
     it('honors a persisted "collapsed" choice on mount, and every nav item still carries a full "Group · Item" aria-label', () => {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
       render(
+        <LocaleProvider>
         <ThemeProvider>
           <AuthContext.Provider value={{ identity: ROLES.super_admin, loading: false, login: vi.fn(), logout: vi.fn() }}>
             <AdminShell />
           </AuthContext.Provider>
-        </ThemeProvider>,
+        </ThemeProvider>
+        </LocaleProvider>,
       );
 
       expect(document.querySelector('.shell-sidebar')).toHaveClass('shell-sidebar--collapsed');
@@ -209,11 +218,13 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
 
     it('toggling the collapse button flips the modifier class and persists the choice', () => {
       render(
+        <LocaleProvider>
         <ThemeProvider>
           <AuthContext.Provider value={{ identity: ROLES.super_admin, loading: false, login: vi.fn(), logout: vi.fn() }}>
             <AdminShell />
           </AuthContext.Provider>
-        </ThemeProvider>,
+        </ThemeProvider>
+        </LocaleProvider>,
       );
 
       const toggle = screen.getByRole('button', { name: 'Colapsar menú' });

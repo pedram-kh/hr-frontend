@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useT } from '../i18n/context';
 
 // Sprint 11a (§C.2) — a layout shell, not a state manager. Every screen keeps
 // its own filter state, its own API params, and its own <select>/<input>/
@@ -41,6 +42,7 @@ export function FilterToolbar({
   /** The screen's own, unmodified filter controls. */
   children?: ReactNode;
 }) {
+  const t = useT();
   // Defaults to visible so wrapping a screen in this component changes
   // nothing about what's on screen today — the toggle only adds the OPTION
   // to hide filters, never hides them by default.
@@ -59,13 +61,13 @@ export function FilterToolbar({
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
           >
-            Filtros
+            {t.filterToolbar.filtersToggle}
             {activeCount > 0 && <span className="filter-toolbar-badge">{activeCount}</span>}
           </button>
         )}
         {hasFilterControls && activeCount > 0 && onClear && (
           <button type="button" className="btn btn-ghost" onClick={onClear}>
-            Limpiar filtros
+            {t.filterToolbar.clearFiltersButton}
           </button>
         )}
         {total}

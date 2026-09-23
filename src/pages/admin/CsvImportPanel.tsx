@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { ApiError, importEmployeeCsv, validateEmployeeCsv, type CsvReport } from '../../lib/api';
+import { useT } from '../../i18n/context';
 
 // CSV bootstrap for the directory (ADR-0004). Two-phase by design: upload → a
 // per-row dry-run report (validate, writes nothing) → apply the valid rows. A
 // bad row is REPORTED, never silently dropped (the server is the authority; this
 // only surfaces its report). Apply imports the valid rows even when some fail.
 export function CsvImportPanel({ onImported }: { onImported: () => void }) {
+  const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<CsvReport | null>(null);
   const [phase, setPhase] = useState<'idle' | 'validated' | 'applied'>('idle');
@@ -56,22 +58,16 @@ export function CsvImportPanel({ onImported }: { onImported: () => void }) {
 
   return (
     <section className="edit-block">
-      <h4>Importar empleados (CSV)</h4>
+      <h4>{t.csvImportPanel.heading}</h4>
       <p className="timeline-meta">
-        Columnas: <code>email</code>, <code>full_name</code>, <code>convenio_numero</code> (obligatorias);
-        opcionales <code>territory_code</code>, <code>job_category</code>, <code>group</code>,
+        {t.csvImportPanel.colsPrefix} <code>email</code>, <code>full_name</code>, <code>convenio_numero</code> {t.csvImportPanel.colsRequiredSuffix}{' '}
+        <code>territory_code</code>, <code>job_category</code>, <code>group</code>,
         <code> employment_type</code>, <code>work_location</code>, <code>employee_external_id</code>,
-        <code> start_date</code>. Primero se valida (sin escribir nada); las filas con error se
-        informan, no se descartan en silencio.
+        <code> start_date</code>. {t.csvImportPanel.colsValidationNote}
       </p>
       <p className="timeline-meta">
-        <code>group</code> acepta el grupo tal y como lo escribe el convenio (<code>Grupo 2</code>) o su
-        código (<code>2</code>); <code>Grupo I</code> y <code>Grupo 1</code> son el mismo grupo. Para un
-        área dentro de un grupo, usa <code>Grupo 2 &gt; resto áreas</code>. Solo se admiten grupos ya
-        aprobados de ese convenio: un valor que no exista, o que sea ambiguo (p. ej. <code>todas las
-        áreas</code> cuando existe en dos grupos), da error en su fila — nunca se elige uno por ti ni se
-        crea un grupo nuevo. En blanco, la persona queda sin grupo, y las preguntas que dependan del
-        grupo se derivan a RRHH.
+        <code>group</code> {t.csvImportPanel.groupAcceptsPrefix}<code>Grupo 2</code>{t.csvImportPanel.groupAcceptsMid}<code>2</code>{t.csvImportPanel.groupAcceptsClose} <code>Grupo I</code> {t.csvImportPanel.groupAndConnector} <code>Grupo 1</code> {t.csvImportPanel.groupSameGroupContinued} <code>Grupo 2 &gt; resto áreas</code>{t.csvImportPanel.groupApprovedNote} <code>todas las
+        áreas</code> {t.csvImportPanel.groupAmbiguousTail}
       </p>
 
       <div className="reassign">
@@ -82,11 +78,11 @@ export function CsvImportPanel({ onImported }: { onImported: () => void }) {
           disabled={busy}
         />
         <button className="btn btn-secondary" onClick={runValidate} disabled={busy || !file}>
-          {busy && phase === 'idle' ? 'Validando…' : 'Validar (simulación)'}
+          {busy && phase === 'idle' ? t.csvImportPanel.validating : t.csvImportPanel.validateButton}
         </button>
         {phase === 'validated' && report?.ok && report.summary.valid > 0 && (
           <button className="btn btn-primary" onClick={runApply} disabled={busy}>
-            {busy ? 'Importando…' : `Importar ${report.summary.valid} fila(s) válida(s)`}
+            {busy ? t.csvImportPanel.importing : `${t.csvImportPanel.importPrefix} ${report.summary.valid} ${t.csvImportPanel.importSuffix}`}
           </button>
         )}
       </div>
@@ -103,30 +99,30 @@ export function CsvImportPanel({ onImported }: { onImported: () => void }) {
         <>
           <p className="notice notice--neutral" style={{ marginTop: 'var(--space-2)' }}>
             {phase === 'applied' ? (
-              <>Importadas: <strong>{report.summary.created}</strong> creadas, <strong>{report.summary.updated}</strong> actualizadas
-              {report.summary.invalid > 0 && <> · {report.summary.invalid} con error (no aplicadas).</>}</>
+              <>{t.csvImportPanel.importedPrefix} <strong>{report.summary.created}</strong> {t.csvImportPanel.createdSuffix} <strong>{report.summary.updated}</strong> {t.csvImportPanel.updatedSuffix}
+              {report.summary.invalid > 0 && <> · {report.summary.invalid} {t.csvImportPanel.invalidNotAppliedSuffix}</>}</>
             ) : (
-              <>Simulación: {report.summary.total} fila(s) · <strong>{report.summary.valid}</strong> válidas ·
-              <strong> {report.summary.invalid}</strong> con error.</>
+              <>{t.csvImportPanel.simulationPrefix} {report.summary.total} {t.csvImportPanel.totalRowsSuffix} <strong>{report.summary.valid}</strong> {t.csvImportPanel.validSuffix}
+              <strong> {report.summary.invalid}</strong> {t.csvImportPanel.invalidSuffix}</>
             )}
           </p>
 
           <table className="docs-table">
             <thead>
-              <tr><th className="num">Fila</th><th>Email</th><th>Acción</th><th>Estado</th><th>Detalle</th></tr>
+              <tr><th className="num">{t.csvImportPanel.colRow}</th><th>{t.csvImportPanel.colEmail}</th><th>{t.csvImportPanel.colAction}</th><th>{t.csvImportPanel.colStatus}</th><th>{t.csvImportPanel.colDetail}</th></tr>
             </thead>
             <tbody>
               {report.rows.map((row) => (
                 <tr key={row.row_number}>
                   <td className="num">{row.row_number}</td>
-                  <td>{row.email || <span className="muted">—</span>}</td>
+                  <td>{row.email || <span className="muted">{t.common.dash}</span>}</td>
                   <td>{row.action}</td>
                   <td>
                     <span className={`badge ${row.status === 'pass' ? 'badge-verified' : 'badge-conflict'}`}>
-                      {row.status === 'pass' ? 'OK' : 'Error'}
+                      {row.status === 'pass' ? t.csvImportPanel.okLabel : t.csvImportPanel.errorLabel}
                     </span>
                   </td>
-                  <td>{row.errors.length > 0 ? row.errors.join(' ') : <span className="muted">—</span>}</td>
+                  <td>{row.errors.length > 0 ? row.errors.join(' ') : <span className="muted">{t.common.dash}</span>}</td>
                 </tr>
               ))}
             </tbody>

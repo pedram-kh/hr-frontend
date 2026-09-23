@@ -6,44 +6,47 @@
 // all — three independent places that could (and did) drift out of sync with
 // the backend's own `EscalationController::REASON_LABELS` and with each
 // other as the enum grew. One list now, imported everywhere a reason
-// renders, so a future enum addition only needs one new line here (plus the
-// backend's own `REASON_LABELS`, which is what actually drives the board's
-// per-card badge via `reason_label` — this file backs the filter dropdowns
-// and Analítica, which have no server-computed label of their own).
+// renders, so a future enum addition only needs one new line in
+// `i18n/es.ts`/`en.ts` under `escalationReasons.labels` (plus the backend's
+// own `REASON_LABELS`, which is what actually drives the board's per-card
+// badge via `reason_label` — this file backs the filter dropdowns and
+// Analítica, which have no server-computed label of their own).
 //
-// Keep in sync with `escalation_cards.reason`'s CHECK-constraint enum
-// (`hr-backend/database/migrations/*_escalation_cards_reason.php`) and with
-// `EscalationController::REASON_LABELS`. `EscalationReasonLabelCoverageTest`
-// (backend) guards the backend side against the enum growing silently; there
-// is no DB access from the frontend to guard this side the same way, so a
-// missing entry here falls back to the raw reason string (never blank).
-export const ESCALATION_REASON_LABELS: Record<string, string> = {
-  low_confidence: 'Baja confianza',
-  off_domain: 'Fuera de ámbito',
-  sensitive_topic: 'Tema sensible',
-  explicit_request: 'Petición explícita',
-  salary_coverage_gap: 'Hueco salarial',
-  salary_not_in_chat: 'Salario no disponible',
-  reference_fact_coverage_gap: 'Hueco en datos de referencia',
-  // Correction-02: renamed from 'Hueco en el texto del convenio', which read
-  // as an ordinary prose-retrieval gap and was indistinguishable from one on
-  // the badge/filter — see the backend REASON_LABELS comment for the full
-  // rationale. Kept in sync with EscalationController::REASON_LABELS.
-  estatuto_fallback_gap: 'Convenio vencido / sin texto vigente',
-  conflict: 'Conflicto',
-  quality_sample_wrong: 'Muestra de calidad incorrecta',
-};
+// Sprint 11b (plan.md §C.9 step 8b): labels moved into the locale dictionaries
+// (`t.escalationReasons.*`) so they're locale-aware; these helpers now take
+// the resolved dictionary `t` as their first argument — same posture as
+// `statusLabels.ts`.
+import type { Dict } from '../i18n/es';
+
+/** Closed set of reason ids — order matches the filter dropdown / backend enum. */
+export const ESCALATION_REASON_IDS = [
+  'low_confidence',
+  'off_domain',
+  'sensitive_topic',
+  'explicit_request',
+  'salary_coverage_gap',
+  'salary_not_in_chat',
+  'reference_fact_coverage_gap',
+  'estatuto_fallback_gap',
+  'conflict',
+  'quality_sample_wrong',
+] as const;
 
 /** Filter-dropdown options: "Todos los motivos" + one row per known reason. */
-export const ESCALATION_REASON_FILTERS: Array<{ id: string; label: string }> = [
-  { id: '', label: 'Todos los motivos' },
-  ...Object.entries(ESCALATION_REASON_LABELS).map(([id, label]) => ({ id, label })),
-];
+export function escalationReasonFilters(t: Dict): Array<{ id: string; label: string }> {
+  return [
+    { id: '', label: t.escalationReasons.allReasons },
+    ...ESCALATION_REASON_IDS.map((id) => ({
+      id,
+      label: t.escalationReasons.labels[id] ?? id,
+    })),
+  ];
+}
 
 /** Label for a reason value; falls back to the raw string for anything unmapped. */
-export function escalationReasonLabel(reason: string | null | undefined): string {
+export function escalationReasonLabel(t: Dict, reason: string | null | undefined): string {
   if (reason === null || reason === undefined || reason === '') {
-    return '—';
+    return t.common.dash;
   }
-  return ESCALATION_REASON_LABELS[reason] ?? reason;
+  return t.escalationReasons.labels[reason] ?? reason;
 }

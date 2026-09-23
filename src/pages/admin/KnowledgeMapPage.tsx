@@ -1,19 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { canEditKnowledge, getCoverageGaps, type CoverageGaps, type GapKind, type Lens } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
-import { GAP_META } from './gapMeta';
+import { gapMeta } from './gapMeta';
 import { Hierarchy, type HierarchyForm } from './Hierarchy';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ReferenceFactCreatePanel } from './ReferenceFactCreatePanel';
 import { GrafoSection } from './grafo/GrafoSection';
-
-const LENSES: { id: Lens; label: string }[] = [
-  { id: 'territory', label: 'Territory' },
-  { id: 'sector', label: 'Sector' },
-  { id: 'validity', label: 'Validity' },
-  { id: 'topic', label: 'Topic' },
-];
+import { useT } from '../../i18n/context';
 
 type MapSection = 'hierarchy' | 'grafo';
 
@@ -31,6 +25,7 @@ export function KnowledgeMapPage({
   onOpenEscalation,
   initialTab = null,
 }: { onOpenEscalation?: (uuid: string) => void; initialTab?: string | null } = {}) {
+  const t = useT();
   const { identity } = useAuth();
   const canEdit = canEditKnowledge(identity);
   const [section, setSection] = useState<MapSection>(() => sectionFromTab(initialTab));
@@ -43,6 +38,17 @@ export function KnowledgeMapPage({
   const [creating, setCreating] = useState(false);
   const [gaps, setGaps] = useState<CoverageGaps | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Locale-aware — was a module-level const; labels must follow `t`.
+  const lenses = useMemo(
+    (): { id: Lens; label: string }[] => [
+      { id: 'territory', label: t.knowledgeMap.lensTerritory },
+      { id: 'sector', label: t.knowledgeMap.lensSector },
+      { id: 'validity', label: t.knowledgeMap.lensValidity },
+      { id: 'topic', label: t.knowledgeMap.lensTopic },
+    ],
+    [t],
+  );
 
   const loadGaps = () => {
     getCoverageGaps().then(setGaps).catch(() => setGaps(null));
@@ -60,14 +66,14 @@ export function KnowledgeMapPage({
     <>
     <div className="docs-main">
         <div className="map-toolbar">
-          <div className="seg" role="tablist" aria-label="Sección">
+          <div className="seg" role="tablist" aria-label={t.knowledgeMap.sectionAriaLabel}>
             <button
               role="tab"
               aria-selected={section === 'hierarchy'}
               className={`seg-btn ${section === 'hierarchy' ? 'is-active' : ''}`}
               onClick={() => setSection('hierarchy')}
             >
-              Jerarquía
+              {t.knowledgeMap.hierarchyTab}
             </button>
             <button
               role="tab"
@@ -75,13 +81,13 @@ export function KnowledgeMapPage({
               className={`seg-btn ${section === 'grafo' ? 'is-active' : ''}`}
               onClick={() => setSection('grafo')}
             >
-              Grafo
+              {t.knowledgeMap.grafoTab}
             </button>
           </div>
           {section === 'hierarchy' && (
             <>
-              <div className="seg" role="tablist" aria-label="Lens">
-                {LENSES.map((l) => (
+              <div className="seg" role="tablist" aria-label={t.knowledgeMap.lensAriaLabel}>
+                {lenses.map((l) => (
                   <button
                     key={l.id}
                     role="tab"
@@ -93,19 +99,19 @@ export function KnowledgeMapPage({
                   </button>
                 ))}
               </div>
-              <div className="seg" role="group" aria-label="View">
+              <div className="seg" role="group" aria-label={t.knowledgeMap.viewAriaLabel}>
                 <button className={`seg-btn ${form === 'graph' ? 'is-active' : ''}`} onClick={() => setForm('graph')}>
-                  Graph
+                  {t.knowledgeMap.viewGraph}
                 </button>
                 <button className={`seg-btn ${form === 'list' ? 'is-active' : ''}`} onClick={() => setForm('list')}>
-                  List
+                  {t.knowledgeMap.viewList}
                 </button>
               </div>
             </>
           )}
           {canEdit && (
             <button className="btn btn-primary map-toolbar-action" onClick={() => setCreating(true)}>
-              + New reference fact
+              {t.knowledgeMap.newReferenceFactButton}
             </button>
           )}
         </div>
@@ -149,17 +155,18 @@ export function KnowledgeMapPage({
 }
 
 function CoverageGapBar({ gaps }: { gaps: CoverageGaps }) {
+  const t = useT();
   const order: GapKind[] = ['unanswerable', 'expired_no_successor', 'suspected_mistag', 'date_expired_active'];
   const total = order.reduce((s, k) => s + (gaps.counts[k] ?? 0), 0);
 
   return (
     <div className="gap-bar">
-      <strong className="gap-bar-title">Coverage gaps</strong>
-      {total === 0 && <span className="muted">None detected.</span>}
+      <strong className="gap-bar-title">{t.knowledgeMap.coverageGapsTitle}</strong>
+      {total === 0 && <span className="muted">{t.knowledgeMap.coverageGapsNone}</span>}
       {order.map((k) => {
         const n = gaps.counts[k] ?? 0;
         if (n === 0) return null;
-        const m = GAP_META[k];
+        const m = gapMeta(t, k);
         return (
           <span key={k} className={`gap-badge ${m.cls}`} title={m.hint}>
             <span aria-hidden="true">●</span> {m.label}: {n}

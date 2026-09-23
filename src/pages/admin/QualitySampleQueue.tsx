@@ -18,20 +18,7 @@ import { Pager } from './Pager';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
 import { BarChart } from './charts';
-
-const VERDICT_LABELS: Record<QualityVerdict, string> = {
-  correct: 'Correcta',
-  partially: 'Parcialmente correcta',
-  wrong: 'Incorrecta',
-};
-
-const FAILURE_KIND_LABELS: Record<QualityFailureKind, string> = {
-  wrong_scope: 'Ámbito incorrecto',
-  wrong_figure: 'Cifra incorrecta',
-  stale_document: 'Documento obsoleto',
-  unclear: 'Poco claro',
-  other: 'Otro',
-};
+import { useT } from '../../i18n/context';
 
 interface MonthTotals {
   correct: number;
@@ -66,11 +53,12 @@ function accuracyPct(t: MonthTotals): number | null {
 // staging even though §10 explicitly names "quality-verdict trend §6.5" as
 // one of the `BarChart`/`LineChart` primitive's intended call sites.
 function QualityMonthlySummary({ trend }: { trend: QualityTrendRow[] }) {
+  const t = useT();
   const byMonth = useMemo(() => aggregateByMonth(trend), [trend]);
   const months = useMemo(() => Object.keys(byMonth).sort().reverse(), [byMonth]);
 
   if (months.length === 0) {
-    return <p className="muted">Sin veredictos registrados todavía.</p>;
+    return <p className="muted">{t.qualitySampleQueue.noVerdictsYet}</p>;
   }
 
   const latest = byMonth[months[0]];
@@ -78,20 +66,20 @@ function QualityMonthlySummary({ trend }: { trend: QualityTrendRow[] }) {
   return (
     <div className="quality-monthly-summary">
       {months.map((m) => {
-        const t = byMonth[m];
-        const acc = accuracyPct(t);
+        const totals = byMonth[m];
+        const acc = accuracyPct(totals);
         return (
           <p key={m} className="timeline-meta">
-            <strong>{m}</strong> — {t.correct} correcta · {t.partially} parcialmente · {t.wrong} incorrecta
-            {acc !== null && <> · <strong>{acc}%</strong> de precisión</>}
+            <strong>{m}</strong> — {totals.correct} {t.qualitySampleQueue.monthlyCorrectSuffix} · {totals.partially} {t.qualitySampleQueue.monthlyPartiallySuffix} · {totals.wrong} {t.qualitySampleQueue.monthlyWrongSuffix}
+            {acc !== null && <> · <strong>{acc}%</strong> {t.qualitySampleQueue.accuracySuffix}</>}
           </p>
         );
       })}
       <BarChart
         data={[
-          { label: 'Correcta', value: latest.correct },
-          { label: 'Parcialmente', value: latest.partially },
-          { label: 'Incorrecta', value: latest.wrong },
+          { label: t.qualitySampleQueue.chartLabelCorrect, value: latest.correct },
+          { label: t.qualitySampleQueue.chartLabelPartially, value: latest.partially },
+          { label: t.qualitySampleQueue.chartLabelWrong, value: latest.wrong },
         ]}
       />
     </div>
@@ -107,6 +95,7 @@ function QualityMonthlySummary({ trend }: { trend: QualityTrendRow[] }) {
 // gated by `escalation.work` (server-enforced; this page only hides the
 // affordance).
 export function QualitySampleQueue() {
+  const t = useT();
   const { identity } = useAuth();
   const canReview = canWorkEscalations(identity);
 
@@ -138,35 +127,34 @@ export function QualitySampleQueue() {
   return (
     <>
       <p className="muted">
-        Muestra mensual estratificada de turnos respondidos (§6.2) — cada fila es un turno REAL que un empleado recibió,
-        no un caso sintético. Marcar <strong>Incorrecta</strong> abre una tarjeta de corrección (
-        <code>quality_sample_wrong</code>), igual que cualquier otra escalación.
+        {t.qualitySampleQueue.introPart1} <strong>{t.qualitySampleQueue.verdictLabels.wrong}</strong> {t.qualitySampleQueue.introPart2}
+        <code>quality_sample_wrong</code>{t.qualitySampleQueue.introPart3}
         {' '}
-        <span className="muted docs-total">{meta.total} muestra{meta.total === 1 ? '' : 's'}</span>
+        <span className="muted docs-total">{meta.total} {t.qualitySampleQueue.sampleWord}{meta.total === 1 ? '' : 's'}</span>
       </p>
       <QualityMonthlySummary trend={trend} />
       <div className="reassign">
         <input
           className="input"
           type="text"
-          placeholder="Mes (AAAA-MM)…"
+          placeholder={t.qualitySampleQueue.monthPlaceholder}
           value={month}
           onChange={(e) => setMonth(e.target.value)}
           style={{ maxWidth: 140 }}
         />
         <label className="checkbox">
           <input type="checkbox" checked={unreviewedOnly} onChange={(e) => setUnreviewedOnly(e.target.checked)} />
-          Solo sin revisar
+          {t.qualitySampleQueue.unreviewedOnlyLabel}
         </label>
       </div>
       {error && <p className="error">{error}</p>}
       {loading ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.qualitySampleQueue.loadingText}</p>
       ) : (
         <table className="docs-table">
           <thead>
             <tr>
-              <th>Mes</th><th>Pregunta</th><th>Estrato</th><th>Territorio</th><th>Veredicto</th><th>Revisor</th><th>Tarjeta</th>
+              <th>{t.qualitySampleQueue.colMonth}</th><th>{t.qualitySampleQueue.colQuestion}</th><th>{t.qualitySampleQueue.colStratum}</th><th>{t.qualitySampleQueue.colTerritory}</th><th>{t.qualitySampleQueue.colVerdict}</th><th>{t.qualitySampleQueue.colReviewer}</th><th>{t.qualitySampleQueue.colCard}</th>
             </tr>
           </thead>
           <tbody>
@@ -174,31 +162,31 @@ export function QualitySampleQueue() {
               <tr key={r.uuid} className={selected === r.uuid ? 'is-selected' : ''} onClick={() => setSelected(r.uuid)}>
                 <td className="muted">{r.sampled_for_month}</td>
                 <td className="cell-clip">
-                  {r.question ?? '—'}
+                  {r.question ?? t.common.dash}
                   {r.message?.content && (
                     <details onClick={(e) => e.stopPropagation()}>
-                      <summary className="muted small">Ver respuesta</summary>
+                      <summary className="muted small">{t.qualitySampleQueue.viewAnswerSummary}</summary>
                       <p className="answer-prose">{r.message.content}</p>
                     </details>
                   )}
                 </td>
-                <td className="muted small">{r.stratum_path ?? 'prose'}</td>
-                <td className="muted small">{r.stratum_territory?.name ?? 'nacional'}</td>
+                <td className="muted small">{r.stratum_path ?? t.qualitySampleQueue.stratumPathFallback}</td>
+                <td className="muted small">{r.stratum_territory?.name ?? t.qualitySampleQueue.nationalFallback}</td>
                 <td>
                   {r.verdict ? (
                     <span className={`badge ${r.verdict === 'wrong' ? 'badge-conflict' : r.verdict === 'partially' ? 'badge-review' : 'badge-verified'}`}>
-                      {VERDICT_LABELS[r.verdict]}
+                      {t.qualitySampleQueue.verdictLabels[r.verdict]}
                     </span>
                   ) : (
-                    <span className="badge badge-review">Sin revisar</span>
+                    <span className="badge badge-review">{t.qualitySampleQueue.notReviewedBadge}</span>
                   )}
                 </td>
-                <td className="muted small">{r.reviewer?.full_name ?? '—'}</td>
-                <td className="muted small">{r.escalation_card ? `#${r.escalation_card.id}` : '—'}</td>
+                <td className="muted small">{r.reviewer?.full_name ?? t.common.dash}</td>
+                <td className="muted small">{r.escalation_card ? `#${r.escalation_card.id}` : t.common.dash}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="col-empty">No hay muestras para este filtro. (Ejecuta <code>php artisan quality:sample</code> para generar la del mes.)</td></tr>
+              <tr><td colSpan={7} className="col-empty">{t.qualitySampleQueue.noSamplesPrefix} <code>php artisan quality:sample</code> {t.qualitySampleQueue.noSamplesSuffix}</td></tr>
             )}
           </tbody>
         </table>
@@ -230,6 +218,7 @@ function QualitySampleDrawer({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [detail, setDetail] = useState<QualitySampleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<QualityVerdict | ''>('');
@@ -252,7 +241,7 @@ function QualitySampleDrawer({
   const submit = async () => {
     if (!verdict) return;
     if (verdict !== 'correct' && !failureKind) {
-      setError('Selecciona un motivo de fallo.');
+      setError(t.qualitySampleQueue.selectFailureReasonError);
       return;
     }
     setBusy(true);
@@ -276,7 +265,7 @@ function QualitySampleDrawer({
     return (
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()}>
-          <div className="detail-head"><strong>Muestra de calidad</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
+          <div className="detail-head"><strong>{t.qualitySampleQueue.drawerHeading}</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
           <div className="detail-body"><p className="error">{error}</p></div>
         </aside>
       </div>
@@ -286,8 +275,8 @@ function QualitySampleDrawer({
     return (
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()}>
-          <div className="detail-head"><strong>Muestra de calidad</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
-          <div className="detail-body"><p className="muted">Loading…</p></div>
+          <div className="detail-head"><strong>{t.qualitySampleQueue.drawerHeading}</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
+          <div className="detail-body"><p className="muted">{t.qualitySampleQueue.loadingText}</p></div>
         </aside>
       </div>
     );
@@ -299,18 +288,18 @@ function QualitySampleDrawer({
     <div className="detail-backdrop" onClick={onClose}>
       <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="detail-head">
-          <strong>Muestra de calidad · {sample.sampled_for_month}</strong>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+          <strong>{t.qualitySampleQueue.drawerHeading} · {sample.sampled_for_month}</strong>
+          <button className="btn btn-ghost" onClick={onClose} aria-label={t.common.close}>✕</button>
         </div>
         <div className="detail-body">
           <dl className="kv">
-            <dt>Estrato</dt><dd>{sample.stratum_path ?? 'prose'} · {sample.stratum_territory?.name ?? 'nacional'}</dd>
-            <dt>Semilla</dt><dd>{sample.seed}</dd>
-            {sample.escalation_card && (<><dt>Tarjeta de corrección</dt><dd>#{sample.escalation_card.id}</dd></>)}
+            <dt>{t.qualitySampleQueue.colStratum}</dt><dd>{sample.stratum_path ?? t.qualitySampleQueue.stratumPathFallback} · {sample.stratum_territory?.name ?? t.qualitySampleQueue.nationalFallback}</dd>
+            <dt>{t.qualitySampleQueue.colSeed}</dt><dd>{sample.seed}</dd>
+            {sample.escalation_card && (<><dt>{t.qualitySampleQueue.colCorrectionCard}</dt><dd>#{sample.escalation_card.id}</dd></>)}
           </dl>
 
           <section>
-            <h4>Conversación</h4>
+            <h4>{t.escalationCard.conversationHeading}</h4>
             <div className="card-convo">
               {conversation.map((m) => (
                 <div key={m.id} className={`chat-row ${m.role === 'user' ? 'chat-row--user' : 'chat-row--assistant'}`}>
@@ -318,12 +307,14 @@ function QualitySampleDrawer({
                     <div className="chat-bubble chat-bubble--user">{m.content}</div>
                   ) : m.role === 'hr_agent' ? (
                     <div className="card chat-bubble chat-bubble--assistant chat-bubble--agent">
-                      <span className="badge badge-agent">Respuesta de {m.author_label ?? 'Recursos Humanos'} (persona)</span>
+                      <span className="badge badge-agent">
+                        {t.escalationCard.hrReplyBadgePrefix} {m.author_label ?? t.escalationCard.hrAgentDefaultLabel} {t.escalationCard.hrReplyBadgeSuffix}
+                      </span>
                       <p className="answer-prose">{m.content}</p>
                     </div>
                   ) : (
                     <div className={`card chat-bubble chat-bubble--assistant ${m.escalated ? 'escalation' : ''}`}>
-                      {m.escalated && <span className="badge badge-review">Escalado a Recursos Humanos</span>}
+                      {m.escalated && <span className="badge badge-review">{t.escalationCard.escalatedToHrBadge}</span>}
                       <p className="answer-prose">{m.content}</p>
                       <CitationList citations={m.citations} />
                       {m.trace && <TracePanel trace={m.trace} />}
@@ -331,22 +322,22 @@ function QualitySampleDrawer({
                   )}
                 </div>
               ))}
-              {conversation.length === 0 && <p className="muted">Sin conversación asociada.</p>}
+              {conversation.length === 0 && <p className="muted">{t.qualitySampleQueue.noConversationAssociated}</p>}
             </div>
           </section>
 
           <section className="edit-block">
-            <h4>Revisión</h4>
+            <h4>{t.qualitySampleQueue.reviewHeading}</h4>
             {!canReview && (
               <p className="notice notice--neutral">
                 <span aria-hidden="true">🔒</span>
-                Solo lectura — se requiere <code>escalation.work</code> para registrar un veredicto.
+                {t.qualitySampleQueue.readOnlyReviewNoticePrefix} <code>escalation.work</code> {t.qualitySampleQueue.readOnlyReviewNoticeSuffix}
               </p>
             )}
             {canReview && reviewerBarred && (
               <p className="notice">
                 <span aria-hidden="true">⚠</span>
-                No puedes revisar esta muestra: estás asignado a una tarjeta de escalación de la misma sesión (§6.3).
+                {t.qualitySampleQueue.reviewerBarredNotice}
               </p>
             )}
             {canReview && !reviewerBarred && (
@@ -359,7 +350,7 @@ function QualitySampleDrawer({
                       disabled={busy}
                       onClick={() => setVerdict(v)}
                     >
-                      {VERDICT_LABELS[v]}
+                      {t.qualitySampleQueue.verdictLabels[v]}
                     </button>
                   ))}
                 </div>
@@ -371,16 +362,16 @@ function QualitySampleDrawer({
                     disabled={busy}
                     style={{ marginTop: 'var(--space-2)' }}
                   >
-                    <option value="">Motivo de fallo…</option>
-                    {(Object.keys(FAILURE_KIND_LABELS) as QualityFailureKind[]).map((k) => (
-                      <option key={k} value={k}>{FAILURE_KIND_LABELS[k]}</option>
+                    <option value="">{t.qualitySampleQueue.failureKindPlaceholder}</option>
+                    {(Object.keys(t.qualitySampleQueue.failureKindLabels) as QualityFailureKind[]).map((k) => (
+                      <option key={k} value={k}>{t.qualitySampleQueue.failureKindLabels[k]}</option>
                     ))}
                   </select>
                 )}
                 <textarea
                   className="textarea"
                   rows={3}
-                  placeholder="Nota (opcional)…"
+                  placeholder={t.qualitySampleQueue.notePlaceholder}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   disabled={busy}
@@ -388,13 +379,13 @@ function QualitySampleDrawer({
                 />
                 {error && <p className="error">{error}</p>}
                 <button className="btn btn-primary" onClick={submit} disabled={busy || !verdict}>
-                  {busy ? 'Guardando…' : 'Guardar veredicto'}
+                  {busy ? t.qualitySampleQueue.saving : t.qualitySampleQueue.saveVerdictButton}
                 </button>
               </>
             )}
             {sample.verdict && (
               <p className="timeline-meta">
-                Ya revisada por {sample.reviewer?.full_name ?? '—'} el {sample.reviewed_at ?? '—'} — guardar de nuevo sobrescribe el veredicto.
+                {t.qualitySampleQueue.alreadyReviewedPrefix} {sample.reviewer?.full_name ?? t.common.dash} {t.qualitySampleQueue.alreadyReviewedMiddle} {sample.reviewed_at ?? t.common.dash} {t.qualitySampleQueue.alreadyReviewedSuffix}
               </p>
             )}
           </section>

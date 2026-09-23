@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  FACT_STATUS_LABELS,
-  GROUP_NODE_STATUS_LABELS,
-  RETRIEVAL_STATUS_LABELS,
-  SUB_OUTCOME_LABELS,
-  TAGGING_STATUS_LABELS,
-} from './statusLabels';
+import { es } from '../i18n/es';
+import { en } from '../i18n/en';
 
 // Sprint 11a (§D.3) — extends Correction-02's coverage-guard PATTERN
 // (`EscalationReasonLabelCoverageTest.php`: introspect the true enum, diff
@@ -19,6 +14,11 @@ import {
 // or two values silently colliding on one label) provided a future PR that
 // adds an enum value updates ONE of the two lists — normal review will
 // generally catch a diff that adds a value in only one place.
+//
+// Sprint 11b (plan.md §C.9 step 6): the label maps moved from module-level
+// consts into `i18n/es.ts`/`en.ts` (`t.statusLabels.*`), so this guard now
+// checks BOTH dictionaries — a gap or a collision introduced in only one
+// language is still caught, not just the Spanish original.
 function assertFullCoverage(enumValues: string[], labels: Record<string, string>, mapName: string) {
   const missing = enumValues.filter((v) => !(v in labels));
   expect(missing, `${mapName} is missing a label for: ${missing.join(', ')}`).toEqual([]);
@@ -40,19 +40,23 @@ function assertNoLabelCollisions(enumValues: string[], labels: Record<string, st
   expect(collisions, `Two ${mapName} values are indistinguishable on screen: ${collisions.join('; ')}`).toEqual([]);
 }
 
+const DICTS = { es, en } as const;
+
 describe('RETRIEVAL_STATUS_LABELS', () => {
   // documents/document_chunks migrations, `retrieval_status` enum column:
   // hr-backend/database/migrations/2026_06_20_131008_create_documents_table.php:21
   // hr-backend/database/migrations/2026_06_20_131011_create_document_chunks_table.php:32
   const ENUM_VALUES = ['draft', 'active', 'historical'];
 
-  it('has a label for every retrieval_status enum value', () => {
-    assertFullCoverage(ENUM_VALUES, RETRIEVAL_STATUS_LABELS, 'RETRIEVAL_STATUS_LABELS');
-  });
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    it(`[${lang}] has a label for every retrieval_status enum value`, () => {
+      assertFullCoverage(ENUM_VALUES, dict.statusLabels.retrievalStatus, 'statusLabels.retrievalStatus');
+    });
 
-  it('gives every retrieval_status value a distinct label', () => {
-    assertNoLabelCollisions(ENUM_VALUES, RETRIEVAL_STATUS_LABELS, 'retrieval_status');
-  });
+    it(`[${lang}] gives every retrieval_status value a distinct label`, () => {
+      assertNoLabelCollisions(ENUM_VALUES, dict.statusLabels.retrievalStatus, 'retrieval_status');
+    });
+  }
 });
 
 describe('TAGGING_STATUS_LABELS', () => {
@@ -60,13 +64,15 @@ describe('TAGGING_STATUS_LABELS', () => {
   // hr-backend/database/migrations/2026_06_20_131008_create_documents_table.php:25
   const ENUM_VALUES = ['auto_proposed', 'under_review', 'verified'];
 
-  it('has a label for every tagging_status enum value', () => {
-    assertFullCoverage(ENUM_VALUES, TAGGING_STATUS_LABELS, 'TAGGING_STATUS_LABELS');
-  });
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    it(`[${lang}] has a label for every tagging_status enum value`, () => {
+      assertFullCoverage(ENUM_VALUES, dict.statusLabels.taggingStatus, 'statusLabels.taggingStatus');
+    });
 
-  it('gives every tagging_status value a distinct label', () => {
-    assertNoLabelCollisions(ENUM_VALUES, TAGGING_STATUS_LABELS, 'tagging_status');
-  });
+    it(`[${lang}] gives every tagging_status value a distinct label`, () => {
+      assertNoLabelCollisions(ENUM_VALUES, dict.statusLabels.taggingStatus, 'tagging_status');
+    });
+  }
 });
 
 describe('FACT_STATUS_LABELS', () => {
@@ -74,13 +80,15 @@ describe('FACT_STATUS_LABELS', () => {
   // hr-backend/database/migrations/2026_06_26_120001_create_reference_facts_table.php:66
   const ENUM_VALUES = ['needs_review', 'verified'];
 
-  it('has a label for every reference_facts.status enum value', () => {
-    assertFullCoverage(ENUM_VALUES, FACT_STATUS_LABELS, 'FACT_STATUS_LABELS');
-  });
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    it(`[${lang}] has a label for every reference_facts.status enum value`, () => {
+      assertFullCoverage(ENUM_VALUES, dict.statusLabels.factStatus, 'statusLabels.factStatus');
+    });
 
-  it('gives every reference_facts.status value a distinct label', () => {
-    assertNoLabelCollisions(ENUM_VALUES, FACT_STATUS_LABELS, 'reference_facts.status');
-  });
+    it(`[${lang}] gives every reference_facts.status value a distinct label`, () => {
+      assertNoLabelCollisions(ENUM_VALUES, dict.statusLabels.factStatus, 'reference_facts.status');
+    });
+  }
 });
 
 describe('GROUP_NODE_STATUS_LABELS', () => {
@@ -89,13 +97,15 @@ describe('GROUP_NODE_STATUS_LABELS', () => {
   // hr-backend/app/Models/ConvenioGroup.php:31
   const ENUM_VALUES = ['needs_review', 'approved', 'rejected'];
 
-  it('has a label for every ConvenioGroup(Category) status value', () => {
-    assertFullCoverage(ENUM_VALUES, GROUP_NODE_STATUS_LABELS, 'GROUP_NODE_STATUS_LABELS');
-  });
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    it(`[${lang}] has a label for every ConvenioGroup(Category) status value`, () => {
+      assertFullCoverage(ENUM_VALUES, dict.statusLabels.groupNodeStatus, 'statusLabels.groupNodeStatus');
+    });
 
-  it('gives every group/category status value a distinct label', () => {
-    assertNoLabelCollisions(ENUM_VALUES, GROUP_NODE_STATUS_LABELS, 'group node status');
-  });
+    it(`[${lang}] gives every group/category status value a distinct label`, () => {
+      assertNoLabelCollisions(ENUM_VALUES, dict.statusLabels.groupNodeStatus, 'group node status');
+    });
+  }
 });
 
 describe('SUB_OUTCOME_LABELS', () => {
@@ -160,14 +170,16 @@ describe('SUB_OUTCOME_LABELS', () => {
     expect(MATRIX_KEYS.length).toBe(49);
   });
 
-  it('has a label for every (reason.sub_outcome) pair in MATRIX', () => {
-    assertFullCoverage(MATRIX_KEYS, SUB_OUTCOME_LABELS, 'SUB_OUTCOME_LABELS');
-  });
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    it(`[${lang}] has a label for every (reason.sub_outcome) pair in MATRIX`, () => {
+      assertFullCoverage(MATRIX_KEYS, dict.statusLabels.subOutcome, 'statusLabels.subOutcome');
+    });
 
-  it('has no stray keys beyond MATRIX (a renamed/removed sub_outcome left behind)', () => {
-    const stray = Object.keys(SUB_OUTCOME_LABELS).filter((k) => !MATRIX_KEYS.includes(k));
-    expect(stray, `SUB_OUTCOME_LABELS has keys not in MATRIX: ${stray.join(', ')}`).toEqual([]);
-  });
+    it(`[${lang}] has no stray keys beyond MATRIX (a renamed/removed sub_outcome left behind)`, () => {
+      const stray = Object.keys(dict.statusLabels.subOutcome).filter((k) => !MATRIX_KEYS.includes(k));
+      expect(stray, `statusLabels.subOutcome has keys not in MATRIX: ${stray.join(', ')}`).toEqual([]);
+    });
+  }
 
   // Collisions are NOT checked here: several sub-outcomes across different
   // reasons legitimately share a short label today (e.g. both
