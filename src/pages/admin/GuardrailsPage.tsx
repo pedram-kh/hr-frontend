@@ -8,6 +8,9 @@ import {
   type GuardrailConfig,
   type GuardrailConfigUpdate,
 } from '../../lib/api';
+import { useT, useLocale } from '../../i18n/context';
+import { formatDate } from '../../i18n/format';
+import type { Dict } from '../../i18n/es';
 
 // Admin "Guardrails" console (Sprint 6, ADR-0019). The admin layer ON TOP of the
 // hardcoded GuardrailService baseline. Every knob is additive / raise-only: the
@@ -15,38 +18,35 @@ import {
 // fast feedback, and the SERVER is authoritative (a below-floor POST → 422). The
 // hardcoded baseline patterns are never editable here. auditor = read-only.
 
-const REASON_LABELS: Record<string, string> = {
-  low_confidence: 'Baja confianza',
-  salary_coverage_gap: 'Hueco en tablas salariales',
-  off_domain: 'Fuera de ámbito',
-  explicit_request: 'Petición explícita',
-  sensitive_topic: 'Tema sensible',
-};
-
-const THRESHOLD_META: Array<{
+function thresholdMeta(t: Dict): Array<{
   key: 'retrieval_score_floor' | 'answer_confidence_floor' | 'router_confidence_floor';
   label: string;
   help: string;
   secondary?: boolean;
-}> = [
-  {
-    key: 'retrieval_score_floor',
-    label: 'Umbral de recuperación (Check A)',
-    help: 'Puntuación mínima del mejor fragmento para intentar responder. Subirlo escala más preguntas dudosas. Es una verdadera puerta.',
-  },
-  {
-    key: 'answer_confidence_floor',
-    label: 'Umbral de confianza (Check C — desempate)',
-    help: 'Señal secundaria, NO una puerta principal. Las puertas reales son A (recuperación) y B (citas). Subirlo afina el desempate.',
-  },
-  {
-    key: 'router_confidence_floor',
-    label: 'Umbral del enrutador (secundario)',
-    help: 'Confianza mínima del enrutador. Subirlo envía más casos intermedios al camino seguro de prosa.',
-  },
-];
+}> {
+  return [
+    {
+      key: 'retrieval_score_floor',
+      label: t.guardrailsPage.thresholdRetrievalLabel,
+      help: t.guardrailsPage.thresholdRetrievalHelp,
+    },
+    {
+      key: 'answer_confidence_floor',
+      label: t.guardrailsPage.thresholdConfidenceLabel,
+      help: t.guardrailsPage.thresholdConfidenceHelp,
+    },
+    {
+      key: 'router_confidence_floor',
+      label: t.guardrailsPage.thresholdRouterLabel,
+      help: t.guardrailsPage.thresholdRouterHelp,
+    },
+  ];
+}
 
 export function GuardrailsPage() {
+  const t = useT();
+  const { locale } = useLocale();
+  const THRESHOLD_META = useMemo(() => thresholdMeta(t), [t]);
   const [config, setConfig] = useState<GuardrailConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +73,9 @@ export function GuardrailsPage() {
   useEffect(() => {
     getGuardrails()
       .then(hydrate)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'No se pudo cargar la configuración.'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.guardrailsPage.loadFailedError))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canManage = config?.can_manage ?? false;
 
@@ -87,7 +87,7 @@ export function GuardrailsPage() {
       const updated = await updateGuardrails(update);
       hydrate(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo guardar.');
+      setError(err instanceof ApiError ? err.message : t.guardrailsPage.saveFailedError);
     } finally {
       setBusy(false);
     }
@@ -101,12 +101,12 @@ export function GuardrailsPage() {
       if (raw === undefined || raw.trim() === '') continue;
       const value = Number(raw);
       const floor = config.thresholds[meta.key].floor;
-      if (Number.isNaN(value)) return `«${meta.label}»: introduce un número.`;
-      if (value < floor) return `«${meta.label}» no puede bajar de ${floor} (mínimo de seguridad).`;
-      if (value > 1) return `«${meta.label}» no puede superar 1.`;
+      if (Number.isNaN(value)) return `«${meta.label}»${t.guardrailsPage.violationNumberSuffix}`;
+      if (value < floor) return `«${meta.label}» ${t.guardrailsPage.violationBelowFloorMiddle} ${floor} ${t.guardrailsPage.violationBelowFloorSuffix}`;
+      if (value > 1) return `«${meta.label}» ${t.guardrailsPage.violationAboveOne}`;
     }
     return null;
-  }, [config, thresholdInputs]);
+  }, [config, thresholdInputs, t, THRESHOLD_META]);
 
   function saveThresholds() {
     const update: GuardrailConfigUpdate = {};
@@ -137,7 +137,7 @@ export function GuardrailsPage() {
       hydrate(updated);
       setNewPattern('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo añadir.');
+      setError(err instanceof ApiError ? err.message : t.guardrailsPage.addFailedError);
     } finally {
       setBusy(false);
     }
@@ -151,38 +151,34 @@ export function GuardrailsPage() {
       const updated = await disableGuardrailBlockedTopic(id);
       hydrate(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo desactivar.');
+      setError(err instanceof ApiError ? err.message : t.guardrailsPage.disableFailedError);
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <p className="muted">Cargando…</p>;
-  if (!config) return <p className="error">{error ?? 'No se pudo cargar la configuración.'}</p>;
+  if (loading) return <p className="muted">{t.common.loading}</p>;
+  if (!config) return <p className="error">{error ?? t.guardrailsPage.loadFailedError}</p>;
 
   return (
     <div className="guardrails">
       <p className="muted">
-        Esta configuración solo puede <strong>endurecer</strong> el comportamiento base, nunca debilitarlo.
-        El sistema aplica siempre el valor más estricto entre el mínimo de seguridad (fijo en el código) y
-        tu ajuste; un valor por debajo del mínimo se <strong>rechaza</strong> (no se recorta). Los patrones
-        base de seguridad (acoso, salud mental, despido, legal/médico, otras personas) no son editables.
-        {!canManage && ' Tu rol es de solo lectura.'}
+        {t.guardrailsPage.introPrefix} <strong>{t.guardrailsPage.introBoldHarden}</strong> {t.guardrailsPage.introMiddle}{' '}
+        <strong>{t.guardrailsPage.introBoldReject}</strong> {t.guardrailsPage.introSuffix}
+        {!canManage && <> {t.guardrailsPage.readOnlyRoleNotice}</>}
       </p>
 
       {error && <p className="error">{error}</p>}
 
       {/* 1 — Thresholds (incl. the secondary router knob) */}
       <section className="card">
-        <h3>Umbrales</h3>
+        <h3>{t.guardrailsPage.thresholdsHeading}</h3>
         <p className="muted">
-          Cada umbral muestra su mínimo de seguridad fijo. Solo puedes subirlo. El de confianza (Check C) es
-          un <strong>desempate</strong>, no una puerta principal — las puertas reales son la recuperación
-          (A) y las citas (B).
+          {t.guardrailsPage.thresholdsIntro1} <strong>{t.guardrailsPage.thresholdsIntroBold}</strong>{t.guardrailsPage.thresholdsIntro2}
         </p>
         <div className="guardrails-thresholds">
           {THRESHOLD_META.map((meta) => {
-            const t = config.thresholds[meta.key];
+            const th = config.thresholds[meta.key];
             return (
               <div className="field" key={meta.key}>
                 <label htmlFor={meta.key}>{meta.label}</label>
@@ -190,18 +186,18 @@ export function GuardrailsPage() {
                   id={meta.key}
                   className="input"
                   type="number"
-                  min={t.floor}
+                  min={th.floor}
                   max={1}
                   step={0.01}
-                  placeholder={`mínimo ${t.floor} (sin ajuste)`}
+                  placeholder={`${t.guardrailsPage.placeholderMinimoPrefix} ${th.floor} ${t.guardrailsPage.placeholderMinimoSuffix}`}
                   value={thresholdInputs[meta.key] ?? ''}
                   disabled={!canManage || busy}
                   onChange={(e) => setThresholdInputs((s) => ({ ...s, [meta.key]: e.target.value }))}
                 />
                 <small className="muted">
-                  {meta.help} · Mínimo fijo: <strong>{t.floor}</strong> · Efectivo ahora:{' '}
-                  <strong>{t.effective}</strong>
-                  {t.admin === null && ' (usando el mínimo)'}
+                  {meta.help} {t.guardrailsPage.helpFixedMinimumMiddle} <strong>{th.floor}</strong> {t.guardrailsPage.helpEffectiveNowMiddle}{' '}
+                  <strong>{th.effective}</strong>
+                  {th.admin === null && <> {t.guardrailsPage.usingMinimumSuffix}</>}
                 </small>
               </div>
             );
@@ -214,33 +210,32 @@ export function GuardrailsPage() {
             onClick={saveThresholds}
             disabled={busy || thresholdViolation !== null}
           >
-            {busy ? 'Guardando…' : 'Guardar umbrales'}
+            {busy ? t.guardrailsPage.savingThresholds : t.guardrailsPage.saveThresholdsButton}
           </button>
         )}
       </section>
 
       {/* 2 — Blocked topics (add-only) */}
       <section className="card">
-        <h3>Temas bloqueados y fuera de ámbito</h3>
+        <h3>{t.guardrailsPage.blockedTopicsHeading}</h3>
         <p className="muted">
-          Lista <strong>aditiva</strong> sobre la base fija: cada entrada añade una escalación, nunca quita
-          una. Se compara como texto literal (sin acentos, por palabra completa) — no como expresión regular.
-          Una pregunta bloqueada escala <strong>antes</strong> de llegar al proveedor.
+          {t.guardrailsPage.blockedTopicsIntro1} <strong>{t.guardrailsPage.blockedTopicsIntroBold}</strong> {t.guardrailsPage.blockedTopicsIntro2}{' '}
+          <strong>{t.guardrailsPage.blockedTopicsIntroBold2}</strong> {t.guardrailsPage.blockedTopicsIntro3}
         </p>
         <ul className="guardrails-topics">
-          {config.blocked_topics.length === 0 && <li className="muted">Sin entradas todavía.</li>}
-          {config.blocked_topics.map((t) => (
-            <li key={t.id} className={t.enabled ? '' : 'guardrails-topic--disabled'}>
-              <span className="badge">{t.kind === 'off_domain' ? 'Fuera de ámbito' : 'Tema sensible'}</span>
-              <code>{t.pattern}</code>
-              {t.enabled ? (
+          {config.blocked_topics.length === 0 && <li className="muted">{t.guardrailsPage.noEntriesYet}</li>}
+          {config.blocked_topics.map((topic) => (
+            <li key={topic.id} className={topic.enabled ? '' : 'guardrails-topic--disabled'}>
+              <span className="badge">{topic.kind === 'off_domain' ? t.guardrailsPage.kindOffDomainBadge : t.guardrailsPage.kindSensitiveTopicBadge}</span>
+              <code>{topic.pattern}</code>
+              {topic.enabled ? (
                 canManage && (
-                  <button className="btn btn-ghost" onClick={() => void disableTopic(t.id)} disabled={busy}>
-                    Desactivar
+                  <button className="btn btn-ghost" onClick={() => void disableTopic(topic.id)} disabled={busy}>
+                    {t.guardrailsPage.disableButton}
                   </button>
                 )
               ) : (
-                <span className="muted">desactivado</span>
+                <span className="muted">{t.guardrailsPage.disabledLabel}</span>
               )}
             </li>
           ))}
@@ -250,7 +245,7 @@ export function GuardrailsPage() {
             <input
               className="input guardrails-add-pattern"
               type="text"
-              placeholder="palabra o frase"
+              placeholder={t.guardrailsPage.addPatternPlaceholder}
               value={newPattern}
               disabled={busy}
               onChange={(e) => setNewPattern(e.target.value)}
@@ -264,11 +259,11 @@ export function GuardrailsPage() {
               disabled={busy}
               onChange={(e) => setNewKind(e.target.value as 'blocked_topic' | 'off_domain')}
             >
-              <option value="blocked_topic">Tema sensible</option>
-              <option value="off_domain">Fuera de ámbito</option>
+              <option value="blocked_topic">{t.guardrailsPage.kindSensitiveTopicBadge}</option>
+              <option value="off_domain">{t.guardrailsPage.kindOffDomainBadge}</option>
             </select>
             <button className="btn btn-secondary" onClick={() => void addTopic()} disabled={busy || !newPattern.trim()}>
-              Añadir
+              {t.guardrailsPage.addButton}
             </button>
           </div>
         )}
@@ -276,8 +271,8 @@ export function GuardrailsPage() {
 
       {/* 3 — Off-domain message */}
       <section className="card">
-        <h3>Mensaje de «fuera de ámbito»</h3>
-        <p className="muted">Texto que se muestra al escalar por estar fuera de ámbito. Solo afecta al texto; no cambia ninguna decisión.</p>
+        <h3>{t.guardrailsPage.offDomainHeading}</h3>
+        <p className="muted">{t.guardrailsPage.offDomainIntro}</p>
         <textarea
           className="input"
           rows={3}
@@ -292,19 +287,18 @@ export function GuardrailsPage() {
             onClick={() => void save({ off_domain_message: offDomain.trim() === '' ? null : offDomain })}
             disabled={busy}
           >
-            Guardar mensaje
+            {t.guardrailsPage.saveMessageButton}
           </button>
         )}
       </section>
 
       {/* 4 — Tone constraints */}
       <section className="card">
-        <h3>Tono y estilo</h3>
+        <h3>{t.guardrailsPage.toneHeading}</h3>
         <p className="muted">
-          Solo <strong>estilo y formato</strong> (p. ej. «trato de usted, respuestas breves»). El tono
-          <strong> no puede</strong> saltarse la fundamentación ni las citas: las verificaciones son
-          independientes y posteriores. Una instrucción que intente desbloquear una puerta se rechaza.
-          Máximo {config.tone_constraints.max_len} caracteres.
+          {t.guardrailsPage.toneIntro1} <strong>{t.guardrailsPage.toneIntroBold1}</strong> {t.guardrailsPage.toneIntro2}
+          <strong> {t.guardrailsPage.toneIntroBold2}</strong> {t.guardrailsPage.toneIntro3}{' '}
+          {config.tone_constraints.max_len} {t.guardrailsPage.toneIntroSuffix}
         </p>
         <textarea
           className="input"
@@ -320,17 +314,16 @@ export function GuardrailsPage() {
             onClick={() => void save({ tone_constraints: tone.trim() === '' ? null : tone })}
             disabled={busy}
           >
-            Guardar tono
+            {t.guardrailsPage.saveToneButton}
           </button>
         )}
       </section>
 
       {/* 5 — Convert-by-reason */}
       <section className="card">
-        <h3>Conversión a conocimiento por motivo</h3>
+        <h3>{t.guardrailsPage.convertHeading}</h3>
         <p className="muted">
-          Qué motivos de escalación pueden convertirse en una regla publicada. Solo puedes <strong>restringir</strong>.
-          «Tema sensible» nunca es convertible (bloqueado).
+          {t.guardrailsPage.convertIntroPrefix} <strong>{t.guardrailsPage.convertIntroBold}</strong>{t.guardrailsPage.convertIntroSuffix}
         </p>
         <div className="guardrails-reasons">
           {config.convert_by_reason.baseline.map((reason) => (
@@ -341,13 +334,13 @@ export function GuardrailsPage() {
                 disabled={!canManage || busy}
                 onChange={(e) => toggleReason(reason, e.target.checked)}
               />
-              {REASON_LABELS[reason] ?? reason}
+              {t.guardrailsPage.reasonLabels[reason] ?? reason}
             </label>
           ))}
           {config.convert_by_reason.locked.map((reason) => (
             <label key={reason} className="guardrails-reason guardrails-reason--locked">
               <input type="checkbox" checked={false} disabled />
-              {REASON_LABELS[reason] ?? reason} 🔒
+              {t.guardrailsPage.reasonLabels[reason] ?? reason} 🔒
             </label>
           ))}
         </div>
@@ -355,29 +348,29 @@ export function GuardrailsPage() {
 
       {/* Change history */}
       <section className="card">
-        <h3>Historial de cambios</h3>
-        <p className="muted">Cada cambio queda registrado (quién, cuándo, de qué a qué). Solo lectura.</p>
+        <h3>{t.guardrailsPage.historyHeading}</h3>
+        <p className="muted">{t.guardrailsPage.historyIntro}</p>
         {config.history.length === 0 ? (
-          <p className="muted">Sin cambios todavía.</p>
+          <p className="muted">{t.guardrailsPage.noChangesYet}</p>
         ) : (
           <table className="guardrails-history">
             <thead>
               <tr>
-                <th>Campo</th>
-                <th>Antes</th>
-                <th>Después</th>
-                <th>Quién</th>
-                <th>Cuándo</th>
+                <th>{t.guardrailsPage.colField}</th>
+                <th>{t.guardrailsPage.colBefore}</th>
+                <th>{t.guardrailsPage.colAfter}</th>
+                <th>{t.guardrailsPage.colWho}</th>
+                <th>{t.guardrailsPage.colWhen}</th>
               </tr>
             </thead>
             <tbody>
               {config.history.map((h, i) => (
                 <tr key={i}>
                   <td>{h.field}</td>
-                  <td className="muted">{h.old_value ?? '—'}</td>
-                  <td>{h.new_value ?? '—'}</td>
-                  <td>{h.actor ?? '—'}</td>
-                  <td className="muted">{h.created_at ? new Date(h.created_at).toLocaleString() : '—'}</td>
+                  <td className="muted">{h.old_value ?? t.common.dash}</td>
+                  <td>{h.new_value ?? t.common.dash}</td>
+                  <td>{h.actor ?? t.common.dash}</td>
+                  <td className="muted">{h.created_at ? formatDate(h.created_at, locale, { dateStyle: 'medium', timeStyle: 'short' }) : t.common.dash}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,4 +1,10 @@
 // Centralized API client. The backend URL comes from env (never hardcoded).
+import {
+  networkFallbackMessage,
+  readStoredLocale,
+  translateBackendMessage,
+} from '../i18n/backendMessageMap';
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 const TOKEN_KEY = 'hr_token';
@@ -153,8 +159,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = res.status === 204 ? null : await res.json().catch(() => null);
 
   if (!res.ok) {
-    const message = (data && (data.message as string)) || `Request failed (${res.status})`;
-    throw new ApiError(res.status, message, data ?? null);
+    const locale = readStoredLocale();
+    const raw = (data && (data.message as string)) || networkFallbackMessage('requestFailed', res.status, locale);
+    throw new ApiError(res.status, translateBackendMessage(raw, locale), data ?? null);
   }
 
   return data as T;
@@ -1374,7 +1381,11 @@ function uploadCsv(path: string, file: File): Promise<CsvReport> {
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: form }).then(async (res) => {
     const data = res.status === 204 ? null : await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(res.status, (data && (data.message as string)) || `Upload failed (${res.status})`, data ?? null);
+    if (!res.ok) {
+      const locale = readStoredLocale();
+      const raw = (data && (data.message as string)) || networkFallbackMessage('uploadFailed', res.status, locale);
+      throw new ApiError(res.status, translateBackendMessage(raw, locale), data ?? null);
+    }
     return data as CsvReport;
   });
 }
@@ -1675,7 +1686,11 @@ export async function uploadDocuments(files: FileList, asReference = false): Pro
 
   const res = await fetch(`${BASE_URL}/admin/documents/upload`, { method: 'POST', headers, body: form });
   const data = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, (data && (data.message as string)) || `Upload failed (${res.status})`);
+  if (!res.ok) {
+    const locale = readStoredLocale();
+    const raw = (data && (data.message as string)) || networkFallbackMessage('uploadFailed', res.status, locale);
+    throw new ApiError(res.status, translateBackendMessage(raw, locale));
+  }
   return data as { results: unknown[] };
 }
 

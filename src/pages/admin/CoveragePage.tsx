@@ -11,6 +11,7 @@ import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { Hierarchy, type HierarchyForm } from './Hierarchy';
 import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { LineChart } from './charts';
+import { useT } from '../../i18n/context';
 
 /**
  * Sprint 8, Step 7 (plan.md §5, ADR-0030) — the Cobertura screen. Gated on
@@ -22,6 +23,7 @@ import { LineChart } from './charts';
  * construction).
  */
 export function CoveragePage() {
+  const t = useT();
   const [form, setForm] = useState<HierarchyForm>('list');
   const [data, setData] = useState<CoverageGridResponse | null>(null);
   const [trend, setTrend] = useState<CoverageTrendPoint[] | null>(null);
@@ -55,22 +57,22 @@ export function CoveragePage() {
   };
 
   if (error) return <p className="error">{error}</p>;
-  if (!data) return <p className="muted">Loading…</p>;
+  if (!data) return <p className="muted">{t.coveragePage.loadingText}</p>;
 
-  const trendData = (trend ?? []).map((t) => ({ label: t.date.slice(5), value: t.gap_count }));
+  const trendData = (trend ?? []).map((pt) => ({ label: pt.date.slice(5), value: pt.gap_count }));
 
   return (
     <div className="coverage-page">
       <div className="map-toolbar">
-        <div className="seg" role="group" aria-label="View">
-          <button className={`seg-btn ${form === 'graph' ? 'is-active' : ''}`} onClick={() => setForm('graph')}>Graph</button>
-          <button className={`seg-btn ${form === 'list' ? 'is-active' : ''}`} onClick={() => setForm('list')}>List</button>
+        <div className="seg" role="group" aria-label={t.coveragePage.viewGroupAriaLabel}>
+          <button className={`seg-btn ${form === 'graph' ? 'is-active' : ''}`} onClick={() => setForm('graph')}>{t.coveragePage.graphButton}</button>
+          <button className={`seg-btn ${form === 'list' ? 'is-active' : ''}`} onClick={() => setForm('list')}>{t.coveragePage.listButton}</button>
         </div>
         <button className="btn btn-secondary" onClick={doExport} disabled={exporting}>
-          {exporting ? 'Exportando…' : '↓ Exportar (.md)'}
+          {exporting ? t.coveragePage.exportingButton : t.coveragePage.exportButton}
         </button>
-        <button className="btn btn-ghost" onClick={() => setReloadKey((k) => k + 1)}>↻ Actualizar</button>
-        <span className="muted">a fecha de {data.as_of}</span>
+        <button className="btn btn-ghost" onClick={() => setReloadKey((k) => k + 1)}>{t.coveragePage.refreshButton}</button>
+        <span className="muted">{t.coveragePage.asOfPrefix} {data.as_of}</span>
       </div>
 
       <div className="map-canvas">
@@ -101,8 +103,8 @@ export function CoveragePage() {
       )}
 
       <section>
-        <h4>Convenios con brecha total ({data.full_gap_convenios.length})</h4>
-        <p className="timeline-meta">Ni prosa, ni salario, ni datos, ni resoluciones — ordenados por plantilla afectada.</p>
+        <h4>{t.coveragePage.fullGapHeadingPrefix} ({data.full_gap_convenios.length})</h4>
+        <p className="timeline-meta">{t.coveragePage.fullGapIntro}</p>
         <ul className="ranked-list">
           {data.full_gap_convenios.map((c, i) => (
             <li className="ranked-row" key={c.convenio_id}>
@@ -110,7 +112,7 @@ export function CoveragePage() {
               <div className="ranked-main">
                 <div className="ranked-title">{c.numero} — {c.name}</div>
                 <div className="ranked-meta">
-                  {c.territory} · {c.sector} · {c.headcount} persona{c.headcount === 1 ? '' : 's'}
+                  {c.territory} · {c.sector} · {c.headcount} {c.headcount === 1 ? t.coveragePage.personWord : t.coveragePage.personsWordPlural}
                   {c.reason_codes.length > 0 && (
                     <span className="reason-badges">
                       {c.reason_codes.map((rc) => (
@@ -120,18 +122,18 @@ export function CoveragePage() {
                   )}
                 </div>
               </div>
-              <a className="btn btn-ghost" href={c.link}>Ver</a>
+              <a className="btn btn-ghost" href={c.link}>{t.coveragePage.viewLink}</a>
             </li>
           ))}
-          {data.full_gap_convenios.length === 0 && <p className="muted">Ningún convenio con brecha total.</p>}
+          {data.full_gap_convenios.length === 0 && <p className="muted">{t.coveragePage.noFullGapConvenios}</p>}
         </ul>
       </section>
 
       {data.no_registry_rows.length > 0 && (
         <section>
-          <h4>Ámbitos sin convenio de registro ({data.no_registry_rows.length})</h4>
+          <h4>{t.coveragePage.noRegistryHeadingPrefix} ({data.no_registry_rows.length})</h4>
           <table className="docs-table">
-            <thead><tr><th>Territorio</th><th>Sector</th><th className="num">Plantilla</th><th>Motivo</th></tr></thead>
+            <thead><tr><th>{t.coveragePage.territoryColumn}</th><th>{t.coveragePage.sectorColumn}</th><th className="num">{t.coveragePage.headcountColumn}</th><th>{t.coveragePage.reasonColumn}</th></tr></thead>
             <tbody>
               {data.no_registry_rows.map((r, i) => (
                 <tr key={i}>
@@ -147,7 +149,7 @@ export function CoveragePage() {
       )}
 
       <section>
-        <h4>Brechas cerradas — tendencia (últimos {trendData.length} instantáneas)</h4>
+        <h4>{t.coveragePage.closedGapsHeadingPrefix} {trendData.length} {t.coveragePage.closedGapsHeadingSuffix}</h4>
         <LineChart data={trendData} />
       </section>
     </div>

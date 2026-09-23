@@ -11,6 +11,8 @@ import {
 } from '../../lib/api';
 import { stripSourceMarkers } from '../../lib/citationMarkers';
 import { SUGGESTED_QUESTIONS } from '../../lib/suggestedQuestions';
+import { useT } from '../../i18n/context';
+import type { Dict } from '../../i18n/es';
 
 interface UserItem {
   role: 'user';
@@ -83,11 +85,11 @@ function toResponse(m: ConversationMessage, sessionUuid: string | null): ChatRes
   };
 }
 
-function mapMessages(messages: ConversationMessage[], sessionUuid: string | null): Item[] {
+function mapMessages(messages: ConversationMessage[], sessionUuid: string | null, hrFallback: string): Item[] {
   return messages.map((m): Item => {
     if (m.role === 'user') return { role: 'user', id: `s-${m.id}`, text: m.content };
     if (m.role === 'hr_agent')
-      return { role: 'hr_agent', id: `s-${m.id}`, content: m.content, authorLabel: m.author_label ?? 'Recursos Humanos' };
+      return { role: 'hr_agent', id: `s-${m.id}`, content: m.content, authorLabel: m.author_label ?? hrFallback };
     return { role: 'assistant', id: `s-${m.id}`, response: toResponse(m, sessionUuid), question: '' };
   });
 }
@@ -99,16 +101,17 @@ function mapMessages(messages: ConversationMessage[], sessionUuid: string | null
 // spirit: the server is the boundary, not CSS). One deterministic source
 // line, built server-side from the same citations admin sees in full,
 // supersedes both that and the old grey "Fundamentado en…" authority caption.
-function sourceLine(sourceLabels: string[] | undefined): string | null {
+function sourceLine(t: Dict, sourceLabels: string[] | undefined): string | null {
   if (!sourceLabels || sourceLabels.length === 0) return null;
-  return `Basado en: ${sourceLabels.join(', ')}.`;
+  return `${t.chat.basedOnPrefix}${sourceLabels.join(', ')}${t.chat.basedOnSuffix}`;
 }
 
 // The answered-turn body: prose (display-stripped of [Fuente N] markers,
 // Correction-01/E1 — the STORED answer keeps them; Check B needs them there)
 // + the one-line source attribution.
 function AnswerBlock({ response }: { response: ChatResponse }) {
-  const source = sourceLine(response.source_labels);
+  const t = useT();
+  const source = sourceLine(t, response.source_labels);
   return (
     <div className="card chat-bubble chat-bubble--assistant">
       <p className="answer-prose">{stripSourceMarkers(response.answer)}</p>
@@ -141,15 +144,16 @@ function ThumbsFeedback({ messageId }: { messageId: number }) {
     }
   };
 
+  const t = useT();
   return (
-    <div className="chat-feedback" role="group" aria-label="¿Te ha resultado útil esta respuesta?">
+    <div className="chat-feedback" role="group" aria-label={t.chat.feedbackGroupAriaLabel}>
       <button
         type="button"
         className={`chat-feedback-btn ${sent === 'up' ? 'is-active' : ''}`}
         disabled={busy}
         onClick={() => void rate('up')}
-        aria-label="Respuesta útil"
-        title="Respuesta útil"
+        aria-label={t.chat.usefulAriaLabel}
+        title={t.chat.usefulAriaLabel}
       >
         👍
       </button>
@@ -158,12 +162,12 @@ function ThumbsFeedback({ messageId }: { messageId: number }) {
         className={`chat-feedback-btn ${sent === 'down' ? 'is-active' : ''}`}
         disabled={busy}
         onClick={() => void rate('down')}
-        aria-label="Respuesta no útil"
-        title="Respuesta no útil"
+        aria-label={t.chat.notUsefulAriaLabel}
+        title={t.chat.notUsefulAriaLabel}
       >
         👎
       </button>
-      {sent && <span className="muted chat-feedback-thanks">Gracias por tu valoración.</span>}
+      {sent && <span className="muted chat-feedback-thanks">{t.chat.thanksFeedback}</span>}
     </div>
   );
 }
@@ -171,9 +175,10 @@ function ThumbsFeedback({ messageId }: { messageId: number }) {
 // A human HR reply (Sprint 4). Distinct, clearly-attributed bubble — never the
 // bot voice. Carries no citations/trace (a human turn, not a synthesised answer).
 function HumanReplyBlock({ content, authorLabel }: { content: string; authorLabel: string }) {
+  const t = useT();
   return (
     <div className="card chat-bubble chat-bubble--assistant chat-bubble--agent">
-      <span className="badge badge-agent">Respuesta de {authorLabel} (persona)</span>
+      <span className="badge badge-agent">{t.chat.humanReplyBadgePrefix}{authorLabel}{t.chat.humanReplyBadgeSuffix}</span>
       <p className="answer-prose">{content}</p>
     </div>
   );
@@ -181,9 +186,10 @@ function HumanReplyBlock({ content, authorLabel }: { content: string; authorLabe
 
 // The escalated-turn body: warning-tinted, signature badge, design-system voice.
 function EscalationBlock({ response }: { response: ChatResponse }) {
+  const t = useT();
   return (
     <div className="card chat-bubble chat-bubble--assistant escalation">
-      <span className="badge badge-review">Escalado a Recursos Humanos</span>
+      <span className="badge badge-review">{t.chat.escalatedBadge}</span>
       <p className="answer-prose">{response.answer}</p>
       <ThumbsFeedback messageId={response.message_id} />
     </div>
@@ -204,10 +210,11 @@ function CategoryPickBlock({
   pending: boolean;
   onPick: (category: JobCategoryOption) => void;
 }) {
+  const t = useT();
   return (
     <div className="card chat-bubble chat-bubble--assistant">
       <p className="answer-prose">{response.answer}</p>
-      <div className="category-pick" role="group" aria-label="Elige tu categoría profesional">
+      <div className="category-pick" role="group" aria-label={t.chat.pickCategoryAriaLabel}>
         {response.categories.map((c) => (
           <button
             key={c.id}
@@ -217,11 +224,11 @@ function CategoryPickBlock({
             onClick={() => onPick(c)}
           >
             {c.name}
-            {c.group_code ? ` (grupo ${c.group_code})` : ''}
+            {c.group_code ? `${t.chat.groupPrefix}${c.group_code}${t.chat.groupSuffix}` : ''}
           </button>
         ))}
       </div>
-      {resolved && <p className="muted category-pick-note">Categoría seleccionada.</p>}
+      {resolved && <p className="muted category-pick-note">{t.chat.categorySelectedNote}</p>}
     </div>
   );
 }
@@ -232,13 +239,13 @@ function CategoryPickBlock({
 // sends the question through the exact same `submit()` path as anything
 // typed by hand — no new API surface, no answer-loop touch.
 function WelcomeScreen({ onPick }: { onPick: (question: string) => void }) {
+  const t = useT();
   return (
     <div className="chat-empty">
       <p className="muted">
-        Pregúntame sobre tu convenio: jornada, vacaciones, permisos, festivos… Te
-        respondo según tu ámbito, citando las fuentes.
+        {t.chat.welcomeText}
       </p>
-      <div className="category-pick" role="group" aria-label="Preguntas frecuentes">
+      <div className="category-pick" role="group" aria-label={t.chat.faqAriaLabel}>
         {SUGGESTED_QUESTIONS.map((q) => (
           <button
             key={q}
@@ -255,6 +262,7 @@ function WelcomeScreen({ onPick }: { onPick: (question: string) => void }) {
 }
 
 export function ChatScreen() {
+  const t = useT();
   const [items, setItems] = useState<Item[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -279,7 +287,7 @@ export function ChatScreen() {
       const { session_uuid, messages } = await getChatSession();
       if (sendingRef.current) return;
       sessionUuid.current = session_uuid;
-      if (messages.length > 0) setItems(mapMessages(messages, session_uuid));
+      if (messages.length > 0) setItems(mapMessages(messages, session_uuid, t.chat.hrFallbackAuthor));
     } catch {
       // Silent — hydration is best-effort; the live send path still works.
     }
@@ -323,7 +331,7 @@ export function ChatScreen() {
       setItems((prev) => [...prev, { role: 'assistant', id: localId(), response, question }]);
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'No se pudo enviar la pregunta. Inténtalo de nuevo.';
+        err instanceof ApiError ? err.message : t.chat.sendFailed;
       setError(message);
     } finally {
       sendingRef.current = false;
@@ -339,7 +347,7 @@ export function ChatScreen() {
     setSending(true);
     setItems((prev) => [
       ...prev,
-      { role: 'user', id: localId(), text: `Mi categoría: ${category.name}` },
+      { role: 'user', id: localId(), text: `${t.chat.myCategoryPrefix}${category.name}` },
     ]);
 
     try {
@@ -349,7 +357,7 @@ export function ChatScreen() {
       setItems((prev) => [...prev, { role: 'assistant', id: localId(), response, question: turn.question }]);
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'No se pudo enviar la selección. Inténtalo de nuevo.';
+        err instanceof ApiError ? err.message : t.chat.pickFailed;
       setError(message);
     } finally {
       sendingRef.current = false;
@@ -398,7 +406,7 @@ export function ChatScreen() {
 
         {sending && (
           <div className="chat-row chat-row--assistant">
-            <div className="chat-bubble chat-bubble--assistant muted">Pensando…</div>
+            <div className="chat-bubble chat-bubble--assistant muted">{t.chat.thinking}</div>
           </div>
         )}
 
@@ -412,7 +420,7 @@ export function ChatScreen() {
           <textarea
             className="textarea chat-input"
             rows={1}
-            placeholder="Escribe tu pregunta sobre convenio, jornada, vacaciones…"
+            placeholder={t.chat.inputPlaceholder}
             value={input}
             disabled={sending}
             onChange={(e) => setInput(e.target.value)}
@@ -420,7 +428,7 @@ export function ChatScreen() {
           />
         </div>
         <button className="btn btn-primary" onClick={() => void submit()} disabled={sending || !input.trim()}>
-          {sending ? 'Enviando…' : 'Enviar'}
+          {sending ? t.chat.sendingButton : t.chat.sendButton}
         </button>
       </div>
     </div>

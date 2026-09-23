@@ -11,6 +11,8 @@ import {
 import { BarChart, KpiTile } from './charts';
 import { escalationReasonLabel } from '../../lib/escalationReasons';
 import { subOutcomeLabel } from '../../lib/statusLabels';
+import { useLocale, useT } from '../../i18n/context';
+import { formatDate, formatPercent } from '../../i18n/format';
 
 /**
  * Sprint 8, Step 7 (plan.md §2/§3/§4, ADR-0030) — the Analítica screen.
@@ -20,6 +22,8 @@ import { subOutcomeLabel } from '../../lib/statusLabels';
  * of a definition (the sprint's own hard constraint, restated in the UI).
  */
 export function AnalyticsPage() {
+  const t = useT();
+  const { locale } = useLocale();
   const [deflection, setDeflection] = useState<DeflectionResponse | null>(null);
   const [byFix, setByFix] = useState<EscalationsByFixResponse | null>(null);
   const [clusters, setClusters] = useState<ClustersResponse | null>(null);
@@ -36,7 +40,7 @@ export function AnalyticsPage() {
   }, []);
 
   if (error) return <p className="error">{error}</p>;
-  if (!deflection || !byFix || !clusters) return <p className="muted">Loading…</p>;
+  if (!deflection || !byFix || !clusters) return <p className="muted">{t.analyticsPage.loadingText}</p>;
 
   const summary = deflection.summary;
   const pathData = Object.entries(summary.path_split).map(([label, value]) => ({ label, value }));
@@ -48,49 +52,48 @@ export function AnalyticsPage() {
   return (
     <div className="analytics-page">
       <p className="muted">
-        Periodo {deflection.period.from} → {deflection.period.to}. Deflection rate excluye `needs_category` del
-        denominador (§2.1, resuelto).
+        {t.analyticsPage.periodPrefix} {formatDate(deflection.period.from, locale)} → {formatDate(deflection.period.to, locale)}. {t.analyticsPage.periodNote}
       </p>
 
       <div className="kpi-row">
         <KpiTile
-          label="Tasa de resolución (deflection)"
-          value={summary.deflection_rate != null ? `${Math.round(summary.deflection_rate * 100)}%` : '—'}
+          label={t.analyticsPage.kpiDeflectionRateLabel}
+          value={summary.deflection_rate != null ? formatPercent(summary.deflection_rate * 100, locale) : t.common.dash}
         />
-        <KpiTile label="Respondidas" value={String(summary.answered)} />
-        <KpiTile label="Escaladas" value={String(summary.escalated)} />
-        <KpiTile label="Necesitan categoría" value={String(summary.needs_category)} sub="excluido del denominador" />
+        <KpiTile label={t.analyticsPage.kpiAnsweredLabel} value={String(summary.answered)} />
+        <KpiTile label={t.analyticsPage.kpiEscalatedLabel} value={String(summary.escalated)} />
+        <KpiTile label={t.analyticsPage.kpiNeedsCategoryLabel} value={String(summary.needs_category)} sub={t.analyticsPage.kpiNeedsCategorySub} />
         <KpiTile
-          label="Respuestas humanas (RR. HH.)"
+          label={t.analyticsPage.kpiHrRepliesLabel}
           value={String(deflection.hr_agent_replies.reduce((s, r) => s + r.reply_count, 0))}
         />
         <KpiTile
-          label="Satisfacción (👍/👍+👎)"
-          value={deflection.satisfaction.rate != null ? `${Math.round(deflection.satisfaction.rate * 100)}%` : '—'}
-          sub={`${deflection.satisfaction.up}👍 · ${deflection.satisfaction.down}👎 (§7, opcional)`}
+          label={t.analyticsPage.kpiSatisfactionLabel}
+          value={deflection.satisfaction.rate != null ? formatPercent(deflection.satisfaction.rate * 100, locale) : t.common.dash}
+          sub={`${deflection.satisfaction.up}👍 · ${deflection.satisfaction.down}👎 ${t.analyticsPage.kpiSatisfactionSubSuffix}`}
         />
       </div>
 
       <section>
-        <h4>Reparto por vía (path_split)</h4>
+        <h4>{t.analyticsPage.pathSplitHeading}</h4>
         <BarChart data={pathData} />
       </section>
 
       <section>
-        <h4>Reparto por autoridad (authority_split)</h4>
+        <h4>{t.analyticsPage.authoritySplitHeading}</h4>
         <BarChart data={authorityData} />
       </section>
 
       <section>
-        <h4>Escalaciones por corrección (§3)</h4>
+        <h4>{t.analyticsPage.escalationsByFixHeading}</h4>
         <p className="timeline-meta">
-          {byFix.unexplained_count > 0 && `${byFix.unexplained_count} tarjeta(s) anteriores sin explicación estructurada aún. `}
-          {byFix.board_throughput.total_resolved} resueltas en el periodo · tasa de conversión a conocimiento{' '}
-          {byFix.board_throughput.conversion_rate != null ? `${Math.round(byFix.board_throughput.conversion_rate * 100)}%` : '—'}.
+          {byFix.unexplained_count > 0 && `${byFix.unexplained_count} ${t.analyticsPage.unexplainedCountSuffix} `}
+          {byFix.board_throughput.total_resolved} {t.analyticsPage.resolvedInPeriodSuffix}{' '}
+          {byFix.board_throughput.conversion_rate != null ? formatPercent(byFix.board_throughput.conversion_rate * 100, locale) : t.common.dash}.
         </p>
         <table className="docs-table">
           <thead>
-            <tr><th>Motivo</th><th>Sub-resultado</th><th>Acción de corrección</th><th className="num">Tarjetas</th><th className="num">Resueltas</th></tr>
+            <tr><th>{t.analyticsPage.reasonHeader}</th><th>{t.analyticsPage.subOutcomeHeader}</th><th>{t.analyticsPage.fixActionHeader}</th><th className="num">{t.analyticsPage.cardsHeader}</th><th className="num">{t.analyticsPage.resolvedHeader}</th></tr>
           </thead>
           <tbody>
             {byFix.by_fix.map((row, i) => (
@@ -98,35 +101,35 @@ export function AnalyticsPage() {
                 {/* Correction-02 (C2-1): was the raw reason string (e.g.
                     literally "estatuto_fallback_gap") — no label lookup
                     existed on this screen at all. */}
-                <td>{escalationReasonLabel(row.reason)}</td>
+                <td>{escalationReasonLabel(t, row.reason)}</td>
                 {/* Sprint 11a (§D.2) — was the raw sub_outcome enum key
                     (e.g. "subarea_not_recorded"); short labels sourced from
                     EscalationExplainer::MATRIX's own registry. */}
-                <td className="muted">{subOutcomeLabel(row.reason, row.sub_outcome)}</td>
+                <td className="muted">{subOutcomeLabel(t, row.reason, row.sub_outcome)}</td>
                 <td>
                   {row.fix_link ? (
-                    <a href={row.fix_link}>{row.fix_action ?? row.fix_surface ?? 'Corregir'}</a>
+                    <a href={row.fix_link}>{row.fix_action ?? row.fix_surface ?? t.escalationCard.fixLinkLabel}</a>
                   ) : (
-                    row.fix_action ?? '—'
+                    row.fix_action ?? t.common.dash
                   )}
                 </td>
                 <td className="num">{row.card_count}</td>
                 <td className="num">{row.resolved_count}</td>
               </tr>
             ))}
-            {byFix.by_fix.length === 0 && <tr><td colSpan={5} className="col-empty">Sin escalaciones en el periodo.</td></tr>}
+            {byFix.by_fix.length === 0 && <tr><td colSpan={5} className="col-empty">{t.analyticsPage.noEscalationsInPeriod}</td></tr>}
           </tbody>
         </table>
       </section>
 
       <section>
-        <h4>Agrupación de preguntas (§4) — ejecución {clusters.run_date}</h4>
+        <h4>{t.analyticsPage.clusteringHeadingPrefix} {formatDate(clusters.run_date, locale)}</h4>
         <p className="timeline-meta">
-          Etiqueta = medoide del cluster (nunca un resumen de IA). Umbral τ={clusters.clusters[0]?.threshold_used ?? '0.80'}.
+          {t.analyticsPage.clusteringNotePrefix}{clusters.clusters[0]?.threshold_used ?? '0.80'}.
         </p>
         <table className="docs-table">
           <thead>
-            <tr><th>Medoide</th><th className="num">Miembros</th><th className="num">Similitud (mín–máx)</th><th className="num">Tasa de escalación</th><th>Motivo top</th></tr>
+            <tr><th>{t.analyticsPage.medoidHeader}</th><th className="num">{t.analyticsPage.membersHeader}</th><th className="num">{t.analyticsPage.similarityHeader}</th><th className="num">{t.analyticsPage.escalationRateHeader}</th><th>{t.analyticsPage.topReasonHeader}</th></tr>
           </thead>
           <tbody>
             {clusters.clusters.map((c) => (
@@ -134,24 +137,24 @@ export function AnalyticsPage() {
                 <td className="cell-clip">{c.medoid_text}</td>
                 <td className="num">{c.member_count}</td>
                 <td className="num muted small">
-                  {c.min_similarity != null ? `${c.min_similarity.toFixed(3)}–${c.max_similarity?.toFixed(3)}` : '(único)'}
+                  {c.min_similarity != null ? `${c.min_similarity.toFixed(3)}–${c.max_similarity?.toFixed(3)}` : t.analyticsPage.uniqueLabel}
                 </td>
-                <td className="num">{c.escalation_rate != null ? `${Math.round(c.escalation_rate * 100)}%` : '—'}</td>
-                <td className="muted small">{escalationReasonLabel(c.top_escalation_reason)}</td>
+                <td className="num">{c.escalation_rate != null ? formatPercent(c.escalation_rate * 100, locale) : t.common.dash}</td>
+                <td className="muted small">{escalationReasonLabel(t, c.top_escalation_reason)}</td>
               </tr>
             ))}
-            {clusters.clusters.length === 0 && <tr><td colSpan={5} className="col-empty">Sin clusters (ejecuta <code>php artisan questions:cluster</code>).</td></tr>}
+            {clusters.clusters.length === 0 && <tr><td colSpan={5} className="col-empty">{t.analyticsPage.noClustersPrefix} <code>php artisan questions:cluster</code>{t.analyticsPage.noClustersSuffix}</td></tr>}
           </tbody>
         </table>
       </section>
 
       <section>
-        <h4>Preguntas por tema (top 10)</h4>
+        <h4>{t.analyticsPage.topicsHeading}</h4>
         <BarChart data={topicData} />
       </section>
 
       <section>
-        <h4>Ranking "sin responder" (escalation_rate × volumen × personas afectadas)</h4>
+        <h4>{t.analyticsPage.unansweredRankingHeading}</h4>
         <ul className="ranked-list">
           {clusters.unanswered_ranking.map((r, i) => (
             <li className="ranked-row" key={r.cluster_id}>
@@ -159,12 +162,12 @@ export function AnalyticsPage() {
               <div className="ranked-main">
                 <div className="ranked-title">{r.medoid_text}</div>
                 <div className="ranked-meta">
-                  volumen {r.volume} · tasa {Math.round(r.escalation_rate * 100)}% · peso por plantilla {r.headcount_weight} · score {r.score.toFixed(1)}
+                  {t.analyticsPage.volumeLabel} {r.volume} · {t.analyticsPage.rateLabel} {formatPercent(r.escalation_rate * 100, locale)} · {t.analyticsPage.headcountWeightLabel} {r.headcount_weight} · {t.analyticsPage.scoreLabel} {r.score.toFixed(1)}
                 </div>
               </div>
             </li>
           ))}
-          {clusters.unanswered_ranking.length === 0 && <p className="muted">Sin datos.</p>}
+          {clusters.unanswered_ranking.length === 0 && <p className="muted">{t.analyticsPage.noDataNotice}</p>}
         </ul>
       </section>
     </div>

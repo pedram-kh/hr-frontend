@@ -23,22 +23,15 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
 import { CardDrawer } from './EscalationCardDrawer';
-import { ESCALATION_REASON_FILTERS } from '../../lib/escalationReasons';
+import { escalationReasonFilters } from '../../lib/escalationReasons';
 import { FilterToolbar } from '../../components/FilterToolbar';
-
-const COLUMN_LABELS: Record<EscalationStatus, string> = {
-  new: 'Nuevas',
-  assigned: 'Asignadas',
-  in_progress: 'En curso',
-  resolved: 'Resueltas',
-  closed: 'Cerradas',
-};
+import { useT } from '../../i18n/context';
 
 // Correction-02 (C2-1): was a hand-copied, incomplete local array (missing
 // `reference_fact_coverage_gap`, `salary_not_in_chat`, `quality_sample_wrong`
 // as filter options entirely) — now the single shared list, also used by
-// HistoryPage's filter and by Analítica's row labels.
-const REASON_FILTERS = ESCALATION_REASON_FILTERS;
+// HistoryPage's filter and by Analítica's row labels. Built from `t` so the
+// labels are locale-aware (Sprint 11b).
 
 // Legal transitions mirrored from the server — only for UI hinting (the server
 // enforces; we just avoid offering obviously-illegal drop targets).
@@ -57,6 +50,8 @@ export function EscalationBoardPage({
   focusUuid?: string | null;
   onFocusHandled?: () => void;
 } = {}) {
+  const t = useT();
+  const REASON_FILTERS = escalationReasonFilters(t);
   const { identity } = useAuth();
   const canWork = canWorkEscalations(identity);
   const [data, setData] = useState<EscalationList | null>(null);
@@ -157,7 +152,7 @@ export function EscalationBoardPage({
           primary={
             !canWork && (
               <span className="notice notice--neutral board-readonly">
-                <span aria-hidden="true">🔒</span> Solo lectura — no tienes el permiso <code>escalation.work</code>.
+                <span aria-hidden="true">🔒</span> {t.escalationBoardPage.readOnlyNoticePrefix} <code>escalation.work</code>{t.escalationBoardPage.readOnlyNoticeSuffix}
               </span>
             )
           }
@@ -168,7 +163,7 @@ export function EscalationBoardPage({
             className="select"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            aria-label="Filtrar por motivo"
+            aria-label={t.escalationBoardPage.filterByReasonAriaLabel}
           >
             {REASON_FILTERS.map((r) => (
               <option key={r.id} value={r.id}>{r.label}</option>
@@ -181,7 +176,7 @@ export function EscalationBoardPage({
               onChange={(e) => setMineOnly(e.target.checked)}
               disabled={!identity?.id}
             />
-            Solo asignadas a mí
+            {t.escalationBoardPage.assignedToMeOnlyLabel}
           </label>
         </FilterToolbar>
 
@@ -209,7 +204,7 @@ export function EscalationBoardPage({
                 <div className="board-card-top">
                   <span className="badge badge-review">{dragging.reason_label}</span>
                 </div>
-                <p className="board-card-q">{dragging.question ?? '(sin texto)'}</p>
+                <p className="board-card-q">{dragging.question ?? t.escalationBoardPage.noQuestionText}</p>
               </div>
             ) : null}
           </DragOverlay>
@@ -245,6 +240,7 @@ function BoardColumn({
   openUuid: string | null;
   onOpen: (uuid: string) => void;
 }) {
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -253,7 +249,7 @@ function BoardColumn({
       className={`board-col${isOver && canWork ? ' board-col--over' : ''}`}
     >
       <div className="board-col-head">
-        <span className="board-col-title">{COLUMN_LABELS[status] ?? status}</span>
+        <span className="board-col-title">{t.escalationBoardPage.columnLabels[status] ?? status}</span>
         <span className="board-col-count">{count}</span>
       </div>
       <div className="board-col-body">
@@ -285,6 +281,7 @@ function DraggableCard({
   canWork: boolean;
   onOpen: (uuid: string) => void;
 }) {
+  const t = useT();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.uuid,
     disabled: !canWork,
@@ -307,9 +304,9 @@ function DraggableCard({
         <span className="badge badge-review">{card.reason_label}</span>
         {card.topic && <span className="chip board-card-topic">{card.topic.name}</span>}
       </div>
-      <p className="board-card-q">{card.question ?? '(sin texto)'}</p>
+      <p className="board-card-q">{card.question ?? t.escalationBoardPage.noQuestionText}</p>
       <div className="board-card-meta">
-        <span>{card.employee?.full_name ?? '—'}</span>
+        <span>{card.employee?.full_name ?? t.common.dash}</span>
         {card.employee?.convenio && (
           <span className="muted"> · {card.employee.convenio.numero}</span>
         )}
@@ -318,7 +315,7 @@ function DraggableCard({
         {card.assigned_to ? (
           <span className="chip board-card-assignee">{card.assigned_to.full_name}</span>
         ) : (
-          <span className="muted board-card-unassigned">Sin asignar</span>
+          <span className="muted board-card-unassigned">{t.escalationBoardPage.unassignedLabel}</span>
         )}
       </div>
     </button>

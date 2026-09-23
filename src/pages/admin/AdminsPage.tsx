@@ -7,25 +7,13 @@ import {
   updateAdmin,
   type AdminRow,
 } from '../../lib/api';
-
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super admin',
-  hr_agent: 'Agente de RR. HH.',
-  knowledge_editor: 'Editor de conocimiento',
-  auditor: 'Auditor',
-};
-
-const ROLE_HINTS: Record<string, string> = {
-  super_admin: 'Acceso total · gestiona admins · ve todo el histórico',
-  hr_agent: 'Trabaja escalaciones · gestiona el directorio',
-  knowledge_editor: 'Edita conocimiento · sin acceso a conversaciones',
-  auditor: 'Ve y busca todo el histórico (solo lectura)',
-};
+import { useT } from '../../i18n/context';
 
 // Admin & role management (Sprint 5). super_admin only — the most privileged
 // surface (granting history.view_all). Roles via spatie; deactivation revokes
 // the admin's access immediately (server-side).
 export function AdminsPage() {
+  const t = useT();
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +34,7 @@ export function AdminsPage() {
     <div className="docs-main">
       <div className="docs-toolbar">
         <button className="btn btn-primary" onClick={() => setCreating((c) => !c)}>
-          {creating ? 'Cancelar' : 'Nuevo administrador'}
+          {creating ? t.common.cancel : t.adminsPage.newAdminButton}
         </button>
       </div>
 
@@ -54,17 +42,17 @@ export function AdminsPage() {
 
       {error && <p className="error">{error}</p>}
       {loading ? (
-        <p className="muted">Cargando…</p>
+        <p className="muted">{t.common.loading}</p>
       ) : (
         <table className="docs-table">
           <thead>
-            <tr><th>Nombre</th><th>Correo</th><th>Roles</th><th>Estado</th><th></th></tr>
+            <tr><th>{t.adminsPage.colName}</th><th>{t.adminsPage.colEmail}</th><th>{t.adminsPage.colRoles}</th><th>{t.adminsPage.colStatus}</th><th></th></tr>
           </thead>
           <tbody>
             {admins.map((a) => (
               <AdminRowEditor key={a.uuid} admin={a} roles={roles} onChanged={load} />
             ))}
-            {admins.length === 0 && <tr><td colSpan={5} className="col-empty">No hay administradores.</td></tr>}
+            {admins.length === 0 && <tr><td colSpan={5} className="col-empty">{t.adminsPage.noAdminsNotice}</td></tr>}
           </tbody>
         </table>
       )}
@@ -73,6 +61,7 @@ export function AdminsPage() {
 }
 
 function CreateAdmin({ roles, onCreated }: { roles: string[]; onCreated: () => void }) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -97,35 +86,36 @@ function CreateAdmin({ roles, onCreated }: { roles: string[]; onCreated: () => v
 
   return (
     <section className="edit-block">
-      <h4>Nuevo administrador</h4>
+      <h4>{t.adminsPage.newAdminButton}</h4>
       <div className="field">
-        <label className="field-label">Nombre completo</label>
+        <label className="field-label">{t.adminsPage.fullNameLabel}</label>
         <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={busy} />
       </div>
       <div className="field">
-        <label className="field-label">Correo</label>
+        <label className="field-label">{t.adminsPage.colEmail}</label>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} />
       </div>
       <div className="field">
-        <label className="field-label">Roles</label>
+        <label className="field-label">{t.adminsPage.colRoles}</label>
         <div className="role-checks">
           {roles.map((role) => (
-            <label key={role} className="board-filter-check" title={ROLE_HINTS[role]}>
+            <label key={role} className="board-filter-check" title={t.adminsPage.roleHints[role]}>
               <input type="checkbox" checked={picked.includes(role)} onChange={() => toggle(role)} disabled={busy} />
-              {ROLE_LABELS[role] ?? role}
+              {t.adminsPage.roleLabels[role] ?? role}
             </label>
           ))}
         </div>
       </div>
       {err && <p className="error">{err}</p>}
       <button className="btn btn-primary" onClick={submit} disabled={busy || !email.trim() || !fullName.trim()}>
-        {busy ? 'Creando…' : 'Crear administrador'}
+        {busy ? t.adminsPage.creatingButton : t.adminsPage.createAdminButton}
       </button>
     </section>
   );
 }
 
 function AdminRowEditor({ admin, roles, onChanged }: { admin: AdminRow; roles: string[]; onChanged: () => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [picked, setPicked] = useState<string[]>(admin.roles);
   const [busy, setBusy] = useState(false);
@@ -170,34 +160,34 @@ function AdminRowEditor({ admin, roles, onChanged }: { admin: AdminRow; roles: s
           {editing ? (
             <div className="role-checks">
               {roles.map((role) => (
-                <label key={role} className="board-filter-check" title={ROLE_HINTS[role]}>
+                <label key={role} className="board-filter-check" title={t.adminsPage.roleHints[role]}>
                   <input type="checkbox" checked={picked.includes(role)} onChange={() => toggle(role)} disabled={busy} />
-                  {ROLE_LABELS[role] ?? role}
+                  {t.adminsPage.roleLabels[role] ?? role}
                 </label>
               ))}
             </div>
           ) : (
             admin.roles.length > 0
-              ? admin.roles.map((r) => <span key={r} className="chip">{ROLE_LABELS[r] ?? r}</span>)
-              : <span className="muted">sin rol</span>
+              ? admin.roles.map((r) => <span key={r} className="chip">{t.adminsPage.roleLabels[r] ?? r}</span>)
+              : <span className="muted">{t.adminsPage.noRoleNotice}</span>
           )}
         </td>
         <td>
           <span className={`badge ${admin.status === 'active' ? 'badge-verified' : 'badge-historical'}`}>
-            {admin.status === 'active' ? 'Activo' : 'Inactivo'}
+            {admin.status === 'active' ? t.adminsPage.activeStatus : t.adminsPage.inactiveStatus}
           </span>
         </td>
         <td className="num">
           {editing ? (
             <>
-              <button className="btn btn-primary" onClick={saveRoles} disabled={busy}>Guardar</button>
-              <button className="btn btn-ghost" onClick={() => { setEditing(false); setPicked(admin.roles); }} disabled={busy}>Cancelar</button>
+              <button className="btn btn-primary" onClick={saveRoles} disabled={busy}>{t.common.save}</button>
+              <button className="btn btn-ghost" onClick={() => { setEditing(false); setPicked(admin.roles); }} disabled={busy}>{t.common.cancel}</button>
             </>
           ) : (
             <>
-              <button className="btn btn-ghost" onClick={() => setEditing(true)} disabled={busy}>Roles</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(true)} disabled={busy}>{t.adminsPage.colRoles}</button>
               <button className={`btn ${admin.status === 'active' ? 'btn-warning' : 'btn-secondary'}`} onClick={toggleStatus} disabled={busy}>
-                {admin.status === 'active' ? 'Desactivar' : 'Reactivar'}
+                {admin.status === 'active' ? t.adminsPage.deactivateButton : t.adminsPage.reactivateButton}
               </button>
             </>
           )}

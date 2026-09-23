@@ -25,6 +25,8 @@ import { ReferenceFactPanel } from './ReferenceFactPanel';
 import { ApproveProposalControls } from './ProposeVocabularyForm';
 import { firstLine } from '../../lib/format';
 import { FilterToolbar } from '../../components/FilterToolbar';
+import { useT, useLocale } from '../../i18n/context';
+import { formatPercent } from '../../i18n/format';
 
 // Sprint 8 follow-up (found live, eyes-on 2026-09-10): 'quality' used to be a
 // tab nested here. Promoted to its own top-level AdminShell view (`Calidad`,
@@ -62,14 +64,15 @@ export function ReviewQueuePage({
   initialConvenioId?: number | null;
 }) {
   const [tab, setTab] = useState<Tab>(() => (isTab(initialTab) ? initialTab : 'tagging'));
+  const t = useT();
   return (
     <div className="review-queue">
       <div className="tabs">
-        <button className={`tab ${tab === 'tagging' ? 'active' : ''}`} onClick={() => setTab('tagging')}>AI tagging</button>
-        <button className={`tab ${tab === 'reference-facts' ? 'active' : ''}`} onClick={() => setTab('reference-facts')}>Reference facts</button>
-        <button className={`tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setTab('groups')}>Groups</button>
-        <button className={`tab ${tab === 'vocabulary' ? 'active' : ''}`} onClick={() => setTab('vocabulary')}>Vocabulary proposals</button>
-        <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>Expiry</button>
+        <button className={`tab ${tab === 'tagging' ? 'active' : ''}`} onClick={() => setTab('tagging')}>{t.reviewQueue.tabTagging}</button>
+        <button className={`tab ${tab === 'reference-facts' ? 'active' : ''}`} onClick={() => setTab('reference-facts')}>{t.reviewQueue.tabReferenceFacts}</button>
+        <button className={`tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setTab('groups')}>{t.reviewQueue.tabGroups}</button>
+        <button className={`tab ${tab === 'vocabulary' ? 'active' : ''}`} onClick={() => setTab('vocabulary')}>{t.reviewQueue.tabVocabulary}</button>
+        <button className={`tab ${tab === 'expiry' ? 'active' : ''}`} onClick={() => setTab('expiry')}>{t.reviewQueue.tabExpiry}</button>
       </div>
       {tab === 'tagging' && <TaggingQueue />}
       {tab === 'reference-facts' && <ReferenceFactsQueue initialFactUuid={initialFactUuid} />}
@@ -98,6 +101,8 @@ export function ReviewQueuePage({
 // answerable until a human verifies it; once verified, it can be served
 // directly as a live answer — 7c).
 function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: string | null }) {
+  const t = useT();
+  const { locale } = useLocale();
   // Sprint 7g Item 2 — a `#fact=<uuid>` deep link opens straight to that
   // fact's detail panel (below), whether or not it happens to be in the
   // CURRENT queue filter — `ReferenceFactPanel` fetches its own detail by
@@ -142,25 +147,21 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
   return (
     <>
       <p className="muted">
-        Reference facts awaiting verification — AI-segmented or manually created — <strong>uncertain-first</strong>,
-        then lowest-confidence, then (ties only) topic demand (a manual fact carries neither signal, so it falls to
-        the bottom of its tier). Inert until a human verifies, whichever source it came from. Open one to check the
-        source (the quoted line for an AI proposal, fuchsia; the linked document for a manual fact) against the
-        assigned scope.
+        {t.reviewQueue.facts.intro} <strong>{t.reviewQueue.facts.introUncertainFirst}</strong>{t.reviewQueue.facts.introRest}
       </p>
       <FilterToolbar
         filters={{ topicFilter }}
         onClear={() => setTopicFilter('')}
-        total={<span className="muted docs-total">{meta.total} fact{meta.total === 1 ? '' : 's'}</span>}
+        total={<span className="muted docs-total">{meta.total} {meta.total === 1 ? t.reviewQueue.facts.totalOne : t.reviewQueue.facts.totalMany}</span>}
       >
         <select className="select" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)}>
-          <option value="">All topics</option>
-          {topics.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+          <option value="">{t.reviewQueue.facts.allTopics}</option>
+          {topics.map((tp) => (<option key={tp.id} value={tp.id}>{tp.name}</option>))}
         </select>
       </FilterToolbar>
       {error && <p className="error">{error}</p>}
       {loading ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.common.loading}</p>
       ) : (
         <table className="docs-table">
           <thead>
@@ -168,7 +169,7 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                 identify and sanity-check a fact from the list itself.
                 Sprint 10c, D7 — the Topic column, so the new filter above has
                 something to visually confirm against. */}
-            <tr><th className="num">Id</th><th>Value</th><th>Source</th><th>Scope</th><th>Group</th><th>Topic</th><th className="num">Conf.</th><th>Flags</th><th /></tr>
+            <tr><th className="num">{t.reviewQueue.facts.colId}</th><th>{t.reviewQueue.facts.colValue}</th><th>{t.reviewQueue.facts.colSource}</th><th>{t.reviewQueue.facts.colScope}</th><th>{t.reviewQueue.facts.colGroup}</th><th>{t.reviewQueue.facts.colTopic}</th><th className="num">{t.reviewQueue.facts.colConf}</th><th>{t.reviewQueue.facts.colFlags}</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -185,15 +186,15 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                 <td>{[r.territory, r.sector].filter(Boolean).join(' · ') || r.convenio || '—'}</td>
                 <td>{r.group_label ?? r.job_category ?? '—'}</td>
                 <td className="cell-clip">{r.topic ?? '—'}</td>
-                <td className="num">{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : '—'}</td>
+                <td className="num">{r.confidence != null ? formatPercent(r.confidence * 100, locale) : '—'}</td>
                 <td className="flags">
                   {/* Correction queue-source-01 — the source badge, always one or
                       the other: fuchsia "AI" (unchanged, unverified-AI only,
                       ADR-0020) vs neutral "Manual". */}
                   {r.is_ai_proposed && <span className="ai-pill">AI</span>}
-                  {r.is_manual_pending && <span className="badge badge-manual">Manual</span>}
+                  {r.is_manual_pending && <span className="badge badge-manual">{t.reviewQueue.facts.manualBadge}</span>}
                   {r.uncertainty && <span className="badge badge-conflict">⚠ {r.uncertainty.field}</span>}
-                  {r.is_unresolved_duplicate && <span className="badge badge-conflict">≈ version</span>}
+                  {r.is_unresolved_duplicate && <span className="badge badge-conflict">≈ {t.reviewQueue.facts.versionBadge}</span>}
                   {r.resolution && <span className="badge badge-historical">{r.resolution}</span>}
                 </td>
                 <td>
@@ -204,14 +205,14 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
                       className="btn btn-ghost"
                       onClick={(e) => { e.stopPropagation(); setPairUuid(r.uuid); }}
                     >
-                      Resolver versión
+                      {t.reviewQueue.facts.resolveVersion}
                     </button>
                   )}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="col-empty">No facts awaiting review — the queue is clear.</td></tr>
+              <tr><td colSpan={9} className="col-empty">{t.reviewQueue.facts.noFacts}</td></tr>
             )}
           </tbody>
         </table>
@@ -244,6 +245,8 @@ function ReferenceFactsQueue({ initialFactUuid = null }: { initialFactUuid?: str
 // Documents page itself had before Sprint 7e. `meta` carries Laravel's
 // standard envelope so the total is always visible and a cap can't be silent.
 function TaggingQueue() {
+  const t = useT();
+  const { locale } = useLocale();
   const [selected, setSelected] = useState<string | null>(null);
   const { rows, loading, error, meta, setPage, refresh } = usePaginatedQuery<DocumentRow>(
     (page) => listDocuments({ tagging_status: 'under_review', sort: 'confidence', page: String(page) }),
@@ -252,21 +255,20 @@ function TaggingQueue() {
   return (
     <>
       <p className="muted">
-        Documents <code>under_review</code> — not retrievable until verified. The AI auto-proposes facets on ingest; lowest-confidence first.
-        Open one to review the (fuchsia) AI suggestions and Confirm.
+        {t.reviewQueue.tagging.introPrefix} <code>{t.reviewQueue.tagging.underReview}</code> {t.reviewQueue.tagging.introSuffix}
       </p>
       {/* Sprint 11a (§C.2) — chrome-only wrap: this tab has no filter controls
           (§C.1), so FilterToolbar renders no "Filtros" button at all — only
           the always-visible total, same chrome position as every other
           filtered/filterless admin screen. */}
-      <FilterToolbar total={<span className="muted docs-total">{meta.total} document{meta.total === 1 ? '' : 's'}</span>} />
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} {meta.total === 1 ? t.reviewQueue.tagging.totalOne : t.reviewQueue.tagging.totalMany}</span>} />
       {error && <p className="error">{error}</p>}
       {loading ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.common.loading}</p>
       ) : (
         <table className="docs-table">
           <thead>
-            <tr><th>Title</th><th>Convenio</th><th>Type</th><th className="num">Confidence</th><th>Flags</th></tr>
+            <tr><th>{t.reviewQueue.tagging.colTitle}</th><th>{t.reviewQueue.tagging.colConvenio}</th><th>{t.reviewQueue.tagging.colType}</th><th className="num">{t.reviewQueue.tagging.colConfidence}</th><th>{t.reviewQueue.tagging.colFlags}</th></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -276,18 +278,18 @@ function TaggingQueue() {
                 onClick={() => setSelected(r.uuid)}
               >
                 <td>{r.title}</td>
-                <td>{r.convenio ?? '—'}</td>
-                <td>{r.document_type ?? '—'}</td>
-                <td className="num">{r.tagging_confidence != null ? `${Math.round(r.tagging_confidence * 100)}%` : '—'}</td>
+                <td>{r.convenio ?? t.common.dash}</td>
+                <td>{r.document_type ?? t.common.dash}</td>
+                <td className="num">{r.tagging_confidence != null ? formatPercent(r.tagging_confidence * 100, locale) : t.common.dash}</td>
                 <td className="flags">
                   {r.is_ai_proposed && <span className="ai-pill">AI</span>}
-                  {r.has_open_conflict && <span className="badge badge-conflict">⚠ Conflict</span>}
-                  {r.empty_text && <span className="badge badge-empty">∅ No text</span>}
+                  {r.has_open_conflict && <span className="badge badge-conflict">⚠ {t.reviewQueue.tagging.conflictBadge}</span>}
+                  {r.empty_text && <span className="badge badge-empty">∅ {t.reviewQueue.tagging.noTextBadge}</span>}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={5} className="col-empty">Nothing under review — the queue is clear.</td></tr>
+              <tr><td colSpan={5} className="col-empty">{t.reviewQueue.tagging.nothingUnderReview}</td></tr>
             )}
           </tbody>
         </table>
@@ -306,6 +308,8 @@ function TaggingQueue() {
 // server-side (additive backend change this sprint, same envelope as
 // Reference-facts/Documents).
 function VocabularyQueue() {
+  const t = useT();
+  const { locale } = useLocale();
   const [canApprove, setCanApprove] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -335,16 +339,15 @@ function VocabularyQueue() {
   return (
     <>
       <p className="muted">
-        Proposed vocabulary (variant→alias is the default; create-new is deliberate). Approving writes into the controlled vocabulary —
-        gated by <code>vocabulary.approve</code> (super_admin). The AI proposes only.
+        {t.reviewQueue.vocabulary.introPrefix} <code>vocabulary.approve</code> {t.reviewQueue.vocabulary.introSuffix}
       </p>
-      <FilterToolbar total={<span className="muted docs-total">{meta.total} proposal{meta.total === 1 ? '' : 's'}</span>} />
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} {meta.total === 1 ? t.reviewQueue.vocabulary.totalOne : t.reviewQueue.vocabulary.totalMany}</span>} />
       {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.common.loading}</p>
       ) : proposals.length === 0 ? (
-        <p className="muted">No open vocabulary proposals.</p>
+        <p className="muted">{t.reviewQueue.vocabulary.noProposals}</p>
       ) : (
         <ul className="proposal-list">
           {proposals.map((p) => (
@@ -355,14 +358,14 @@ function VocabularyQueue() {
                 <strong>{p.proposed_value}</strong>
                 {p.variant_of && (
                   <span className="muted">
-                    · looks like #{p.variant_of.id}
-                    {p.variant_of.similarity != null ? ` (${Math.round(p.variant_of.similarity * 100)}%)` : ''}
+                    {t.reviewQueue.vocabulary.looksLikePrefix}{p.variant_of.id}
+                    {p.variant_of.similarity != null ? ` (${formatPercent(p.variant_of.similarity * 100, locale)})` : ''}
                   </span>
                 )}
               </div>
               <div className="timeline-meta">
-                proposed by {p.proposed_by ?? p.proposed_by_source}
-                {p.source_document ? ` · from “${p.source_document.title}”` : ''}
+                {t.reviewQueue.vocabulary.proposedByPrefix} {p.proposed_by ?? p.proposed_by_source}
+                {p.source_document ? ` ${t.reviewQueue.vocabulary.fromDocumentPrefix} “${p.source_document.title}”` : ''}
               </div>
               {canApprove ? (
                 <div className="proposal-actions">
@@ -373,10 +376,10 @@ function VocabularyQueue() {
                     hasVariant={Boolean(p.variant_of)}
                     onDone={(m) => { setMsg(m); refresh(); }}
                   />
-                  <button className="btn btn-ghost" onClick={() => reject(p.id)}>Reject</button>
+                  <button className="btn btn-ghost" onClick={() => reject(p.id)}>{t.reviewQueue.vocabulary.reject}</button>
                 </div>
               ) : (
-                <p className="timeline-meta">Awaiting a super_admin to approve.</p>
+                <p className="timeline-meta">{t.reviewQueue.vocabulary.awaitingApproval}</p>
               )}
             </li>
           ))}
@@ -392,6 +395,7 @@ function VocabularyQueue() {
 // applied here): `ReviewQueueController::expiry` now paginates at 50
 // server-side (additive backend change this sprint).
 function ExpiryQueue() {
+  const t = useT();
   const [msg, setMsg] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const { rows: tasks, loading, error, meta, setPage, refresh } = usePaginatedQuery<ExpiryTask>(
@@ -401,16 +405,15 @@ function ExpiryQueue() {
   return (
     <>
       <p className="muted">
-        Active prose within 90 days of expiry (or already past). Confirm a successor (same convenio only) to write the lineage —
-        the old document is <strong>never auto-retired</strong>.
+        {t.reviewQueue.expiry.intro} {t.reviewQueue.expiry.introOldDocIs} <strong>{t.reviewQueue.expiry.introNeverRetired}</strong>{t.reviewQueue.expiry.introSuffix}
       </p>
-      <FilterToolbar total={<span className="muted docs-total">{meta.total} task{meta.total === 1 ? '' : 's'}</span>} />
+      <FilterToolbar total={<span className="muted docs-total">{meta.total} {meta.total === 1 ? t.reviewQueue.expiry.totalOne : t.reviewQueue.expiry.totalMany}</span>} />
       {(error || actionError) && <p className="error">{error || actionError}</p>}
       {msg && <p className="notice notice--neutral">{msg}</p>}
       {loading ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.common.loading}</p>
       ) : tasks.length === 0 ? (
-        <p className="muted">Nothing expiring — the queue is clear. (Run <code>php artisan reviews:scan-expiry</code> to refresh.)</p>
+        <p className="muted">{t.reviewQueue.expiry.nothingExpiringPrefix} <code>php artisan reviews:scan-expiry</code> {t.reviewQueue.expiry.nothingExpiringSuffix}</p>
       ) : (
         <ul className="proposal-list">
           {tasks.map((t) => (
@@ -443,6 +446,7 @@ function SuccessionProposalNotice({
   onReject: () => void;
   onRepropose: () => void;
 }) {
+  const t = useT();
   const p = task.ai_proposal;
 
   // Nothing proposed (no candidate, no text, comparison down). Say why rather
@@ -451,8 +455,8 @@ function SuccessionProposalNotice({
     return (
       <p className="notice notice--neutral">
         <span aria-hidden="true">✨</span>
-        Sin sugerencia de sucesión: {p.reason ?? '—'}
-        <button className="btn btn-ghost" disabled={busy} onClick={onRepropose}>Reintentar</button>
+        {t.reviewQueue.expiry.noSuggestion} {p.reason ?? t.common.dash}
+        <button className="btn btn-ghost" disabled={busy} onClick={onRepropose}>{t.reviewQueue.expiry.retry}</button>
       </p>
     );
   }
@@ -460,15 +464,15 @@ function SuccessionProposalNotice({
     // Already confirmed or rejected (or never proposed) — the row stays plain, and
     // the human's own choice below is unaffected.
     return task.ai_proposal_status === 'rejected' ? (
-      <p className="timeline-meta">Sugerencia de IA rechazada — sin efecto sobre el documento.</p>
+      <p className="timeline-meta">{t.reviewQueue.expiry.aiRejectedNotice}</p>
     ) : null;
   }
 
   const label: Record<string, string> = {
-    successor: 'Sucesor propuesto',
-    conflict: 'Posible conflicto (no sucesión)',
-    coexisting_sibling: 'Documentos que coexisten (no sucesión)',
-    uncertain: 'Sin relación afirmada',
+    successor: t.reviewQueue.expiry.relationshipLabels.successor,
+    conflict: t.reviewQueue.expiry.relationshipLabels.conflict,
+    coexisting_sibling: t.reviewQueue.expiry.relationshipLabels.coexistingSibling,
+    uncertain: t.reviewQueue.expiry.relationshipLabels.uncertain,
   };
 
   return (
@@ -477,15 +481,15 @@ function SuccessionProposalNotice({
       <div className="notice-body">
         <p style={{ margin: 0 }}>
           <span className="ai-pill">AI</span>{' '}
-          <strong>{label[p.relationship ?? 'uncertain']}</strong> — sin verificar, no se ha escrito nada.
-          {p.candidate_title && <> Candidato: <strong>{p.candidate_title}</strong></>}
-          {p.max_score != null && <span className="muted"> · solapamiento {p.max_score.toFixed(3)}</span>}
+          <strong>{label[p.relationship ?? 'uncertain']}</strong> {t.reviewQueue.expiry.unverifiedNotWritten}
+          {p.candidate_title && <> {t.reviewQueue.expiry.candidatePrefix} <strong>{p.candidate_title}</strong></>}
+          {p.max_score != null && <span className="muted"> {t.reviewQueue.expiry.overlapPrefix} {p.max_score.toFixed(3)}</span>}
         </p>
         {p.validity && (
           <p className="timeline-meta" style={{ margin: 0 }}>
-            este documento {p.validity.expiring[0] ?? '—'} → {p.validity.expiring[1] ?? '—'} ·
-            candidato {p.validity.candidate[0] ?? '—'} → {p.validity.candidate[1] ?? '—'}
-            {p.relationship === 'successor' && ' (vigencia estrictamente posterior)'}
+            {t.reviewQueue.expiry.thisDocumentPrefix} {p.validity.expiring[0] ?? t.common.dash} → {p.validity.expiring[1] ?? t.common.dash} ·
+            {t.reviewQueue.expiry.candidatePairPrefix} {p.validity.candidate[0] ?? t.common.dash} → {p.validity.candidate[1] ?? t.common.dash}
+            {p.relationship === 'successor' && ` ${t.reviewQueue.expiry.strictlyLaterSuffix}`}
           </p>
         )}
         {p.uncertainty && <p className="ai-facet" style={{ margin: 0 }}>⚠ {p.uncertainty.reason}</p>}
@@ -495,11 +499,11 @@ function SuccessionProposalNotice({
         {(p.passages ?? []).map((pp, i) => (
           <div className="compare-grid" key={pp.candidate_chunk_id ?? i}>
             <div className="compare-side">
-              <span className="muted">Este documento</span>
+              <span className="muted">{t.reviewQueue.expiry.thisDocumentLabel}</span>
               <blockquote className="well passage-text">{pp.expiring_excerpt}</blockquote>
             </div>
             <div className="compare-side">
-              <span className="muted">Candidato · {pp.score.toFixed(3)}</span>
+              <span className="muted">{t.reviewQueue.expiry.candidateScorePrefix} {pp.score.toFixed(3)}</span>
               <blockquote className="well passage-text">{pp.candidate_excerpt}</blockquote>
             </div>
           </div>
@@ -512,14 +516,14 @@ function SuccessionProposalNotice({
               disabled={busy}
               onClick={() => onConfirm(p.candidate_document_uuid as string)}
             >
-              Confirmar esta sucesión
+              {t.reviewQueue.expiry.confirmSuccession}
             </button>
           )}
-          <button className="btn btn-ghost" disabled={busy} onClick={onReject}>Rechazar sugerencia</button>
+          <button className="btn btn-ghost" disabled={busy} onClick={onReject}>{t.reviewQueue.expiry.rejectSuggestion}</button>
         </div>
         {p.relationship !== 'successor' && (
           <p className="timeline-meta" style={{ margin: 0 }}>
-            La IA no propone una sucesión aquí; si crees que la hay, elígela abajo a mano.
+            {t.reviewQueue.expiry.noSuccessionHint}
           </p>
         )}
       </div>
@@ -528,6 +532,7 @@ function SuccessionProposalNotice({
 }
 
 function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: string) => void; onError: (e: string) => void }) {
+  const t = useT();
   const [successor, setSuccessor] = useState('');
   const [retire, setRetire] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -543,10 +548,10 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
       });
       onDone(
         action === 'link_successor'
-          ? `Linked successor${retire ? ' and retired the old document.' : ' (old document kept active).'}`
+          ? (retire ? t.reviewQueue.expiry.linkedSuccessorRetired : t.reviewQueue.expiry.linkedSuccessorKept)
           : action === 'dismiss'
-            ? 'Dismissed.'
-            : 'Escalated for adjudication.',
+            ? t.reviewQueue.expiry.dismissed
+            : t.reviewQueue.expiry.escalatedForAdjudication,
       );
     } catch (e) {
       onError(String((e as Error).message ?? e));
@@ -561,7 +566,7 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
       await rejectSuccessionProposal(task.task_id);
       // The task stays OPEN: the document is still expiring, so rejecting a
       // suggestion is not resolving the queue item.
-      onDone('Sugerencia de IA rechazada — no se ha escrito ninguna relación; la tarea sigue abierta.');
+      onDone(t.reviewQueue.expiry.aiRejectedTaskOpen);
     } catch (e) {
       onError(String((e as Error).message ?? e));
     } finally {
@@ -573,7 +578,7 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
     setBusy(true);
     try {
       await proposeSuccession(task.task_id);
-      onDone('Comparación en cola — vuelve a cargar en unos segundos.');
+      onDone(t.reviewQueue.expiry.queuedForComparison);
     } catch (e) {
       onError(String((e as Error).message ?? e));
     } finally {
@@ -585,12 +590,12 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
   return (
     <li className={`proposal-card ${task.is_ai_proposed ? 'ai-marked' : ''}`}>
       <div className="proposal-head">
-        {task.past && <span className="badge badge-conflict">⚠ Past</span>}
-        <strong>{d?.title ?? '—'}</strong>
-        <span className="muted">· {d?.convenio ? `${d.convenio.numero} ${d.convenio.name}` : 'no convenio'}</span>
+        {task.past && <span className="badge badge-conflict">⚠ {t.reviewQueue.expiry.pastBadge}</span>}
+        <strong>{d?.title ?? t.common.dash}</strong>
+        <span className="muted">· {d?.convenio ? `${d.convenio.numero} ${d.convenio.name}` : t.reviewQueue.expiry.noConvenio}</span>
       </div>
       <div className="timeline-meta">
-        valid {d?.validity_start ?? '—'} → {d?.validity_end ?? '—'} · {d?.retrieval_status}
+        {t.reviewQueue.expiry.validPrefix} {d?.validity_start ?? t.common.dash} → {d?.validity_end ?? t.common.dash} · {d?.retrieval_status}
       </div>
 
       {!task.is_unscoped && (
@@ -607,30 +612,30 @@ function ExpiryRow({ task, onDone, onError }: { task: ExpiryTask; onDone: (m: st
       )}
 
       {task.is_unscoped ? (
-        <p className="notice"><span aria-hidden="true">⚠</span> No convenio — succession is scope-based, so no same-convenio successor can be linked. Dismiss or escalate.</p>
+        <p className="notice"><span aria-hidden="true">⚠</span> {t.reviewQueue.expiry.noConvenioSuccessionNotice}</p>
       ) : (
         <div className="expiry-actions">
           <select className="select" value={successor} onChange={(e) => setSuccessor(e.target.value)}>
-            <option value="">Pick the successor (same convenio)…</option>
+            <option value="">{t.reviewQueue.expiry.pickSuccessor}</option>
             {task.successor_candidates.map((c) => (
               <option key={c.uuid} value={c.uuid}>
-                {c.title} ({c.validity_start ?? '—'} → {c.validity_end ?? '—'}) · {c.retrieval_status}
+                {c.title} ({c.validity_start ?? t.common.dash} → {c.validity_end ?? t.common.dash}) · {c.retrieval_status}
               </option>
             ))}
           </select>
           <label className="checkbox">
             <input type="checkbox" checked={retire} onChange={(e) => setRetire(e.target.checked)} />
-            Also retire this one (historical)
+            {t.reviewQueue.expiry.alsoRetire}
           </label>
           <button className="btn btn-primary" disabled={busy || !successor} onClick={() => act('link_successor')}>
-            {retire ? 'Confirm succession + retire' : 'Confirm succession'}
+            {retire ? t.reviewQueue.expiry.confirmSuccessionRetire : t.reviewQueue.expiry.confirmSuccessionButton}
           </button>
         </div>
       )}
 
       <div className="proposal-actions">
-        <button className="btn btn-ghost" disabled={busy} onClick={() => act('dismiss')}>Dismiss (renewed in place / no action)</button>
-        <button className="btn btn-ghost" disabled={busy} onClick={() => act('escalate')}>Escalate</button>
+        <button className="btn btn-ghost" disabled={busy} onClick={() => act('dismiss')}>{t.reviewQueue.expiry.dismissAction}</button>
+        <button className="btn btn-ghost" disabled={busy} onClick={() => act('escalate')}>{t.reviewQueue.expiry.escalateAction}</button>
       </div>
     </li>
   );

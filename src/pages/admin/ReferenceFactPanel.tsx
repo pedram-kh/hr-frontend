@@ -12,6 +12,7 @@ import {
   type UpdateReferenceFactPayload,
 } from '../../lib/api';
 import { useAuth } from '../../auth/context';
+import { useT } from '../../i18n/context';
 
 /**
  * The reference-fact card (Sprint 7b-1 / 7b-2, ADR-0021/0022) — the right-hand
@@ -50,6 +51,7 @@ export function ReferenceFactPanel({
   onResolveDuplicate?: (uuid: string) => void;
 }) {
   const { identity } = useAuth();
+  const t = useT();
   const canEdit = canEditKnowledge(identity);
   const [fact, setFact] = useState<ReferenceFactCard | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +108,7 @@ export function ReferenceFactPanel({
     return (
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()}>
-          <div className="detail-head"><strong>Reference fact</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
+          <div className="detail-head"><strong>{t.referenceFactPanel.heading}</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
           <div className="detail-body"><p className="error">{error}</p></div>
         </aside>
       </div>
@@ -116,14 +118,14 @@ export function ReferenceFactPanel({
     return (
       <div className="detail-backdrop" onClick={onClose}>
         <aside className="detail panel" onClick={(e) => e.stopPropagation()}>
-          <div className="detail-head"><strong>Reference fact</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
-          <div className="detail-body"><p className="muted">Loading…</p></div>
+          <div className="detail-head"><strong>{t.referenceFactPanel.heading}</strong><button className="btn btn-ghost" onClick={onClose}>✕</button></div>
+          <div className="detail-body"><p className="muted">{t.referenceFactPanel.loadingText}</p></div>
         </aside>
       </div>
     );
   }
 
-  const validity = fact.validity_start ? `${fact.validity_start} → ${fact.validity_end ?? '—'}` : '—';
+  const validity = fact.validity_start ? `${fact.validity_start} → ${fact.validity_end ?? t.common.dash}` : t.common.dash;
   const isAi = fact.is_ai_proposed; // ai_agent + needs_review → fuchsia
   const confidencePct = fact.confidence != null ? `${Math.round(fact.confidence * 100)}%` : null;
 
@@ -134,25 +136,25 @@ export function ReferenceFactPanel({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Reference fact"
+        aria-label={t.referenceFactPanel.heading}
       >
         <div className="detail-head">
-          <strong>Reference fact</strong>
-          <span className="badge badge-reference">dato</span>
-          {isAi && <span className="ai-pill">AI proposal</span>}
+          <strong>{t.referenceFactPanel.heading}</strong>
+          <span className="badge badge-reference">{t.referenceFactPanel.typeBadge}</span>
+          {isAi && <span className="ai-pill">{t.referenceFactPanel.aiProposalBadge}</span>}
           {/* Correction queue-source-01 — the detail panel's OTHER source
               badge, same needs_review gate as `isAi` (mutually exclusive). */}
-          {fact.is_manual_pending && <span className="badge badge-manual">Manual</span>}
-          {fact.status === 'verified' && <span className="badge badge-verified">verified</span>}
-          {fact.status === 'needs_review' && <span className="badge badge-review">needs review</span>}
-          {fact.status === 'rejected' && <span className="badge badge-review">rejected</span>}
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+          {fact.is_manual_pending && <span className="badge badge-manual">{t.referenceFactPanel.manualBadge}</span>}
+          {fact.status === 'verified' && <span className="badge badge-verified">{t.referenceFactPanel.badgeVerified}</span>}
+          {fact.status === 'needs_review' && <span className="badge badge-review">{t.referenceFactPanel.badgeNeedsReview}</span>}
+          {fact.status === 'rejected' && <span className="badge badge-review">{t.referenceFactPanel.badgeRejected}</span>}
+          <button className="btn btn-ghost" onClick={onClose} aria-label={t.referenceFactPanel.closeAriaLabel}>✕</button>
         </div>
         <div className="detail-body">
           {!canEdit && (
             <p className="notice notice--neutral">
               <span aria-hidden="true">🔒</span>
-              Read-only — you don't have the <code>knowledge.edit</code> ability.
+              {t.referenceFactPanel.readOnlyNoticePrefix} <code>knowledge.edit</code> {t.referenceFactPanel.readOnlyNoticeSuffix}
             </p>
           )}
 
@@ -160,11 +162,10 @@ export function ReferenceFactPanel({
             <div className="notice notice--ai">
               <p style={{ margin: 0 }}>
                 <span aria-hidden="true">✨</span>{' '}
-                <strong>AI-segmented proposal — unverified.</strong> Check the scope against the quoted
-                source line below before verifying. The agent only proposes; it never verifies itself.
+                <strong>{t.referenceFactPanel.aiProposalNoticeBold}</strong> {t.referenceFactPanel.aiProposalNoticeRest}
               </p>
               <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-                Confidence: {confidencePct ?? '—'}
+                {t.referenceFactPanel.confidencePrefix} {confidencePct ?? t.common.dash}
                 {fact.uncertainty && (
                   <> · <span className="ai-facet">⚠ {fact.uncertainty.field}: {fact.uncertainty.reason}</span></>
                 )}
@@ -180,12 +181,11 @@ export function ReferenceFactPanel({
               <span aria-hidden="true">⚠</span>
               <div className="notice-body">
                 <span>
-                  <strong>Possible version/duplicate</strong> — same scope as an existing fact with a
-                  different value ("{fact.duplicate_of.value}"). Decide which is true, and since when.
+                  <strong>{t.referenceFactPanel.versionDuplicateBold}</strong> {t.referenceFactPanel.versionDuplicatePrefix}{fact.duplicate_of.value}{t.referenceFactPanel.versionDuplicateSuffix}
                 </span>
                 {canEdit && onResolveDuplicate && (
                   <button className="btn btn-primary" onClick={() => onResolveDuplicate(fact.uuid)}>
-                    Resolver versión (comparar lado a lado)
+                    {t.referenceFactPanel.resolveDuplicateButton}
                   </button>
                 )}
               </div>
@@ -197,14 +197,14 @@ export function ReferenceFactPanel({
               <span aria-hidden="true">✓</span>
               {fact.resolution === 'superseded' && (
                 <>
-                  <strong>Sustituido</strong> por “{fact.superseded_by?.value ?? '—'}”
-                  {fact.superseded_by?.validity_start ? ` (desde ${fact.superseded_by.validity_start})` : ''} — este
-                  valor sigue siendo el correcto para su periodo de vigencia; no se ha borrado.
+                  <strong>{t.referenceFactPanel.supersededBold}</strong> {t.referenceFactPanel.supersededByPrefix}{fact.superseded_by?.value ?? t.common.dash}{t.referenceFactPanel.supersededBySuffix}
+                  {fact.superseded_by?.validity_start ? ` ${t.referenceFactPanel.supersededSincePrefix} ${fact.superseded_by.validity_start}${t.referenceFactPanel.supersededSinceSuffix}` : ''} —{' '}
+                  {t.referenceFactPanel.supersededTrailing}
                 </>
               )}
-              {fact.resolution === 'supersedes' && <><strong>Sustituye</strong> a una versión anterior, cuya vigencia se cerró.</>}
-              {fact.resolution === 'coexists' && <><strong>Coexiste</strong> con el hecho marcado: no son versiones del mismo dato.</>}
-              {fact.resolution === 'rejected_duplicate' && <><strong>Descartado</strong> como duplicado incorrecto.</>}
+              {fact.resolution === 'supersedes' && <><strong>{t.referenceFactPanel.supersedesBold}</strong> {t.referenceFactPanel.supersedesTrailing}</>}
+              {fact.resolution === 'coexists' && <><strong>{t.referenceFactPanel.coexistsBold}</strong> {t.referenceFactPanel.coexistsTrailing}</>}
+              {fact.resolution === 'rejected_duplicate' && <><strong>{t.referenceFactPanel.rejectedDuplicateBold}</strong> {t.referenceFactPanel.rejectedDuplicateTrailing}</>}
               {fact.resolved_by && <span className="muted"> · {fact.resolved_by} · {fact.resolved_at}</span>}
             </p>
           )}
@@ -212,54 +212,53 @@ export function ReferenceFactPanel({
           {(fact.status === 'needs_review') && (
             <p className="notice">
               <span aria-hidden="true">⚠</span>
-              <strong>Inert until verified</strong> — this fact is not answerable until a human verifies it
-              {' '}(once verified, it can be served directly as a live answer).
+              <strong>{t.referenceFactPanel.inertNoticeBold}</strong> — {t.referenceFactPanel.inertNoticeRest}
             </p>
           )}
 
           {isAi && fact.source_excerpt && (
             <section>
-              <h4>Source line (check the scope)</h4>
+              <h4>{t.referenceFactPanel.sourceLineHeading}</h4>
               <blockquote className="ai-suggestions" style={{ whiteSpace: 'pre-wrap' }}>{fact.source_excerpt}</blockquote>
             </section>
           )}
 
           <section>
-            <h4>Value</h4>
+            <h4>{t.referenceFactPanel.valueHeading}</h4>
             <p className="fact-value">{fact.value}</p>
             {fact.raw_values && (
               <details>
-                <summary className="muted">Original (raw_values)</summary>
+                <summary className="muted">{t.referenceFactPanel.rawValuesSummary}</summary>
                 <pre className="raw-values">{JSON.stringify(fact.raw_values, null, 2)}</pre>
               </details>
             )}
           </section>
 
           <section>
-            <h4>Scope</h4>
+            <h4>{t.referenceFactPanel.scopeHeading}</h4>
             <div className="facets">
-              <Facet label="Convenio" value={fact.scope.convenio ? `${fact.scope.convenio.numero} — ${fact.scope.convenio.name}` : '—'} />
-              <Facet label="Territory" value={fact.scope.territory ? `${fact.scope.territory.name} (${fact.scope.territory.level})` : '—'} derived />
-              <Facet label="Sector" value={fact.scope.sector?.name ?? '—'} derived />
-              <Facet label="Job category" value={fact.scope.job_category?.name ?? '— (convenio-wide)'} />
-              {fact.scope.group_label && <Facet label="Group" value={fact.scope.group_label} />}
-              <Facet label="Topic" value={fact.topic?.name ?? '—'} />
-              <Facet label="Validity" value={validity} />
+              <Facet label={t.common.convenio} value={fact.scope.convenio ? `${fact.scope.convenio.numero} — ${fact.scope.convenio.name}` : t.common.dash} />
+              <Facet label={t.common.territory} value={fact.scope.territory ? `${fact.scope.territory.name} (${fact.scope.territory.level})` : t.common.dash} derived />
+              <Facet label={t.common.sector} value={fact.scope.sector?.name ?? t.common.dash} derived />
+              <Facet label={t.common.jobCategory} value={fact.scope.job_category?.name ?? t.referenceFactPanel.noJobCategoryFallback} />
+              {fact.scope.group_label && <Facet label={t.referenceFactPanel.groupLabel} value={fact.scope.group_label} />}
+              <Facet label={t.common.topic} value={fact.topic?.name ?? t.common.dash} />
+              <Facet label={t.common.validity} value={validity} />
             </div>
             <dl className="kv">
-              <dt>Authority</dt>
+              <dt>{t.referenceFactPanel.authorityLabel}</dt>
               <dd>
-                <span className="authority-lock" title="A reference fact can never outrank a convenio (enforced in schema + validation).">
+                <span className="authority-lock" title={t.referenceFactPanel.authorityLockTitle}>
                   <span aria-hidden="true">🔒</span> {fact.authority_level}
                 </span>
               </dd>
-              <dt>Source</dt><dd>{fact.source === 'admin_manual' ? 'manual' : fact.source}</dd>
-              <dt>Status</dt><dd>{fact.status}{fact.verified_by ? ` · by ${fact.verified_by}` : ''}{fact.verified_at ? ` · ${fact.verified_at}` : ''}</dd>
+              <dt>{t.referenceFactPanel.sourceLabel}</dt><dd>{fact.source === 'admin_manual' ? t.referenceFactPanel.sourceManual : fact.source}</dd>
+              <dt>{t.referenceFactPanel.statusLabel}</dt><dd>{fact.status}{fact.verified_by ? ` · ${t.referenceFactPanel.verifiedByPrefix} ${fact.verified_by}` : ''}{fact.verified_at ? ` · ${fact.verified_at}` : ''}</dd>
             </dl>
           </section>
 
           <section>
-            <h4>Source</h4>
+            <h4>{t.referenceFactPanel.sourceLabel}</h4>
             {fact.source_document ? (
               <p>
                 <button className="btn btn-ghost btn-inline" onClick={() => onOpenDocument?.(fact.source_document!.uuid)}>
@@ -268,7 +267,7 @@ export function ReferenceFactPanel({
                 {fact.source_locator && <span className="muted"> · {fact.source_locator}</span>}
               </p>
             ) : (
-              <p className="muted">No source document linked{fact.source_locator ? ` · ${fact.source_locator}` : ''}.</p>
+              <p className="muted">{t.referenceFactPanel.noSourceDocLinked}{fact.source_locator ? ` · ${fact.source_locator}` : ''}.</p>
             )}
           </section>
 
@@ -277,20 +276,20 @@ export function ReferenceFactPanel({
               <div className="detail-actions">
                 {fact.status === 'needs_review' && (
                   <button className="btn btn-primary" onClick={verify} disabled={busy}>
-                    {busy ? 'Verifying…' : isAi ? 'Verify proposal' : 'Verify fact'}
+                    {busy ? t.referenceFactPanel.verifying : isAi ? t.referenceFactPanel.verifyProposal : t.referenceFactPanel.verifyFact}
                   </button>
                 )}
                 <button className="btn btn-secondary" onClick={() => setEditing((e) => !e)} disabled={busy}>
-                  {editing ? 'Cancel edit' : isAi && fact.status === 'needs_review' ? 'Fix then verify' : 'Edit'}
+                  {editing ? t.referenceFactPanel.cancelEdit : isAi && fact.status === 'needs_review' ? t.referenceFactPanel.fixThenVerify : t.referenceFactPanel.editButton}
                 </button>
                 {isAi && fact.status === 'needs_review' && (
                   <button className="btn btn-ghost" onClick={reject} disabled={busy}>
-                    {busy ? 'Rejecting…' : 'Reject'}
+                    {busy ? t.referenceFactPanel.rejecting : t.referenceFactPanel.rejectButton}
                   </button>
                 )}
                 {isAi && fact.source_document && (
-                  <button className="btn btn-ghost" onClick={resegment} disabled={busy} title="Re-run the segmentation agent on the source (idempotent upsert)">
-                    Re-segment source
+                  <button className="btn btn-ghost" onClick={resegment} disabled={busy} title={t.referenceFactPanel.resegmentTitle}>
+                    {t.referenceFactPanel.resegmentButton}
                   </button>
                 )}
               </div>
@@ -305,7 +304,7 @@ export function ReferenceFactPanel({
           )}
 
           <section>
-            <h4>Provenance</h4>
+            <h4>{t.referenceFactPanel.provenanceHeading}</h4>
             <ol className="timeline">
               {fact.provenance.map((e, i) => (
                 <li key={i} className="timeline-item">
@@ -317,7 +316,7 @@ export function ReferenceFactPanel({
                       {e.new_value ? <> <span className="timeline-value">{e.new_value}</span></> : null}
                     </span>
                     {e.note ? <div className="timeline-meta">{e.note}</div> : null}
-                    <div className="timeline-meta">{e.created_at}{e.actor_id ? ` · admin #${e.actor_id}` : ''}</div>
+                    <div className="timeline-meta">{e.created_at}{e.actor_id ? ` · ${t.referenceFactPanel.adminHashPrefix}${e.actor_id}` : ''}</div>
                   </div>
                 </li>
               ))}
@@ -330,11 +329,12 @@ export function ReferenceFactPanel({
 }
 
 function Facet({ label, value, derived }: { label: string; value: string; derived?: boolean }) {
+  const t = useT();
   return (
     <span className="facet">
       <span className="facet-label">
         {label}
-        {derived && <span className="facet-derived" title="Derived from the convenio — not editable"> (derived)</span>}
+        {derived && <span className="facet-derived" title={t.documentDetail.derivedTitleHint}> ({t.documentDetail.derivedLabel})</span>}
       </span>
       <span className="facet-value">{value}</span>
     </span>
@@ -356,6 +356,7 @@ function FactEditForm({
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
+  const t = useT();
   const [value, setValue] = useState(fact.value);
   const [validityStart, setValidityStart] = useState(fact.validity_start ?? '');
   const [validityEnd, setValidityEnd] = useState(fact.validity_end ?? '');
@@ -391,36 +392,36 @@ function FactEditForm({
   return (
     <div className="fact-edit">
       <div className="field">
-        <label className="field-label">Value</label>
+        <label className="field-label">{t.referenceFactPanel.valueHeading}</label>
         <textarea className="textarea" value={value} onChange={(e) => setValue(e.target.value)} rows={3} />
       </div>
       <div className="field-row">
         <div className="field">
-          <label className="field-label">Validity start</label>
+          <label className="field-label">{t.referenceFactPanel.validityStartLabel}</label>
           <input className="input" type="date" value={validityStart} onChange={(e) => setValidityStart(e.target.value)} />
         </div>
         <div className="field">
-          <label className="field-label">Validity end</label>
+          <label className="field-label">{t.referenceFactPanel.validityEndLabel}</label>
           <input className="input" type="date" value={validityEnd} onChange={(e) => setValidityEnd(e.target.value)} />
         </div>
       </div>
       <div className="field">
-        <label className="field-label">Source locator</label>
-        <input className="input" value={locator} onChange={(e) => setLocator(e.target.value)} placeholder="p.3 §2 / sheet:smi26" />
+        <label className="field-label">{t.referenceFactPanel.sourceLocatorLabel}</label>
+        <input className="input" value={locator} onChange={(e) => setLocator(e.target.value)} placeholder={t.referenceFactPanel.sourceLocatorPlaceholder} />
       </div>
-      <p className="muted">Authority is locked to <code>{REFERENCE_AUTHORITY_LEVEL}</code> — it cannot be raised.</p>
+      <p className="muted">{t.referenceFactPanel.authorityLockedPrefix} <code>{REFERENCE_AUTHORITY_LEVEL}</code> {t.referenceFactPanel.authorityLockedSuffix}</p>
       <div className="detail-actions">
-        <button className="btn btn-primary" onClick={() => save(false)} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        <button className="btn btn-primary" onClick={() => save(false)} disabled={busy}>{busy ? t.referenceFactPanel.saving : t.common.save}</button>
       </div>
 
       {confirmScope && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirm scope change">
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t.referenceFactPanel.confirmScopeChangeAriaLabel}>
           <div className="modal">
-            <h4 className="modal-title"><span aria-hidden="true">⚠</span> Scope change</h4>
-            <p className="modal-body">This changes the validity/scope of the fact (which employees it would answer). Confirm to apply.</p>
+            <h4 className="modal-title"><span aria-hidden="true">⚠</span> {t.referenceFactPanel.scopeChangeTitle}</h4>
+            <p className="modal-body">{t.referenceFactPanel.scopeChangeBody}</p>
             <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setConfirmScope(false)} disabled={busy}>Cancel</button>
-              <button className="btn btn-warning" onClick={() => save(true)} disabled={busy}>Confirm change</button>
+              <button className="btn btn-ghost" onClick={() => setConfirmScope(false)} disabled={busy}>{t.common.cancel}</button>
+              <button className="btn btn-warning" onClick={() => save(true)} disabled={busy}>{t.referenceFactPanel.confirmChangeButton}</button>
             </div>
           </div>
         </div>

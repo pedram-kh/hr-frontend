@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { ProposeVocabularyForm } from './ProposeVocabularyForm';
 import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels';
+import { useT, useLocale } from '../../i18n/context';
 
 // Right-hand document card: scope facets + inline provenance, validity/status,
 // chunk health, lineage, the provenance timeline, the real-document viewer, the
@@ -39,6 +40,7 @@ export function DocumentDetailPanel({
   onOpenEscalation?: (uuid: string) => void;
 }) {
   const { identity } = useAuth();
+  const t = useT();
   const canEdit = canEditKnowledge(identity);
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,8 +73,8 @@ export function DocumentDetailPanel({
       <div className="detail-backdrop" onClick={onClose}>
         <div className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="detail-head">
-            <strong>Error</strong>
-            <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+            <strong>{t.common.error}</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label={t.documentDetail.close}>✕</button>
           </div>
           <div className="detail-body"><p className="error">{error}</p></div>
         </div>
@@ -83,10 +85,10 @@ export function DocumentDetailPanel({
       <div className="detail-backdrop" onClick={onClose}>
         <div className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="detail-head">
-            <strong>Loading…</strong>
-            <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+            <strong>{t.documentDetail.loadingTitle}</strong>
+            <button className="btn btn-ghost" onClick={onClose} aria-label={t.documentDetail.close}>✕</button>
           </div>
-          <div className="detail-body"><p className="muted">Loading…</p></div>
+          <div className="detail-body"><p className="muted">{t.documentDetail.loadingTitle}</p></div>
         </div>
       </div>
     );
@@ -103,7 +105,7 @@ export function DocumentDetailPanel({
       await confirmTags(uuid);
       reload();
     } catch (e) {
-      setError(`Confirm failed: ${(e as Error).message ?? e}`);
+      setError(`${t.documentDetail.confirmFailedPrefix}${(e as Error).message ?? e}`);
     } finally {
       setBusy(false);
     }
@@ -116,7 +118,7 @@ export function DocumentDetailPanel({
     // Scans with no extractable text are skipped by the tagging service.
     // Show an inline notice rather than taking over the whole panel.
     if (doc?.empty_text) {
-      setSuggestNotice('No extractable text — this is a scan PDF. AI tagging requires a text layer.');
+      setSuggestNotice(t.documentDetail.scanNoTextNotice);
       return;
     }
     setSuggestNotice(null);
@@ -174,27 +176,27 @@ export function DocumentDetailPanel({
       <div className="detail-head">
         <strong>{doc.title}</strong>
         {doc.authority_level === 'internal_hr_ruling' && (
-          <span className="badge badge-review">Resolución RR. HH.</span>
+          <span className="badge badge-review">{t.documentDetail.hrRulingBadge}</span>
         )}
         {doc.ocr_pages_count > 0 && (
           <span className="badge badge-ocr">
-            <span aria-hidden="true">⚙</span> OCR'd ({doc.ocr_pages_count})
+            <span aria-hidden="true">⚙</span> {t.documentDetail.ocrdBadge} ({doc.ocr_pages_count})
           </span>
         )}
-        <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+        <button className="btn btn-ghost" onClick={onClose} aria-label={t.documentDetail.close}>✕</button>
       </div>
       <div className="detail-body">
 
       {doc.ruling && (
         <p className="notice notice--neutral">
           <span aria-hidden="true">🔁</span>
-          Creada desde la escalación <strong>#{doc.ruling.escalation_id}</strong>
-          {doc.ruling.agent ? ` por ${doc.ruling.agent}` : ''}.
+          {t.documentDetail.createdFromEscalation} <strong>#{doc.ruling.escalation_id}</strong>
+          {doc.ruling.agent ? ` ${t.documentDetail.byAgent} ${doc.ruling.agent}` : ''}.
           {doc.ruling.escalation_uuid && onOpenEscalation && (
             <>
               {' '}
               <button className="btn btn-ghost btn-inline" onClick={() => onOpenEscalation(doc.ruling!.escalation_uuid!)}>
-                Ver la tarjeta →
+                {t.documentDetail.viewCard}
               </button>
             </>
           )}
@@ -204,22 +206,22 @@ export function DocumentDetailPanel({
       {!canEdit && (
         <p className="notice notice--neutral">
           <span aria-hidden="true">🔒</span>
-          Read-only — you don't have the <code>knowledge.edit</code> ability. You can browse, inspect, and run the sandbox.
+          {t.documentDetail.readOnlyPrefix} <code>knowledge.edit</code> {t.documentDetail.readOnlySuffix}
         </p>
       )}
 
       {doc.is_unscoped && (
         <p className="notice">
           <span aria-hidden="true">⚠</span>
-          No convenio — this document carries no scope (scope is derived via the convenio), so employees won't receive it as an answer.
+          {t.documentDetail.noConvenioNotice}
         </p>
       )}
 
       {doc.empty_text && (
         <p className="notice">
           <span aria-hidden="true">∅</span>
-          No extractable text — this looks like a scanned, image-only PDF. Run{' '}
-          <code>documents:ocr-backfill</code> (Sprint 7e, ADR-0026) to OCR it, or re-ingest with{' '}
+          {t.documentDetail.noTextOcrPrefix}{' '}
+          <code>documents:ocr-backfill</code> {t.documentDetail.noTextOcrMiddle}{' '}
           <code>--ocr</code>.
         </p>
       )}
@@ -227,42 +229,40 @@ export function DocumentDetailPanel({
       {suspectedMistag && (
         <p className="notice">
           <span aria-hidden="true">●</span>
-          Suspected salary-table mistag: tagged as convenio prose but named like a table.
-          {canEdit ? ' Use “Re-type document” below → Tablas salariales.' : ' A knowledge editor can retag this.'}
+          {t.documentDetail.suspectedMistagPrefix}{' '}
+          {canEdit ? t.documentDetail.suspectedMistagEditHint : t.documentDetail.suspectedMistagNoEditHint}
         </p>
       )}
 
       {doc.is_ai_proposed && (
         <p className="notice notice--ai">
           <span className="ai-pill">AI</span>
-          {'  '}Unverified AI tagging — <strong>inert</strong> until you confirm.{' '}
-          <strong>Step 1:</strong> review the fuchsia suggestions below; use the edit
-          pickers to accept or correct the convenio, type, and validity.{' '}
-          <strong>Step 2:</strong> click <strong>Confirm tags</strong> — that writes
-          the scope and makes the document retrievable.
+          {'  '}{t.documentDetail.aiTaggingUnverified} <strong>{t.documentDetail.aiTaggingInert}</strong> {t.documentDetail.aiTaggingUntilConfirm}{' '}
+          <strong>{t.documentDetail.aiTaggingStep1Label}</strong> {t.documentDetail.aiTaggingStep1Text}{' '}
+          <strong>{t.documentDetail.aiTaggingStep2Label}</strong> {t.documentDetail.aiTaggingStep2Click} <strong>{t.documentDetail.confirmTagsButton}</strong> {t.documentDetail.aiTaggingStep2Suffix}
         </p>
       )}
 
       <AiSuggestionsSection doc={doc} canEdit={canEdit} />
 
       <section>
-        <h4>Scope</h4>
+        <h4>{t.documentDetail.scopeHeading}</h4>
         <div className="facets">
-          <Facet label="Convenio" value={doc.tags.convenio ? `${doc.tags.convenio.numero} — ${doc.tags.convenio.name}` : '—'} />
-          <Facet label="Territory" value={doc.tags.territory ? `${doc.tags.territory.name} (${doc.tags.territory.level})` : '—'} derived />
-          <Facet label="Sector" value={doc.tags.sector?.name ?? '—'} derived />
-          <Facet label="Type" value={doc.tags.document_type?.name ?? '—'} />
-          <Facet label="Validity" value={doc.validity_start ? `${doc.validity_start} → ${doc.validity_end ?? '—'}` : '—'} />
+          <Facet label={t.common.convenio} value={doc.tags.convenio ? `${doc.tags.convenio.numero} — ${doc.tags.convenio.name}` : t.common.dash} />
+          <Facet label={t.common.territory} value={doc.tags.territory ? `${doc.tags.territory.name} (${doc.tags.territory.level})` : t.common.dash} derived />
+          <Facet label={t.common.sector} value={doc.tags.sector?.name ?? t.common.dash} derived />
+          <Facet label={t.common.type} value={doc.tags.document_type?.name ?? t.common.dash} />
+          <Facet label={t.common.validity} value={doc.validity_start ? `${doc.validity_start} → ${doc.validity_end ?? t.common.dash}` : t.common.dash} />
         </div>
         <dl className="kv">
           {/* Sprint 11a (§D.2) — a genuine detail view (spec's own carve-out),
               but had no label at all, raw key only. Label + raw key kept
               alongside, satisfying both the list/detail distinction and the
               engineer's need for the exact key. */}
-          <dt>Retrieval</dt><dd>{retrievalStatusLabel(doc.retrieval_status)} ({doc.retrieval_status})</dd>
-          <dt>Authority</dt><dd>{doc.authority_level}</dd>
-          <dt>Language</dt><dd>{doc.language}</dd>
-          <dt>Status</dt><dd>{taggingStatusLabel(doc.tagging_status)} ({doc.tagging_status}) · confianza {doc.tagging_confidence ?? '—'}</dd>
+          <dt>{t.documentDetail.kvRetrieval}</dt><dd>{retrievalStatusLabel(t, doc.retrieval_status)} ({doc.retrieval_status})</dd>
+          <dt>{t.documentDetail.kvAuthority}</dt><dd>{doc.authority_level}</dd>
+          <dt>{t.documentDetail.kvLanguage}</dt><dd>{doc.language}</dd>
+          <dt>{t.documentDetail.kvStatus}</dt><dd>{taggingStatusLabel(t, doc.tagging_status)} ({doc.tagging_status}) · {t.common.confianza} {doc.tagging_confidence ?? t.common.dash}</dd>
         </dl>
       </section>
 
@@ -274,13 +274,13 @@ export function DocumentDetailPanel({
 
       {doc.review_tasks.length > 0 && (
         <section>
-          <h4>Review tasks</h4>
-          {doc.review_tasks.map((t, i) => (
-            <div key={i} className={`review-task ${t.reason === 'conflict' ? 'is-conflict' : 'is-unresolved'}`}>
-              <strong>{t.reason ?? t.type}</strong> · {t.status}
-              {t.raw_unmatched_values && t.raw_unmatched_values.length > 0 && (
+          <h4>{t.documentDetail.reviewTasksHeading}</h4>
+          {doc.review_tasks.map((task, i) => (
+            <div key={i} className={`review-task ${task.reason === 'conflict' ? 'is-conflict' : 'is-unresolved'}`}>
+              <strong>{task.reason ?? task.type}</strong> · {task.status}
+              {task.raw_unmatched_values && task.raw_unmatched_values.length > 0 && (
                 <ul>
-                  {t.raw_unmatched_values.map((rv, j) => (
+                  {task.raw_unmatched_values.map((rv, j) => (
                     <UnmatchedValueRow
                       key={j}
                       facet={rv.facet}
@@ -306,7 +306,7 @@ export function DocumentDetailPanel({
             onClick={confirm}
             disabled={busy || proposing || doc.tagging_status === 'verified'}
           >
-            {doc.tagging_status === 'verified' ? 'Tags confirmed ✓' : 'Confirm tags'}
+            {doc.tagging_status === 'verified' ? t.documentDetail.tagsConfirmed : t.documentDetail.confirmTagsButton}
           </button>
           {doc.tagging_status === 'under_review' && (
             <>
@@ -314,9 +314,9 @@ export function DocumentDetailPanel({
                 className="btn btn-ghost"
                 onClick={resuggest}
                 disabled={busy || proposing}
-                title={doc.empty_text ? 'No extractable text — scan PDF, cannot AI-tag' : 'Re-run the AI tagging proposal (queued)'}
+                title={doc.empty_text ? t.documentDetail.resuggestTitleNoText : t.documentDetail.resuggestTitleReady}
               >
-                {proposing ? 'Proposing…' : 'Re-suggest with AI'}
+                {proposing ? t.documentDetail.proposing : t.documentDetail.resuggestButton}
               </button>
               {suggestNotice && (
                 <p className="notice notice--neutral" style={{ marginTop: '0.5rem' }}>
@@ -329,7 +329,7 @@ export function DocumentDetailPanel({
       )}
 
       <section>
-        <h4>Provenance</h4>
+        <h4>{t.documentDetail.provenanceHeading}</h4>
         <ol className="timeline">
           {doc.provenance.map((e, i) => (
             <li key={i} className="timeline-item">
@@ -343,10 +343,10 @@ export function DocumentDetailPanel({
                       {' '}
                       <span className="timeline-value">{e.new_value}</span>
                     </>
-                  ) : e.old_value ? <span className="timeline-value"> (removed)</span> : null}
+                  ) : e.old_value ? <span className="timeline-value"> ({t.documentDetail.removedLabel})</span> : null}
                 </span>
                 {e.note ? <div className="timeline-meta">{e.note}</div> : null}
-                <div className="timeline-meta">{e.created_at}{e.actor_id ? ` · admin #${e.actor_id}` : ''}</div>
+                <div className="timeline-meta">{e.created_at}{e.actor_id ? ` · ${t.documentDetail.adminHashPrefix}${e.actor_id}` : ''}</div>
               </div>
             </li>
           ))}
@@ -359,7 +359,7 @@ export function DocumentDetailPanel({
 
       {doc.pages.length > 0 && (
         <section>
-          <h4>Source pages ({doc.pages.length})</h4>
+          <h4>{t.documentDetail.sourcePagesHeading} ({doc.pages.length})</h4>
           <PaginatedPageViewer uuid={uuid} pages={doc.pages} />
         </section>
       )}
@@ -370,11 +370,12 @@ export function DocumentDetailPanel({
 }
 
 function Facet({ label, value, derived }: { label: string; value: string; derived?: boolean }) {
+  const t = useT();
   return (
     <span className="facet">
       <span className="facet-label">
         {label}
-        {derived && <span className="facet-derived" title="Derived from the convenio — not editable"> (derived)</span>}
+        {derived && <span className="facet-derived" title={t.documentDetail.derivedTitleHint}> ({t.documentDetail.derivedLabel})</span>}
       </span>
       <span className="facet-value">{value}</span>
     </span>
@@ -387,16 +388,16 @@ function Facet({ label, value, derived }: { label: string; value: string; derive
 // verify the doc reverts to normal styling and these live in history only.
 // -----------------------------------------------------------------------------
 
-const FACET_LABELS: Record<string, string> = {
-  convenio: 'Convenio',
-  territory: 'Territory',
-  sector: 'Sector',
-  document_type: 'Type',
-  validity: 'Validity',
-  topic: 'Topic',
-};
-
 function AiSuggestionsSection({ doc, canEdit }: { doc: DocumentDetail; canEdit: boolean }) {
+  const t = useT();
+  const facetLabels: Record<string, string> = {
+    convenio: t.common.convenio,
+    territory: t.common.territory,
+    sector: t.common.sector,
+    document_type: t.common.type,
+    validity: t.common.validity,
+    topic: t.common.topic,
+  };
   if (!doc.is_ai_proposed) return null;
 
   // The latest ai_agent suggestion per facet (the proposals to review).
@@ -412,12 +413,12 @@ function AiSuggestionsSection({ doc, canEdit }: { doc: DocumentDetail; canEdit: 
 
   return (
     <section className="ai-suggestions ai-marked">
-      <h4><span className="ai-pill">AI</span> Suggested facets <span className="muted">(unverified)</span></h4>
+      <h4><span className="ai-pill">AI</span> {t.documentDetail.aiSuggestedHeading} <span className="muted">{t.documentDetail.aiSuggestedUnverified}</span></h4>
       {suggestions.length > 0 ? (
         <div className="facets">
           {suggestions.map((e, i) => (
             <span key={i} className="facet">
-              <span className="facet-label">{FACET_LABELS[e.facet] ?? e.facet}</span>
+              <span className="facet-label">{facetLabels[e.facet] ?? e.facet}</span>
               <span className="facet-value ai-facet">
                 {e.new_value}
                 {e.confidence != null && <span className="muted"> · {Math.round(e.confidence * 100)}%</span>}
@@ -426,11 +427,11 @@ function AiSuggestionsSection({ doc, canEdit }: { doc: DocumentDetail; canEdit: 
           ))}
         </div>
       ) : (
-        <p className="muted">The AI couldn’t resolve a facet — see the flagged values below.</p>
+        <p className="muted">{t.documentDetail.aiUnresolvedNotice}</p>
       )}
       <p className="timeline-meta">
-        These are suggestions only — they have NOT changed the document’s scope.
-        {canEdit ? ' Adjust below if needed, then Confirm tags to verify (the human write).' : ' A knowledge editor verifies them.'}
+        {t.documentDetail.aiSuggestionsNotChanged}{' '}
+        {canEdit ? t.documentDetail.aiSuggestionsEditHint : t.documentDetail.aiSuggestionsNoEditHint}
       </p>
       {aiUnresolved.length > 0 && (
         <ul className="ai-unresolved">
@@ -457,6 +458,7 @@ function UnmatchedValueRow({
   sourceDocumentUuid: string;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const proposable = facet === 'territory' || facet === 'sector' || facet === 'convenio';
@@ -466,7 +468,7 @@ function UnmatchedValueRow({
       <code>{facet}</code>: {value}
       {canEdit && proposable && !msg && (
         <button className="btn btn-ghost btn-inline" onClick={() => setOpen((o) => !o)}>
-          {open ? 'Cancel' : 'Propose vocabulary'}
+          {open ? t.documentDetail.cancelPropose : t.documentDetail.proposeVocabulary}
         </button>
       )}
       {msg && <span className="muted"> — {msg}</span>}
@@ -491,6 +493,7 @@ function UnmatchedValueRow({
 // -----------------------------------------------------------------------------
 
 function TopicsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEdit: boolean; onChanged: () => void }) {
+  const t = useT();
   const [options, setOptions] = useState<VocabularyItem[]>([]);
   const [add, setAdd] = useState('');
   const [busy, setBusy] = useState(false);
@@ -499,7 +502,7 @@ function TopicsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEd
     if (canEdit) getVocabulary('topics').then((r) => setOptions(r.items)).catch(() => setOptions([]));
   }, [canEdit]);
 
-  const applied = new Set(doc.topics.map((t) => t.id));
+  const applied = new Set(doc.topics.map((topic) => topic.id));
   const pickable = options.filter((o) => !applied.has(o.id));
 
   const onAdd = async () => {
@@ -526,16 +529,16 @@ function TopicsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEd
 
   return (
     <section>
-      <h4>Topics</h4>
+      <h4>{t.documentDetail.topicsHeading}</h4>
       {doc.topics.length === 0 ? (
-        <p className="muted">No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7); a human can tag now.</p>
+        <p className="muted">{t.documentDetail.noTopicsNotice}</p>
       ) : (
         <div className="facets">
-          {doc.topics.map((t) => (
-            <span key={t.id} className="chip">
-              <span className={`timeline-dot src-${t.source}`} aria-hidden="true" /> {t.name}
+          {doc.topics.map((topic) => (
+            <span key={topic.id} className="chip">
+              <span className={`timeline-dot src-${topic.source}`} aria-hidden="true" /> {topic.name}
               {canEdit && (
-                <button className="chip-x" onClick={() => onRemove(t.id)} disabled={busy} aria-label={`Remove ${t.name}`}>
+                <button className="chip-x" onClick={() => onRemove(topic.id)} disabled={busy} aria-label={`${t.documentDetail.removeTopicAriaPrefix} ${topic.name}`}>
                   ✕
                 </button>
               )}
@@ -546,12 +549,12 @@ function TopicsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEd
       {canEdit && (
         <div className="reassign" style={{ marginTop: 'var(--space-2)' }}>
           <select className="select" value={add} onChange={(e) => setAdd(e.target.value)}>
-            <option value="">Add a topic…</option>
+            <option value="">{t.documentDetail.addTopicPlaceholder}</option>
             {pickable.map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
-          <button className="btn btn-secondary" onClick={onAdd} disabled={busy || !add}>Add topic</button>
+          <button className="btn btn-secondary" onClick={onAdd} disabled={busy || !add}>{t.documentDetail.addTopicButton}</button>
         </div>
       )}
     </section>
@@ -563,20 +566,23 @@ function TopicsSection({ doc, canEdit, onChanged }: { doc: DocumentDetail; canEd
 // -----------------------------------------------------------------------------
 
 function ChunkHealthSection({ health }: { health: ChunkHealth }) {
+  const t = useT();
+  const { locale } = useLocale();
+  const tokenLocale = locale === 'en' ? 'en-US' : 'es-ES';
   return (
     <section>
-      <h4>Chunk health</h4>
+      <h4>{t.documentDetail.chunkHealthHeading}</h4>
       {health.zero_chunks ? (
         <p className="notice">
           <span aria-hidden="true">∅</span>
-          0 chunks — this document is not retrievable (unanswerable until re-chunked; re-chunking is not a Knowledge-Center action).
+          {t.documentDetail.zeroChunksNotice}
         </p>
       ) : (
         <dl className="kv">
-          <dt>Chunks</dt><dd>{health.chunk_count}</dd>
-          <dt>Tokens</dt><dd>{health.token_total.toLocaleString()}</dd>
-          <dt>Pages</dt><dd>{health.first_page ?? '—'}–{health.last_page ?? '—'}</dd>
-          <dt>Embeddings</dt><dd>{health.has_embeddings ? 'present' : 'missing'}</dd>
+          <dt>{t.documentDetail.chunksLabel}</dt><dd>{health.chunk_count}</dd>
+          <dt>{t.documentDetail.tokensLabel}</dt><dd>{new Intl.NumberFormat(tokenLocale).format(health.token_total)}</dd>
+          <dt>{t.documentDetail.pagesLabel}</dt><dd>{health.first_page ?? t.common.dash}–{health.last_page ?? t.common.dash}</dd>
+          <dt>{t.documentDetail.embeddingsLabel}</dt><dd>{health.has_embeddings ? t.documentDetail.embeddingsPresent : t.documentDetail.embeddingsMissing}</dd>
         </dl>
       )}
       <p className="timeline-meta">{health.note}</p>
@@ -589,23 +595,25 @@ function ChunkHealthSection({ health }: { health: ChunkHealth }) {
 // -----------------------------------------------------------------------------
 
 function LineageRow({ item, rel }: { item: LineageRef; rel: string }) {
+  const t = useT();
   return (
     <div className="lineage-row">
       <span className="lineage-rel">{rel}</span>
       <span className="lineage-title">{item.title}</span>
-      <span className={`badge badge-${item.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{retrievalStatusLabel(item.retrieval_status)}</span>
-      <span className="timeline-meta">{item.validity_start ?? '—'} → {item.validity_end ?? '—'}</span>
+      <span className={`badge badge-${item.retrieval_status === 'active' ? 'verified' : 'historical'}`}>{retrievalStatusLabel(t, item.retrieval_status)}</span>
+      <span className="timeline-meta">{item.validity_start ?? t.common.dash} → {item.validity_end ?? t.common.dash}</span>
     </div>
   );
 }
 
 function LineageSection({ lineage }: { lineage: { predecessor: LineageRef | null; successors: LineageRef[] } }) {
+  const t = useT();
   if (!lineage.predecessor && lineage.successors.length === 0) return null;
   return (
     <section>
-      <h4>Lineage</h4>
-      {lineage.predecessor && <LineageRow item={lineage.predecessor} rel="supersedes" />}
-      {lineage.successors.map((s) => <LineageRow key={s.uuid} item={s} rel="superseded by" />)}
+      <h4>{t.documentDetail.lineageHeading}</h4>
+      {lineage.predecessor && <LineageRow item={lineage.predecessor} rel={t.documentDetail.lineageSupersedes} />}
+      {lineage.successors.map((s) => <LineageRow key={s.uuid} item={s} rel={t.documentDetail.lineageSupersededBy} />)}
     </section>
   );
 }
@@ -615,10 +623,11 @@ function LineageSection({ lineage }: { lineage: { predecessor: LineageRef | null
 // -----------------------------------------------------------------------------
 
 function EditControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDetail; suspectedMistag: boolean; onChanged: () => void }) {
+  const t = useT();
   return (
     <section className="edit-block">
-      <h4>Edit labels</h4>
-      <p className="timeline-meta">Bounded edit (FK pickers into existing vocabulary). Territory & sector are derived from the convenio and not editable. Every save appends append-only human provenance.</p>
+      <h4>{t.documentDetail.editLabelsHeading}</h4>
+      <p className="timeline-meta">{t.documentDetail.editLabelsNotice}</p>
       <ReassignControls doc={doc} suspectedMistag={suspectedMistag} onChanged={onChanged} />
       <LifecycleControls doc={doc} onChanged={onChanged} />
     </section>
@@ -626,6 +635,7 @@ function EditControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDetail
 }
 
 function ReassignControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDetail; suspectedMistag: boolean; onChanged: () => void }) {
+  const t = useT();
   const [facet, setFacet] = useState<'convenio' | 'document_type'>('convenio');
   const [options, setOptions] = useState<VocabularyItem[]>([]);
   const [valueId, setValueId] = useState<string>('');
@@ -663,11 +673,8 @@ function ReassignControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDe
     if (!valueId) return;
     if (needsConfirm) {
       setPending({
-        title: facet === 'convenio' ? 'Re-scope this document?' : 'Re-type to a salary table?',
-        body:
-          facet === 'convenio'
-            ? 'Changing the convenio changes the document’s derived territory + sector — i.e. which employees receive it as an answer. This appends human provenance and cannot rewrite history.'
-            : 'Marking this as a salary table moves it off the prose answer path onto the structured salary (SQL) path, and removes it from convenio-prose retrieval. This appends human provenance.',
+        title: facet === 'convenio' ? t.documentDetail.rescopeConfirmTitle : t.documentDetail.retypeConfirmTitle,
+        body: facet === 'convenio' ? t.documentDetail.rescopeConfirmBody : t.documentDetail.retypeConfirmBody,
       });
     } else {
       doApply();
@@ -678,11 +685,11 @@ function ReassignControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDe
     <>
       <div className="reassign">
         <select className="select" value={facet} onChange={(e) => onFacetChange(e.target.value as 'convenio' | 'document_type')}>
-          <option value="convenio">Re-scope convenio</option>
-          <option value="document_type">Re-type document</option>
+          <option value="convenio">{t.documentDetail.rescopeConvenio}</option>
+          <option value="document_type">{t.documentDetail.retypeDocument}</option>
         </select>
         <select className="select" value={valueId} onChange={(e) => setValueId(e.target.value)}>
-          <option value="">Select a value…</option>
+          <option value="">{t.documentDetail.selectValuePlaceholder}</option>
           {options.map((o) => (
             <option key={o.id} value={o.id}>
               {facet === 'convenio' ? `${o.numero} — ${o.name}` : o.name}
@@ -690,7 +697,7 @@ function ReassignControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDe
           ))}
         </select>
         <button className={`btn ${needsConfirm ? 'btn-warning' : 'btn-secondary'}`} onClick={onApplyClick} disabled={busy || !valueId}>
-          {facet === 'document_type' && suspectedMistag ? 'Retag' : 'Apply'}
+          {facet === 'document_type' && suspectedMistag ? t.documentDetail.retagButton : t.documentDetail.applyButton}
         </button>
       </div>
       {pending && (
@@ -707,6 +714,7 @@ function ReassignControls({ doc, suspectedMistag, onChanged }: { doc: DocumentDe
 }
 
 function LifecycleControls({ doc, onChanged }: { doc: DocumentDetail; onChanged: () => void }) {
+  const t = useT();
   const [retrieval, setRetrieval] = useState(doc.retrieval_status);
   const [tagging, setTagging] = useState(doc.tagging_status);
   const [vStart, setVStart] = useState(doc.validity_start ?? '');
@@ -746,34 +754,38 @@ function LifecycleControls({ doc, onChanged }: { doc: DocumentDetail; onChanged:
   return (
     <div className="lifecycle-edit">
       <div className="lifecycle-grid">
-        <label>Retrieval
+        <label>{t.documentDetail.retrievalFieldLabel}
+          {/* Sprint 11b: raw enum values (draft/active/historical/...) shown
+              verbatim as their own option text — technical status codes, not
+              chrome, invariant across locale (guard test's
+              ALLOWED_HARDCODED_STRINGS, same treatment as a CLI command name). */}
           <select className="select" value={retrieval} onChange={(e) => setRetrieval(e.target.value)}>
             <option value="draft">draft</option>
             <option value="active">active</option>
             <option value="historical">historical</option>
           </select>
         </label>
-        <label>Tagging
+        <label>{t.documentDetail.taggingFieldLabel}
           <select className="select" value={tagging} onChange={(e) => setTagging(e.target.value)}>
             <option value="auto_proposed">auto_proposed</option>
             <option value="under_review">under_review</option>
             <option value="verified">verified</option>
           </select>
         </label>
-        <label>Valid from
+        <label>{t.documentDetail.validFromLabel}
           <input className="input" type="date" value={vStart} onChange={(e) => setVStart(e.target.value)} />
         </label>
-        <label>Valid to
+        <label>{t.documentDetail.validToLabel}
           <input className="input" type="date" value={vEnd} onChange={(e) => setVEnd(e.target.value)} />
         </label>
       </div>
       <button className={`btn ${scopeAffecting ? 'btn-warning' : 'btn-secondary'}`} onClick={onSaveClick} disabled={busy || !dirty}>
-        Save lifecycle{scopeAffecting ? ' (scope-affecting)' : ''}
+        {t.documentDetail.saveLifecycle}{scopeAffecting ? ` ${t.documentDetail.scopeAffectingSuffix}` : ''}
       </button>
       {pending && (
         <ScopeWarningModal
-          title="Scope-affecting change"
-          body="Changing the retrieval status or validity window moves the eligibility window — which employees receive this document as an answer. This appends human provenance and cannot rewrite history."
+          title={t.documentDetail.scopeAffectingModalTitle}
+          body={t.documentDetail.scopeAffectingModalBody}
           busy={busy}
           onCancel={() => setPending(false)}
           onConfirm={() => save(true)}
@@ -796,14 +808,15 @@ function ScopeWarningModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const t = useT();
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
       <div className="modal">
         <h4 className="modal-title"><span aria-hidden="true">⚠</span> {title}</h4>
         <p className="modal-body">{body}</p>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onCancel} disabled={busy}>Cancel</button>
-          <button className="btn btn-warning" onClick={onConfirm} disabled={busy}>Confirm change</button>
+          <button className="btn btn-ghost" onClick={onCancel} disabled={busy}>{t.common.cancel}</button>
+          <button className="btn btn-warning" onClick={onConfirm} disabled={busy}>{t.documentDetail.confirmChangeButton}</button>
         </div>
       </div>
     </div>
@@ -815,6 +828,7 @@ function ScopeWarningModal({
 // -----------------------------------------------------------------------------
 
 function SourceViewer({ uuid }: { uuid: string }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [type, setType] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -836,16 +850,16 @@ function SourceViewer({ uuid }: { uuid: string }) {
 
   return (
     <section>
-      <h4>Original document</h4>
-      <button className="btn btn-secondary" onClick={onToggle}>{open ? 'Hide source' : 'View original'}</button>
+      <h4>{t.documentDetail.originalDocumentHeading}</h4>
+      <button className="btn btn-secondary" onClick={onToggle}>{open ? t.documentDetail.hideSource : t.documentDetail.viewOriginal}</button>
       {open && err && <p className="error">{err}</p>}
       {open && url && (
         type === 'application/pdf' ? (
-          <object data={url} type="application/pdf" className="source-frame" aria-label="Original PDF">
-            <p className="muted">Can’t embed inline — <a href={url} target="_blank" rel="noreferrer">open the file</a>.</p>
+          <object data={url} type="application/pdf" className="source-frame" aria-label={t.documentDetail.originalDocumentHeading}>
+            <p className="muted">{t.documentDetail.cantEmbedPrefix} <a href={url} target="_blank" rel="noreferrer">{t.documentDetail.openTheFile}</a>.</p>
           </object>
         ) : (
-          <p className="muted"><a href={url} target="_blank" rel="noreferrer">Download / open the original file</a></p>
+          <p className="muted"><a href={url} target="_blank" rel="noreferrer">{t.documentDetail.downloadOrOpen}</a></p>
         )
       )}
     </section>
@@ -857,6 +871,7 @@ function SourceViewer({ uuid }: { uuid: string }) {
 // -----------------------------------------------------------------------------
 
 function SandboxPanel({ uuid, title }: { uuid: string; title: string }) {
+  const t = useT();
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<SandboxResult | null>(null);
@@ -882,39 +897,39 @@ function SandboxPanel({ uuid, title }: { uuid: string; title: string }) {
 
   return (
     <section className="sandbox">
-      <h4>Sandbox <span className="sandbox-tag">read-only · persists nothing</span></h4>
-      <p className="timeline-meta">Run the answer pipeline against “{title}” only. Same gates as production; no chat, no escalation is saved.</p>
+      <h4>{t.documentDetail.sandboxHeading} <span className="sandbox-tag">{t.documentDetail.sandboxTag}</span></h4>
+      <p className="timeline-meta">{t.documentDetail.sandboxRunPrefix} “{title}” {t.documentDetail.sandboxRunSuffix}</p>
       <div className="reassign">
         <input
           className="input"
-          placeholder="e.g. ¿cuántos días de vacaciones tengo?"
+          placeholder={t.documentDetail.sandboxPlaceholder}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && run()}
         />
-        <button className="btn btn-primary" onClick={run} disabled={busy || !q.trim()}>{busy ? 'Running…' : 'Test'}</button>
+        <button className="btn btn-primary" onClick={run} disabled={busy || !q.trim()}>{busy ? t.documentDetail.running : t.documentDetail.testButton}</button>
       </div>
       {err && <p className="error">{err}</p>}
       {res && (
         <div className={`sandbox-result ${outcome === 'answer' ? 'is-answer' : 'is-escalate'}`}>
           <div className="sandbox-outcome">
-            <span className={`badge ${outcome === 'answer' ? 'badge-verified' : 'badge-review'}`}>{outcome === 'answer' ? 'Respondida' : outcome ? 'Escalada' : 'result'}</span>
-            {res.trace.retrieval && <span className="timeline-meta"> retrieved {res.trace.retrieval.returned} · top {res.trace.retrieval.top_score?.toFixed?.(3)}</span>}
+            <span className={`badge ${outcome === 'answer' ? 'badge-verified' : 'badge-review'}`}>{outcome === 'answer' ? t.documentDetail.outcomeAnswered : outcome ? t.documentDetail.outcomeEscalated : t.documentDetail.outcomeResult}</span>
+            {res.trace.retrieval && <span className="timeline-meta"> {t.documentDetail.retrievedPrefix} {res.trace.retrieval.returned} · {t.documentDetail.topScorePrefix} {res.trace.retrieval.top_score?.toFixed?.(3)}</span>}
           </div>
           <p className="sandbox-answer">{res.answer}</p>
           {res.citations.length > 0 && (
             <ul className="sandbox-cites">
               {res.citations.map((c, i) => (
-                <li key={i}>[{i + 1}] p.{c.page_from ?? '—'}{c.page_to && c.page_to !== c.page_from ? `–${c.page_to}` : ''}: {c.snippet}</li>
+                <li key={i}>[{i + 1}] {t.documentDetail.pageAbbr}{c.page_from ?? t.common.dash}{c.page_to && c.page_to !== c.page_from ? `–${c.page_to}` : ''}: {c.snippet}</li>
               ))}
             </ul>
           )}
           {outcome !== 'answer' && draft && (
             <details className="sandbox-draft">
-              <summary>Draft the model produced (not served)</summary>
+              <summary>{t.documentDetail.draftSummary}</summary>
               <p>{draft}</p>
               {grounding?.ungrounded && grounding.ungrounded.length > 0 && (
-                <p className="timeline-meta">Stopped by the grounding gate — ungrounded: {grounding.ungrounded.join('; ')}</p>
+                <p className="timeline-meta">{t.documentDetail.groundingStoppedPrefix} {grounding.ungrounded.join('; ')}</p>
               )}
             </details>
           )}
@@ -938,6 +953,7 @@ function PaginatedPageViewer({
     ocr_bilingual?: boolean;
   }[];
 }) {
+  const t = useT();
   const [idx, setIdx] = useState(0);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgLoading, setImgLoading] = useState(false);
@@ -961,25 +977,25 @@ function PaginatedPageViewer({
   return (
     <div className="page-viewer">
       <div className="page-viewer-nav">
-        <button className="btn btn-secondary" onClick={() => go(idx - 1)} disabled={idx === 0}>← Anterior</button>
-        <span className="page-counter">Página {page.page_number} de {total}</span>
-        <button className="btn btn-secondary" onClick={() => go(idx + 1)} disabled={idx === total - 1}>Siguiente →</button>
+        <button className="btn btn-secondary" onClick={() => go(idx - 1)} disabled={idx === 0}>{t.documentDetail.pagerPrev}</button>
+        <span className="page-counter">{t.documentDetail.pageCounter} {page.page_number} {t.documentDetail.pageCounterOf} {total}</span>
+        <button className="btn btn-secondary" onClick={() => go(idx + 1)} disabled={idx === total - 1}>{t.documentDetail.pagerNext}</button>
       </div>
       {page.extraction_source === 'ocr' && (
         <p className="notice notice--neutral">
-          <span aria-hidden="true">⚙</span> Texto obtenido por OCR
-          {page.ocr_quality != null ? ` · calidad ${Math.round(page.ocr_quality * 100)}%` : ''}.
-          {page.ocr_bilingual && ' Página bilingüe — revisa también la columna en euskera frente a la columna en castellano.'}
+          <span aria-hidden="true">⚙</span> {t.documentDetail.ocrExtractedText}
+          {page.ocr_quality != null ? ` · ${t.documentDetail.ocrQualityPrefix} ${Math.round(page.ocr_quality * 100)}%` : ''}.
+          {page.ocr_bilingual && ` ${t.documentDetail.ocrBilingualNotice}`}
         </p>
       )}
       <div className="page-viewer-content">
         <div className="page-viewer-img">
-          {imgLoading && <p className="muted">Cargando imagen…</p>}
-          {!imgLoading && imgUrl && <img src={imgUrl} alt={`Página ${page.page_number}`} />}
-          {!imgLoading && !imgUrl && <p className="muted">(sin imagen)</p>}
+          {imgLoading && <p className="muted">{t.documentDetail.loadingImage}</p>}
+          {!imgLoading && imgUrl && <img src={imgUrl} alt={`${t.documentDetail.pageAlt} ${page.page_number}`} />}
+          {!imgLoading && !imgUrl && <p className="muted">{t.documentDetail.noImage}</p>}
         </div>
         <div className="page-viewer-text">
-          <pre className="well">{page.text || '(sin texto extraíble)'}</pre>
+          <pre className="well">{page.text || t.documentDetail.noExtractableText}</pre>
         </div>
       </div>
     </div>

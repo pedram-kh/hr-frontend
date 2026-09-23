@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { ApiError, requestCode, verifyCode } from '../lib/api';
-import { BRAND } from '../theme/brand';
+import { useT } from '../i18n/context';
 
 type Step = 'email' | 'code';
 
 export function LoginPage() {
+  const t = useT();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -23,7 +24,7 @@ export function LoginPage() {
       await requestCode(email.trim());
       setStep('code');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "We couldn't send the code. Check the email address and try again.");
+      setError(err instanceof ApiError ? err.message : t.login.emailRequestFailed);
     } finally {
       setBusy(false);
     }
@@ -38,7 +39,7 @@ export function LoginPage() {
       login(res.token, res.identity);
       navigate(res.identity.account_type === 'admin' ? '/admin' : '/app', { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "That code didn't match. Request a new one and try again.");
+      setError(err instanceof ApiError ? err.message : t.login.codeVerifyFailed);
     } finally {
       setBusy(false);
     }
@@ -47,13 +48,13 @@ export function LoginPage() {
   return (
     <div className="centered">
       <div className="card">
-        <h1>{BRAND.productName}</h1>
-        <p className="muted">Sign in with a one-time email code (email OTP).</p>
+        <h1>{t.brand.productName}</h1>
+        <p className="muted">{t.login.subtitle}</p>
 
         {step === 'email' && (
           <form className="login-form" onSubmit={onRequestCode}>
             <div className="field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t.login.emailLabel}</label>
               <input
                 id="email"
                 className="input"
@@ -66,7 +67,7 @@ export function LoginPage() {
               />
             </div>
             <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Sending…' : 'Send code'}
+              {busy ? t.login.sendingButton : t.login.sendCodeButton}
             </button>
           </form>
         )}
@@ -74,11 +75,10 @@ export function LoginPage() {
         {step === 'code' && (
           <form className="login-form" onSubmit={onVerifyCode}>
             <p className="muted">
-              We sent a 6-digit code to <strong>{email}</strong>. In local dev it is visible in
-              MailHog at <code>localhost:8025</code>.
+              {t.login.codeSentPrefix} <strong>{email}</strong>{t.login.codeSentMailhogPrefix} <code>localhost:8025</code>{t.login.codeSentMailhogSuffix}
             </p>
             <div className="field">
-              <label htmlFor="code">Code</label>
+              <label htmlFor="code">{t.login.codeLabel}</label>
               <input
                 id="code"
                 className="input"
@@ -93,7 +93,7 @@ export function LoginPage() {
               />
             </div>
             <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Verifying…' : 'Verify & sign in'}
+              {busy ? t.login.verifyingButton : t.login.verifyAndSignInButton}
             </button>
             <button
               type="button"
@@ -104,7 +104,7 @@ export function LoginPage() {
                 setError(null);
               }}
             >
-              Use a different email
+              {t.login.useDifferentEmailButton}
             </button>
           </form>
         )}

@@ -13,6 +13,7 @@ import {
   type ReferenceSourceDoc,
   type VocabularyItem,
 } from '../../lib/api';
+import { useT } from '../../i18n/context';
 
 /**
  * Create a Structured Reference fact by hand (Sprint 7b-1, ADR-0021) — the
@@ -31,6 +32,7 @@ export function ReferenceFactCreatePanel({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const t = useT();
   const [convenios, setConvenios] = useState<VocabularyItem[]>([]);
   const [topics, setTopics] = useState<VocabularyItem[]>([]);
   const [jobCategories, setJobCategories] = useState<JobCategoryOption[]>([]);
@@ -75,7 +77,7 @@ export function ReferenceFactCreatePanel({
 
   const submit = async () => {
     if (convenioId === '' || !value.trim()) {
-      setError('A convenio and a value are required.');
+      setError(t.referenceFactCreatePanel.requiredFieldsError);
       return;
     }
     setBusy(true);
@@ -103,11 +105,11 @@ export function ReferenceFactCreatePanel({
 
   return (
     <div className="detail-backdrop" onClick={onClose}>
-      <aside className="detail panel panel--wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New reference fact">
+      <aside className="detail panel panel--wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t.referenceFactCreatePanel.heading}>
         <div className="detail-head">
-          <strong>New reference fact</strong>
-          <span className="badge badge-reference">dato</span>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button>
+          <strong>{t.referenceFactCreatePanel.heading}</strong>
+          <span className="badge badge-reference">{t.referenceFactPanel.typeBadge}</span>
+          <button className="btn btn-ghost" onClick={onClose} aria-label={t.referenceFactPanel.closeAriaLabel}>✕</button>
         </div>
         <div className="detail-body fact-create">
           <div className="fact-create-grid">
@@ -117,9 +119,9 @@ export function ReferenceFactCreatePanel({
               {error && <p className="error">{error}</p>}
 
               <div className="field">
-                <label className="field-label">Convenio *</label>
+                <label className="field-label">{t.referenceFactCreatePanel.convenioRequiredLabel}</label>
                 <select className="select" value={convenioId} onChange={(e) => onPickConvenio(e.target.value === '' ? '' : Number(e.target.value))}>
-                  <option value="">Select a convenio…</option>
+                  <option value="">{t.referenceFactCreatePanel.selectConvenioPlaceholder}</option>
                   {convenios.map((c) => (
                     <option key={c.id} value={c.id}>{c.numero} — {c.name}</option>
                   ))}
@@ -128,72 +130,72 @@ export function ReferenceFactCreatePanel({
 
               {selectedConvenio && (
                 <p className="muted derived-scope">
-                  Derived scope:{' '}
-                  <strong>{selectedConvenio.territory?.name ?? '—'}</strong> ·{' '}
-                  <strong>{selectedConvenio.sector?.name ?? '—'}</strong>
-                  {' '}(territory & sector ride the convenio — not editable)
+                  {t.referenceFactCreatePanel.derivedScopePrefix}{' '}
+                  <strong>{selectedConvenio.territory?.name ?? t.common.dash}</strong> ·{' '}
+                  <strong>{selectedConvenio.sector?.name ?? t.common.dash}</strong>
+                  {' '}{t.referenceFactCreatePanel.derivedScopeSuffix}
                 </p>
               )}
 
               <div className="field">
-                <label className="field-label">Job category (optional)</label>
+                <label className="field-label">{t.referenceFactCreatePanel.jobCategoryOptionalLabel}</label>
                 <select className="select" value={jobCategoryId} onChange={(e) => setJobCategoryId(e.target.value === '' ? '' : Number(e.target.value))} disabled={convenioId === ''}>
-                  <option value="">Convenio-wide</option>
+                  <option value="">{t.referenceFactCreatePanel.convenioWideOption}</option>
                   {jobCategories.map((j) => (<option key={j.id} value={j.id}>{j.name}</option>))}
                 </select>
               </div>
 
               <div className="field">
-                <label className="field-label">Topic (optional)</label>
+                <label className="field-label">{t.referenceFactCreatePanel.topicOptionalLabel}</label>
                 <select className="select" value={topicId} onChange={(e) => setTopicId(e.target.value === '' ? '' : Number(e.target.value))}>
-                  <option value="">No topic</option>
-                  {topics.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                  <option value="">{t.referenceFactCreatePanel.noTopicOption}</option>
+                  {topics.map((tp) => (<option key={tp.id} value={tp.id}>{tp.name}</option>))}
                 </select>
               </div>
 
               <div className="field">
-                <label className="field-label">Value *</label>
-                <textarea className="textarea" value={value} onChange={(e) => setValue(e.target.value)} rows={3} placeholder="e.g. periodo de prueba 90/75 días" />
+                <label className="field-label">{t.referenceFactCreatePanel.valueRequiredLabel}</label>
+                <textarea className="textarea" value={value} onChange={(e) => setValue(e.target.value)} rows={3} placeholder={t.referenceFactCreatePanel.valuePlaceholder} />
               </div>
 
               <div className="field">
-                <label className="field-label">Original text (raw, optional)</label>
-                <textarea className="textarea" value={rawText} onChange={(e) => setRawText(e.target.value)} rows={3} placeholder="Paste the verbatim source phrasing (kept in raw_values)…" />
+                <label className="field-label">{t.referenceFactCreatePanel.originalTextOptionalLabel}</label>
+                <textarea className="textarea" value={rawText} onChange={(e) => setRawText(e.target.value)} rows={3} placeholder={t.referenceFactCreatePanel.rawTextPlaceholder} />
               </div>
 
               <div className="field-row">
                 <div className="field">
-                  <label className="field-label">Validity start</label>
+                  <label className="field-label">{t.referenceFactPanel.validityStartLabel}</label>
                   <input className="input" type="date" value={validityStart} onChange={(e) => setValidityStart(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label className="field-label">Validity end</label>
+                  <label className="field-label">{t.referenceFactPanel.validityEndLabel}</label>
                   <input className="input" type="date" value={validityEnd} onChange={(e) => setValidityEnd(e.target.value)} />
                 </div>
               </div>
 
               <div className="field">
-                <label className="field-label">Source document (optional)</label>
+                <label className="field-label">{t.referenceFactCreatePanel.sourceDocumentOptionalLabel}</label>
                 <select className="select" value={sourceDocId} onChange={(e) => setSourceDocId(e.target.value === '' ? '' : Number(e.target.value))}>
-                  <option value="">No source link</option>
+                  <option value="">{t.referenceFactCreatePanel.noSourceLinkOption}</option>
                   {sources.map((s) => (<option key={s.id} value={s.id}>{s.title}</option>))}
                 </select>
               </div>
 
               <div className="field">
-                <label className="field-label">Source locator (optional)</label>
-                <input className="input" value={sourceLocator} onChange={(e) => setSourceLocator(e.target.value)} placeholder="p.3 §2 / sheet:smi26" />
+                <label className="field-label">{t.referenceFactCreatePanel.sourceLocatorOptionalLabel}</label>
+                <input className="input" value={sourceLocator} onChange={(e) => setSourceLocator(e.target.value)} placeholder={t.referenceFactPanel.sourceLocatorPlaceholder} />
               </div>
 
               <p className="muted">
-                Authority: <code className="authority-lock"><span aria-hidden="true">🔒</span> {REFERENCE_AUTHORITY_LEVEL}</code> — locked.
-                A reference fact can never outrank a convenio.
+                {t.referenceFactCreatePanel.authorityPrefix} <code className="authority-lock"><span aria-hidden="true">🔒</span> {REFERENCE_AUTHORITY_LEVEL}</code> {t.referenceFactCreatePanel.lockedSuffix}
+                {' '}{t.referenceFactCreatePanel.authorityNeverOutrankNotice}
               </p>
-              <p className="muted">The fact will land <strong>needs review</strong> — verify it from its card to make it count.</p>
+              <p className="muted">{t.referenceFactCreatePanel.willLandPrefix} <strong>{t.referenceFactPanel.badgeNeedsReview}</strong> {t.referenceFactCreatePanel.willLandSuffix}</p>
 
               <div className="detail-actions">
-                <button className="btn btn-primary" onClick={submit} disabled={busy}>{busy ? 'Creating…' : 'Create fact'}</button>
-                <button className="btn btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+                <button className="btn btn-primary" onClick={submit} disabled={busy}>{busy ? t.referenceFactCreatePanel.creating : t.referenceFactCreatePanel.createFactButton}</button>
+                <button className="btn btn-ghost" onClick={onClose} disabled={busy}>{t.referenceFactCreatePanel.cancelButton}</button>
               </div>
             </div>
           </div>
@@ -217,6 +219,7 @@ function SourceReader({
   onUseLocator: (locator: string) => void;
   onLinkSource: (id: number) => void;
 }) {
+  const t = useT();
   const [openUuid, setOpenUuid] = useState<string | ''>('');
   const [content, setContent] = useState<ReferenceSourceContent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -246,7 +249,7 @@ function SourceReader({
     setNote(null);
     try {
       await uploadDocuments(files, true); // as_reference = true
-      setNote('Uploaded — select it below to read its content.');
+      setNote(t.referenceFactCreatePanel.uploadedNote);
       onUploaded();
     } catch (e) {
       setNote(String((e as Error).message ?? e));
@@ -257,33 +260,33 @@ function SourceReader({
 
   return (
     <div className="fact-reader">
-      <h4>Reference source</h4>
-      <p className="muted">Read a non-salary .docx/.xlsx to enter facts by hand. Tagging it <code>reference_source</code> keeps it off the salary path.</p>
+      <h4>{t.referenceFactCreatePanel.readerHeading}</h4>
+      <p className="muted">{t.referenceFactCreatePanel.readerIntroPrefix} <code>reference_source</code> {t.referenceFactCreatePanel.readerIntroSuffix}</p>
 
       <div className="field">
-        <label className="field-label">Upload a new source (.docx / .xlsx)</label>
+        <label className="field-label">{t.referenceFactCreatePanel.uploadLabel}</label>
         <input className="input" type="file" accept=".docx,.xlsx" multiple onChange={(e) => onUpload(e.target.files)} disabled={uploading} />
       </div>
-      {uploading && <p className="muted">Uploading + reading…</p>}
+      {uploading && <p className="muted">{t.referenceFactCreatePanel.uploadingText}</p>}
       {note && <p className="notice notice--neutral">{note}</p>}
 
       <div className="field">
-        <label className="field-label">Open a source</label>
+        <label className="field-label">{t.referenceFactCreatePanel.openSourceLabel}</label>
         <select className="select" value={openUuid} onChange={(e) => onOpenSource(e.target.value)}>
-          <option value="">Select a reference source…</option>
+          <option value="">{t.referenceFactCreatePanel.selectSourcePlaceholder}</option>
           {sources.map((s) => (<option key={s.uuid} value={s.uuid}>{s.title}</option>))}
         </select>
       </div>
 
-      {loading && <p className="muted">Loading content…</p>}
+      {loading && <p className="muted">{t.referenceFactCreatePanel.loadingContentText}</p>}
       {content && (
         <div className="reader-pages">
-          {content.pages.length === 0 && <p className="muted">(no extractable content)</p>}
+          {content.pages.length === 0 && <p className="muted">{t.referenceFactCreatePanel.noExtractableContent}</p>}
           {content.pages.map((p) => (
             <div key={p.page_number} className="reader-page">
               <div className="reader-page-head">
-                <span className="muted">Section {p.page_number}</span>
-                <button className="btn btn-ghost btn-inline" onClick={() => onUseLocator(`section:${p.page_number}`)} title="Use as source locator">use locator</button>
+                <span className="muted">{t.referenceFactCreatePanel.sectionPrefix} {p.page_number}</span>
+                <button className="btn btn-ghost btn-inline" onClick={() => onUseLocator(`section:${p.page_number}`)} title={t.referenceFactCreatePanel.useAsLocatorTitle}>{t.referenceFactCreatePanel.useLocatorButton}</button>
               </div>
               <pre className="reader-text">{p.text}</pre>
             </div>

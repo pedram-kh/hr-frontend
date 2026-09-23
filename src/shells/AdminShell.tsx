@@ -24,6 +24,8 @@ import { useAuth } from '../auth/context';
 import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage, canViewQuality } from '../lib/api';
 import { parseAdminHash } from '../lib/adminHash';
 import { ThemeToggle } from '../theme/ThemeToggle';
+import { LocaleToggle } from '../i18n/LocaleToggle';
+import { useT } from '../i18n/context';
 import { DocumentsPage } from '../pages/admin/DocumentsPage';
 import { ReviewQueuePage } from '../pages/admin/ReviewQueuePage';
 import { KnowledgeMapPage } from '../pages/admin/KnowledgeMapPage';
@@ -101,6 +103,8 @@ function initialSidebarCollapsed(): boolean {
 // affordances on the server-provided can_manage.
 export function AdminShell() {
   const { identity, logout } = useAuth();
+  // Sprint 11b (plan.md §C.9 step 4 — CP-1 slice: this file's full extraction).
+  const t = useT();
   // Sprint 7g Item 2 (ADR-0029's fix_link scheme) — parsed at mount AND on
   // every `hashchange`. `EscalationExplainer`'s `fix_link` values render as
   // plain `<a href="#view=...">` anchors (Corregir, in `EscalationCardDrawer`)
@@ -200,24 +204,27 @@ export function AdminShell() {
   // every other group has at least one nav-unconditional item (§B.3's
   // per-role snapshot test asserts this precisely).
   const conocimiento = [
-    navBtn('map', 'Conocimiento', 'Mapa', MapIcon),
-    navBtn('documents', 'Conocimiento', 'Documentos', FileText),
-    navBtn('review', 'Conocimiento', 'Revisión', ClipboardCheck),
+    navBtn('map', t.adminShell.groups.conocimiento, t.adminShell.nav.mapa, MapIcon),
+    navBtn('documents', t.adminShell.groups.conocimiento, t.adminShell.nav.documentos, FileText),
+    navBtn('review', t.adminShell.groups.conocimiento, t.adminShell.nav.revision, ClipboardCheck),
   ];
   const atencion = [
-    navBtn('escalations', 'Atención', 'Escalaciones', AlertTriangle),
-    showHistory && navBtn('history', 'Atención', 'Historial', HistoryIcon),
+    navBtn('escalations', t.adminShell.groups.atencion, t.adminShell.nav.escalaciones, AlertTriangle),
+    showHistory && navBtn('history', t.adminShell.groups.atencion, t.adminShell.nav.historial, HistoryIcon),
   ].filter(Boolean);
   const analisis = [
-    showAnalytics && navBtn('analytics', 'Análisis', 'Analítica', BarChart3),
-    showCoverage && navBtn('coverage', 'Análisis', 'Cobertura', Grid3x3),
-    showQuality && navBtn('quality', 'Análisis', 'Calidad', BadgeCheck),
+    showAnalytics && navBtn('analytics', t.adminShell.groups.analisis, t.adminShell.nav.analitica, BarChart3),
+    showCoverage && navBtn('coverage', t.adminShell.groups.analisis, t.adminShell.nav.cobertura, Grid3x3),
+    showQuality && navBtn('quality', t.adminShell.groups.analisis, t.adminShell.nav.calidad, BadgeCheck),
   ].filter(Boolean);
   const personas = [
-    showDirectory && navBtn('directory', 'Personas', 'Directorio', Users),
-    showAdmins && navBtn('admins', 'Personas', 'Administradores', UserCog),
+    showDirectory && navBtn('directory', t.adminShell.groups.personas, t.adminShell.nav.directorio, Users),
+    showAdmins && navBtn('admins', t.adminShell.groups.personas, t.adminShell.nav.administradores, UserCog),
   ].filter(Boolean);
-  const gobierno = [navBtn('guardrails', 'Gobierno', 'Guardrails', Shield), navBtn('settings', 'Gobierno', 'Ajustes', SettingsIcon)];
+  const gobierno = [
+    navBtn('guardrails', t.adminShell.groups.gobierno, t.adminShell.nav.guardrails, Shield),
+    navBtn('settings', t.adminShell.groups.gobierno, t.adminShell.nav.ajustes, SettingsIcon),
+  ];
 
   const navGroup = (label: string, items: ReactNode[]) =>
     items.length > 0 && (
@@ -245,24 +252,24 @@ export function AdminShell() {
               separately-visible label next to it (a generic "HR Platform"
               string beside a specific brand wordmark would read as two
               different names). Flagged for CP-2 review — see review.md. */}
-          <img src={BRAND.logo} alt={BRAND.productName} className="shell-sidebar-logo" />
+          <img src={BRAND.logo} alt={t.brand.productName} className="shell-sidebar-logo" />
           <button
             type="button"
             className="btn btn-ghost shell-sidebar-collapse-btn"
             onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+            aria-label={collapsed ? t.adminShell.expandMenu : t.adminShell.collapseMenu}
             aria-expanded={!collapsed}
-            data-tooltip={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+            data-tooltip={collapsed ? t.adminShell.expandMenu : t.adminShell.collapseMenu}
           >
             {collapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
           </button>
         </div>
         <nav className="shell-nav shell-nav--sidebar">
-          {navGroup('Conocimiento', conocimiento)}
-          {navGroup('Atención', atencion)}
-          {navGroup('Análisis', analisis)}
-          {navGroup('Personas', personas)}
-          {navGroup('Gobierno', gobierno)}
+          {navGroup(t.adminShell.groups.conocimiento, conocimiento)}
+          {navGroup(t.adminShell.groups.atencion, atencion)}
+          {navGroup(t.adminShell.groups.analisis, analisis)}
+          {navGroup(t.adminShell.groups.personas, personas)}
+          {navGroup(t.adminShell.groups.gobierno, gobierno)}
         </nav>
         <div className="shell-sidebar-footer">
           <div className="shell-sidebar-user" data-tooltip={identity?.email ?? ''}>
@@ -270,15 +277,16 @@ export function AdminShell() {
             <span className="shell-sidebar-text muted">{identity?.email}</span>
           </div>
           <ThemeToggle className="shell-nav-item" />
+          <LocaleToggle className="shell-nav-item" />
           <button
             type="button"
             className="btn btn-ghost shell-nav-item"
             onClick={logout}
-            aria-label="Log out"
-            data-tooltip="Log out"
+            aria-label={t.adminShell.logout}
+            data-tooltip={t.adminShell.logout}
           >
             <LogOut size={16} aria-hidden="true" />
-            <span className="shell-sidebar-text">Log out</span>
+            <span className="shell-sidebar-text">{t.adminShell.logout}</span>
           </button>
         </div>
       </aside>
@@ -287,28 +295,28 @@ export function AdminShell() {
           type="button"
           className="btn btn-ghost shell-mobile-nav-btn"
           onClick={() => setMobileNavOpen(true)}
-          aria-label="Abrir menú"
+          aria-label={t.adminShell.openMobileMenu}
         >
           <Menu size={20} aria-hidden="true" />
         </button>
         {view === 'map' && (
           <>
-            <h2>Conocimiento · Mapa</h2>
-            <p className="muted">Navigate the corpus by lens, spot coverage gaps, and open a document to inspect, test, or edit its labels.</p>
+            <h2>{t.adminShell.views.map.heading}</h2>
+            <p className="muted">{t.adminShell.views.map.description}</p>
             <KnowledgeMapPage key={hash.tab ?? ''} onOpenEscalation={openEscalation} initialTab={hash.tab} />
           </>
         )}
         {view === 'documents' && (
           <>
-            <h2>Conocimiento · Documentos</h2>
-            <p className="muted">Upload convenio folders, review auto-parsed tags, resolve conflicts, and confirm.</p>
+            <h2>{t.adminShell.views.documents.heading}</h2>
+            <p className="muted">{t.adminShell.views.documents.description}</p>
             <DocumentsPage key={hash.convenio ?? ''} initialConvenioId={hash.convenio} />
           </>
         )}
         {view === 'review' && (
           <>
-            <h2>Conocimiento · Revisión</h2>
-            <p className="muted">The messy-tail queues: AI tagging proposals to verify, vocabulary proposals to approve, and documents nearing expiry to succeed. Fuchsia marks unverified-AI content.</p>
+            <h2>{t.adminShell.views.review.heading}</h2>
+            <p className="muted">{t.adminShell.views.review.description}</p>
             <ReviewQueuePage
               key={`${hash.tab ?? ''}|${hash.fact ?? ''}|${hash.convenio ?? ''}`}
               initialTab={hash.tab}
@@ -319,75 +327,77 @@ export function AdminShell() {
         )}
         {view === 'escalations' && (
           <>
-            <h2>Atención · Escalaciones</h2>
-            <p className="muted">Triage escalated questions: assign, reply to the employee, and resolve — optionally publishing the answer as reusable knowledge.</p>
+            <h2>{t.adminShell.views.escalations.heading}</h2>
+            <p className="muted">{t.adminShell.views.escalations.description}</p>
             <EscalationBoardPage focusUuid={escalationFocus} onFocusHandled={() => setEscalationFocus(null)} />
           </>
         )}
         {view === 'analytics' && showAnalytics && (
           <>
-            <h2>Análisis · Analítica</h2>
-            <p className="muted">Deflection, escalaciones por corrección y agrupación de preguntas — todo reproducible desde los comandos <code>stats:*</code>/<code>questions:cluster</code>.</p>
+            <h2>{t.adminShell.views.analytics.heading}</h2>
+            {/* `stats:*`/`questions:cluster` are real CLI command names, invariant
+                across locale — left as literal `<code>` text, not run through
+                `t()` (plan.md §B.6's "technical string" allowlist category). */}
+            <p className="muted">{t.adminShell.views.analytics.description} <code>stats:*</code>/<code>questions:cluster</code>.</p>
             <AnalyticsPage />
           </>
         )}
         {view === 'coverage' && showCoverage && (
           <>
-            <h2>Análisis · Cobertura</h2>
-            <p className="muted">La rejilla convenio × (prosa, salario, datos, resoluciones) — la misma consulta que <code>corpus:coverage</code>.</p>
+            <h2>{t.adminShell.views.coverage.heading}</h2>
+            <p className="muted">{t.adminShell.views.coverage.description} <code>corpus:coverage</code>.</p>
             <CoveragePage />
           </>
         )}
         {view === 'quality' && showQuality && (
           <>
-            <h2>Análisis · Calidad</h2>
-            <p className="muted">Muestra mensual estratificada de turnos respondidos (<code>quality:sample</code>). Lectura abierta a cualquier admin; marcar una muestra requiere <code>escalation.work</code>.</p>
+            <h2>{t.adminShell.views.quality.heading}</h2>
+            <p className="muted">
+              {t.adminShell.views.quality.descriptionBeforeCode}<code>quality:sample</code>
+              {t.adminShell.views.quality.descriptionBetweenCodes} <code>escalation.work</code>.
+            </p>
             <QualitySampleQueue />
           </>
         )}
         {view === 'directory' && showDirectory && (
           <>
-            <h2>Personas · Directorio</h2>
-            <p className="muted">Gestiona el alta y los datos de las personas (convenio, territorio, categoría). Cada cambio queda auditado; importa en bloque por CSV.</p>
+            <h2>{t.adminShell.views.directory.heading}</h2>
+            <p className="muted">{t.adminShell.views.directory.description}</p>
             <DirectoryPage key={hash.emp ?? ''} initialEmployeeUuid={hash.emp} />
           </>
         )}
         {view === 'history' && showHistory && (
           <>
-            <h2>Atención · Histórico de conversaciones</h2>
-            <p className="muted">Consulta y busca las conversaciones de toda la organización (solo lectura). Cada apertura queda registrada en el registro de accesos.</p>
+            <h2>{t.adminShell.views.history.heading}</h2>
+            <p className="muted">{t.adminShell.views.history.description}</p>
             <HistoryPage />
           </>
         )}
         {view === 'admins' && showAdmins && (
           <>
-            <h2>Personas · Administradores y roles</h2>
-            <p className="muted">Crea administradores, asigna los cuatro roles y desactiva cuentas (la desactivación retira el acceso de inmediato).</p>
+            <h2>{t.adminShell.views.admins.heading}</h2>
+            <p className="muted">{t.adminShell.views.admins.description}</p>
             <AdminsPage />
           </>
         )}
         {view === 'guardrails' && (
           <>
-            <h2>Gobierno · Guardarraíles</h2>
-            <p className="muted">
-              Ajusta la capa configurable sobre la base de seguridad fija. Solo puede endurecer,
-              nunca debilitar: el servidor aplica siempre el valor más estricto y rechaza cualquier valor por
-              debajo del mínimo. Escritura solo para super_admin; auditor en solo lectura.
-            </p>
+            <h2>{t.adminShell.views.guardrails.heading}</h2>
+            <p className="muted">{t.adminShell.views.guardrails.description}</p>
             <GuardrailsPage />
           </>
         )}
         {view === 'settings' && (
           <>
-            <h2>Gobierno · Answer model</h2>
-            <p className="muted">Configure the external answer-model provider key (ADR-0015).</p>
+            <h2>{t.adminShell.views.settings.heading}</h2>
+            <p className="muted">{t.adminShell.views.settings.description}</p>
             <AnswerModelPage />
           </>
         )}
         {view === 'brand-preview' && (
           <>
-            <h2>Brand preview (CP-1 — sprint-11a)</h2>
-            <p className="muted">Not in the nav — reachable only via #view=brand-preview. See sprint-11a/plan.md §G.1 step 3.</p>
+            <h2>{t.adminShell.views.brandPreview.heading}</h2>
+            <p className="muted">{t.adminShell.views.brandPreview.description}</p>
             <BrandPreviewPage />
           </>
         )}

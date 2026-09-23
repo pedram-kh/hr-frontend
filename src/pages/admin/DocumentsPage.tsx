@@ -7,6 +7,7 @@ import {
 import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { FilterToolbar } from '../../components/FilterToolbar';
 import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels';
+import { useT } from '../../i18n/context';
 
 const RETRIEVAL_BADGE_CLASS: Record<string, string> = {
   active: 'badge-verified',
@@ -45,6 +46,7 @@ function writeDocHash(uuid: string | null) {
 // the admin here, pre-filtered to the convenio in question, instead of
 // opening nothing (`AdminLinks::documents(convenioId)`).
 export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?: number | null }) {
+  const t = useT();
   const [rows, setRows] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,18 +110,18 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setUploadMsg(`Ingesting ${files.length} file(s)…`);
+    setUploadMsg(`${t.documentsPage.ingestingPrefix} ${files.length} ${t.documentsPage.ingestingSuffix}`);
     try {
       const res = await uploadDocuments(files);
       const results = res.results as { skipped?: boolean; error?: string }[];
       const ingested = results.filter((r) => !r.skipped && !r.error).length;
       const skipped = results.filter((r) => r.skipped).length;
       const failed = results.filter((r) => r.error).length;
-      setUploadMsg(`Ingested ${ingested}, skipped ${skipped}, failed ${failed}.`);
+      setUploadMsg(`${t.documentsPage.ingestedLabel} ${ingested}, ${t.documentsPage.skippedLabel} ${skipped}, ${t.documentsPage.failedLabel} ${failed}.`);
       setPage(1); // newly-ingested docs sort first (id DESC) — land where they are.
       refresh(1);
     } catch (err) {
-      setUploadMsg(`Couldn't ingest these files: ${(err as Error).message}`);
+      setUploadMsg(`${t.documentsPage.ingestFailedPrefix} ${(err as Error).message}`);
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -132,7 +134,7 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
           primary={
             <>
               <label className="btn btn-primary">
-                Upload folder
+                {t.documentsPage.uploadFolderLabel}
                 <input
                   ref={fileInput}
                   type="file"
@@ -145,11 +147,11 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
               </label>
               {convenioId != null && (
                 <span className="chip">
-                  Convenio #{convenioId}
+                  {t.documentsPage.convenioFilterPrefix}{convenioId}
                   <button
                     type="button"
                     className="chip-x"
-                    aria-label="Quitar filtro de convenio"
+                    aria-label={t.documentsPage.removeConvenioFilterAriaLabel}
                     onClick={() => {
                       setPage(1);
                       setConvenioId(null);
@@ -168,7 +170,7 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
             // Sprint 7e verification fix: the total is always visible, on every
             // page, so a paginate(50) cap can never again silently hide rows.
             <span className="muted docs-total">
-              {meta.total} document{meta.total === 1 ? '' : 's'}
+              {meta.total} {meta.total === 1 ? t.documentsPage.documentWord : t.documentsPage.documentsWordPlural}
             </span>
           }
         >
@@ -177,10 +179,10 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
             value={taggingStatus}
             onChange={(e) => onTaggingStatusChange(e.target.value)}
           >
-            <option value="">All statuses</option>
-            <option value="auto_proposed">Auto-proposed</option>
-            <option value="under_review">Under review</option>
-            <option value="verified">Verified</option>
+            <option value="">{t.documentsPage.allStatusesOption}</option>
+            <option value="auto_proposed">{t.documentsPage.autoProposedOption}</option>
+            <option value="under_review">{t.documentsPage.underReviewOption}</option>
+            <option value="verified">{t.documentsPage.verifiedOption}</option>
           </select>
           <label className="checkbox">
             <input
@@ -188,26 +190,26 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
               checked={conflictsOnly}
               onChange={(e) => onConflictsOnlyChange(e.target.checked)}
             />
-            Conflicts only
+            {t.documentsPage.conflictsOnlyLabel}
           </label>
         </FilterToolbar>
 
         {error && <p className="error">{error}</p>}
         {loading ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t.common.loading}</p>
         ) : (
           <table className="docs-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Territory</th>
-                <th>Sector</th>
-                <th>Convenio</th>
-                <th>Type</th>
-                <th className="num">Validity</th>
-                <th>Retrieval</th>
-                <th>Status</th>
-                <th>Flags</th>
+                <th>{t.documentsPage.titleHeader}</th>
+                <th>{t.common.territory}</th>
+                <th>{t.common.sector}</th>
+                <th>{t.common.convenio}</th>
+                <th>{t.common.type}</th>
+                <th className="num">{t.common.validity}</th>
+                <th>{t.documentDetail.retrievalFieldLabel}</th>
+                <th>{t.documentDetail.kvStatus}</th>
+                <th>{t.documentsPage.flagsHeader}</th>
               </tr>
             </thead>
             <tbody>
@@ -218,48 +220,48 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
                   onClick={() => openDoc(r.uuid)}
                 >
                   <td>{r.title}</td>
-                  <td>{r.territory ?? '—'}</td>
-                  <td>{r.sector ?? '—'}</td>
-                  <td>{r.convenio ?? '—'}</td>
-                  <td>{r.document_type ?? '—'}</td>
-                  <td className="num">{r.validity_start ? `${r.validity_start} → ${r.validity_end}` : '—'}</td>
+                  <td>{r.territory ?? t.common.dash}</td>
+                  <td>{r.sector ?? t.common.dash}</td>
+                  <td>{r.convenio ?? t.common.dash}</td>
+                  <td>{r.document_type ?? t.common.dash}</td>
+                  <td className="num">{r.validity_start ? `${r.validity_start} → ${r.validity_end}` : t.common.dash}</td>
                   {/* Sprint 11a (§D.2) — was the raw enum string in both
                       columns; label + badge mirror the pattern already used
                       for retrieval_status in DocumentDetailPanel's own list. */}
                   <td>
                     <span className={`badge ${RETRIEVAL_BADGE_CLASS[r.retrieval_status] ?? 'badge-historical'}`}>
-                      {retrievalStatusLabel(r.retrieval_status)}
+                      {retrievalStatusLabel(t, r.retrieval_status)}
                     </span>
                   </td>
                   <td>
                     <span className={`badge ${TAGGING_BADGE_CLASS[r.tagging_status] ?? 'badge-historical'}`}>
-                      {taggingStatusLabel(r.tagging_status)}
+                      {taggingStatusLabel(t, r.tagging_status)}
                     </span>
                   </td>
                   <td className="flags">
                     {r.has_open_conflict && (
                       <span className="badge badge-conflict">
-                        <span aria-hidden="true">⚠</span> Conflict
+                        <span aria-hidden="true">⚠</span> {t.documentsPage.conflictBadge}
                       </span>
                     )}
                     {!r.has_open_conflict && r.has_open_review && (
                       <span className="badge badge-review">
-                        <span aria-hidden="true">⏳</span> Under review
+                        <span aria-hidden="true">⏳</span> {t.documentsPage.underReviewOption}
                       </span>
                     )}
                     {r.empty_text && (
                       <span className="badge badge-empty">
-                        <span aria-hidden="true">∅</span> No text
+                        <span aria-hidden="true">∅</span> {t.documentsPage.noTextBadge}
                       </span>
                     )}
                     {r.ocr_pages_count > 0 && (
                       <span className="badge badge-ocr">
-                        <span aria-hidden="true">⚙</span> OCR'd ({r.ocr_pages_count})
+                        <span aria-hidden="true">⚙</span> {t.documentDetail.ocrdBadge} ({r.ocr_pages_count})
                       </span>
                     )}
                     {r.authority_level === 'national_law' && (
                       <span className="badge badge-national">
-                        <span aria-hidden="true">⚑</span> National
+                        <span aria-hidden="true">⚑</span> {t.documentsPage.nationalBadge}
                       </span>
                     )}
                   </td>
@@ -269,8 +271,8 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
                 <tr>
                   <td colSpan={9} className="col-empty">
                     {conflictsOnly || taggingStatus
-                      ? 'No documents match these filters.'
-                      : 'No documents yet — upload a convenio folder to ingest.'}
+                      ? t.documentsPage.noDocumentsMatchFilters
+                      : t.documentsPage.noDocumentsYet}
                   </td>
                 </tr>
               )}
@@ -287,17 +289,17 @@ export function DocumentsPage({ initialConvenioId = null }: { initialConvenioId?
             disabled={meta.current_page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            ‹ Prev
+            {t.documentsPage.prevButton}
           </button>
           <span className="muted">
-            Page {meta.current_page} of {meta.last_page}
+            {t.documentsPage.pagePrefix} {meta.current_page} {t.documentsPage.pageOfConnector} {meta.last_page}
           </span>
           <button
             className="btn btn-ghost"
             disabled={meta.current_page >= meta.last_page}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next ›
+            {t.documentsPage.nextButton}
           </button>
         </div>
     </div>

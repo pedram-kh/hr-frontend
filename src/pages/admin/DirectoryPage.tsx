@@ -18,6 +18,8 @@ import {
   type VocabularyItem,
 } from '../../lib/api';
 import { CsvImportPanel } from './CsvImportPanel';
+import { useT, useLocale } from '../../i18n/context';
+import { formatDate } from '../../i18n/format';
 
 // Reviewed-staleness threshold: a profile not attested in ~6 months is "stale".
 // (Editing does NOT reset it — Q9 — so the signal stays an honest review marker.)
@@ -39,6 +41,9 @@ function isStale(reviewedAt: string | null): boolean {
 // Opens straight to that employee's edit drawer; `getEmployee` fetches by
 // uuid independently of the (possibly filtered) list below.
 export function DirectoryPage({ initialEmployeeUuid = null }: { initialEmployeeUuid?: string | null }) {
+  // Sprint 11b (plan.md §C.9 step 4 — CP-1 slice: this file's full extraction).
+  const t = useT();
+  const { locale } = useLocale();
   const [rows, setRows] = useState<EmployeeListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,26 +87,26 @@ export function DirectoryPage({ initialEmployeeUuid = null }: { initialEmployeeU
           <form onSubmit={onSearch} style={{ display: 'contents' }}>
             <input
               className="input"
-              placeholder="Buscar por nombre o correo…"
+              placeholder={t.directory.searchPlaceholder}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              aria-label="Buscar empleados"
+              aria-label={t.directory.searchAriaLabel}
             />
           </form>
-          <select className="select" value={convenioId} onChange={(e) => setConvenioId(e.target.value)} aria-label="Filtrar por convenio">
-            <option value="">Todos los convenios</option>
+          <select className="select" value={convenioId} onChange={(e) => setConvenioId(e.target.value)} aria-label={t.directory.filterConvenioAriaLabel}>
+            <option value="">{t.directory.allConvenios}</option>
             {convenios.map((c) => (
               <option key={c.id} value={c.id}>{c.numero} — {c.name}</option>
             ))}
           </select>
-          <select className="select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filtrar por estado">
-            <option value="">Activos e inactivos</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
+          <select className="select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label={t.directory.filterStatusAriaLabel}>
+            <option value="">{t.directory.allStatuses}</option>
+            <option value="active">{t.directory.activePlural}</option>
+            <option value="inactive">{t.directory.inactivePlural}</option>
           </select>
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>Nuevo empleado</button>
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>{t.directory.newEmployee}</button>
           <button className="btn btn-secondary" onClick={() => setShowImport((s) => !s)}>
-            {showImport ? 'Ocultar importación' : 'Importar CSV'}
+            {showImport ? t.directory.hideImport : t.directory.importCsv}
           </button>
         </div>
 
@@ -109,13 +114,13 @@ export function DirectoryPage({ initialEmployeeUuid = null }: { initialEmployeeU
 
         {error && <p className="error">{error}</p>}
         {loading ? (
-          <p className="muted">Cargando…</p>
+          <p className="muted">{t.directory.loading}</p>
         ) : (
           <table className="docs-table">
             <thead>
               <tr>
-                <th>Nombre</th><th>Correo</th><th>Convenio</th><th>Territorio</th>
-                <th>Categoría</th><th>Grupo</th><th>Estado</th><th>Revisión</th>
+                <th>{t.directory.colName}</th><th>{t.directory.colEmail}</th><th>{t.directory.colConvenio}</th><th>{t.directory.colTerritory}</th>
+                <th>{t.directory.colCategory}</th><th>{t.directory.colGroup}</th><th>{t.directory.colStatus}</th><th>{t.directory.colReview}</th>
               </tr>
             </thead>
             <tbody>
@@ -123,26 +128,26 @@ export function DirectoryPage({ initialEmployeeUuid = null }: { initialEmployeeU
                 <tr key={r.uuid} className={selected === r.uuid ? 'is-selected' : ''} onClick={() => setSelected(r.uuid)}>
                   <td>{r.full_name}</td>
                   <td>{r.email}</td>
-                  <td>{r.convenio ? r.convenio.numero : '—'}</td>
-                  <td>{r.territory ? r.territory.name : '—'}</td>
-                  <td>{r.job_category ? r.job_category.name : '—'}</td>
-                  <td>{r.convenio_group ? r.convenio_group.path_label : <span className="muted">sin grupo</span>}</td>
+                  <td>{r.convenio ? r.convenio.numero : t.directory.dash}</td>
+                  <td>{r.territory ? r.territory.name : t.directory.dash}</td>
+                  <td>{r.job_category ? r.job_category.name : t.directory.dash}</td>
+                  <td>{r.convenio_group ? r.convenio_group.path_label : <span className="muted">{t.directory.noGroup}</span>}</td>
                   <td>
                     <span className={`badge ${r.status === 'active' ? 'badge-verified' : 'badge-historical'}`}>
-                      {r.status === 'active' ? 'Activo' : 'Inactivo'}
+                      {r.status === 'active' ? t.directory.statusActive : t.directory.statusInactive}
                     </span>
                   </td>
                   <td>
                     {isStale(r.profile_last_reviewed_at) ? (
-                      <span className="badge badge-review"><span aria-hidden="true">⏳</span> Sin revisar</span>
+                      <span className="badge badge-review"><span aria-hidden="true">⏳</span> {t.directory.notReviewed}</span>
                     ) : (
-                      <span className="muted">{r.profile_last_reviewed_at?.slice(0, 10)}</span>
+                      <span className="muted">{formatDate(r.profile_last_reviewed_at, locale)}</span>
                     )}
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={7} className="col-empty">No hay empleados que coincidan.</td></tr>
+                <tr><td colSpan={7} className="col-empty">{t.directory.noMatches}</td></tr>
               )}
             </tbody>
           </table>
@@ -183,6 +188,8 @@ function EmployeeDrawer({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
   const isNew = uuid === null;
   const [detail, setDetail] = useState<EmployeeDetail | null>(null);
   const [audit, setAudit] = useState<EmployeeAuditEntry[]>([]);
@@ -322,40 +329,39 @@ function EmployeeDrawer({
 
   return (
     <div className="detail-backdrop" onClick={onClose}>
-      <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Empleado">
+      <aside className="detail panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t.directory.drawer.ariaLabel}>
         <div className="detail-head">
-          <strong>{isNew ? 'Nuevo empleado' : detail?.full_name ?? 'Empleado'}</strong>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+          <strong>{isNew ? t.directory.drawer.newTitle : detail?.full_name ?? t.directory.drawer.defaultTitle}</strong>
+          <button className="btn btn-ghost" onClick={onClose} aria-label={t.directory.drawer.close}>✕</button>
         </div>
         <div className="detail-body">
           {!loaded ? (
-            <p className="muted">Cargando…</p>
+            <p className="muted">{t.directory.drawer.loading}</p>
           ) : (
             <>
               <section>
                 <div className="field">
-                  <label className="field-label">Nombre completo</label>
+                  <label className="field-label">{t.directory.drawer.fullNameLabel}</label>
                   <input className="input" value={form.full_name} onChange={(e) => set('full_name', e.target.value)} disabled={busy} />
                 </div>
                 <div className="field">
-                  <label className="field-label">Correo (clave de acceso)</label>
+                  <label className="field-label">{t.directory.drawer.emailLabel}</label>
                   <input className="input" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} disabled={busy} />
                   {emailChanged && (
                     <p className="notice">
-                      <span aria-hidden="true">⚠</span> Cambiar el correo cambia cómo inicia sesión esta persona.
-                      Se pedirá confirmación explícita.
+                      <span aria-hidden="true">⚠</span> {t.directory.drawer.emailChangeWarning}
                     </p>
                   )}
                 </div>
                 <div className="field">
-                  <label className="field-label">Convenio</label>
+                  <label className="field-label">{t.directory.drawer.convenioLabel}</label>
                   <select className="select" value={form.convenio_id || ''} onChange={(e) => { set('convenio_id', Number(e.target.value)); set('job_category_id', null); set('convenio_group_id', null); setGroupSuggested(false); }} disabled={busy}>
-                    <option value="">Selecciona…</option>
+                    <option value="">{t.directory.drawer.choose}</option>
                     {convenios.map((c) => (<option key={c.id} value={c.id}>{c.numero} — {c.name}</option>))}
                   </select>
                 </div>
                 <div className="field">
-                  <label className="field-label">Categoría profesional</label>
+                  <label className="field-label">{t.directory.drawer.jobCategoryLabel}</label>
                   <select className="select" value={form.job_category_id ?? ''} onChange={(e) => {
                       set('job_category_id', e.target.value ? Number(e.target.value) : null);
                       // Discard a group that was only a SUGGESTION from the previous
@@ -364,12 +370,12 @@ function EmployeeDrawer({
                       // choice (groupSuggested === false) is left untouched.
                       if (groupSuggested) { set('convenio_group_id', null); setGroupSuggested(false); }
                     }} disabled={busy || !form.convenio_id}>
-                    <option value="">{form.convenio_id ? 'Sin categoría' : 'Elige primero un convenio'}</option>
+                    <option value="">{form.convenio_id ? t.directory.drawer.noCategory : t.directory.drawer.chooseConvenioFirst}</option>
                     {jobCategories.map((j) => (<option key={j.id} value={j.id}>{j.name}</option>))}
                   </select>
                 </div>
                 <div className="field">
-                  <label className="field-label">Grupo del convenio</label>
+                  <label className="field-label">{t.directory.drawer.convenioGroupLabel}</label>
                   <select
                     className="select"
                     value={form.convenio_group_id ?? ''}
@@ -378,10 +384,10 @@ function EmployeeDrawer({
                   >
                     <option value="">
                       {!form.convenio_id
-                        ? 'Elige primero un convenio'
+                        ? t.directory.drawer.chooseConvenioFirst
                         : groups.length === 0
-                          ? 'Este convenio no tiene grupos aprobados'
-                          : 'Sin grupo'}
+                          ? t.directory.drawer.noGroupsApproved
+                          : t.directory.drawer.noGroupOption}
                     </option>
                     {groups.map((g) => (
                       <option key={g.id} value={g.id}>
@@ -391,44 +397,40 @@ function EmployeeDrawer({
                   </select>
                   {groupSuggested && (
                     <p className="notice">
-                      <span aria-hidden="true">💡</span> Sugerido a partir de la categoría — confírmalo.
-                      Nada se guarda hasta que envíes el formulario.
+                      <span aria-hidden="true">💡</span> {t.directory.drawer.groupSuggestedNotice}
                     </p>
                   )}
                   {!groupSuggested && form.convenio_group_id === null && groups.length > 0 && (
-                    <p className="muted">
-                      Sin grupo, las respuestas que dependan del grupo se derivarán a una persona
-                      de RRHH en lugar de arriesgar un dato incorrecto.
-                    </p>
+                    <p className="muted">{t.directory.drawer.groupNotSuggestedNotice}</p>
                   )}
                 </div>
                 <div className="field">
-                  <label className="field-label">Territorio</label>
+                  <label className="field-label">{t.directory.drawer.territoryLabel}</label>
                   <select className="select" value={form.territory_id || ''} onChange={(e) => set('territory_id', Number(e.target.value))} disabled={busy}>
-                    <option value="">Selecciona…</option>
-                    {territories.map((t) => (<option key={t.id} value={t.id}>{t.code ? `${t.code} — ` : ''}{t.name}</option>))}
+                    <option value="">{t.directory.drawer.choose}</option>
+                    {territories.map((terr) => (<option key={terr.id} value={terr.id}>{terr.code ? `${terr.code} — ` : ''}{terr.name}</option>))}
                   </select>
                 </div>
                 <div className="field">
-                  <label className="field-label">Tipo de jornada</label>
+                  <label className="field-label">{t.directory.drawer.employmentTypeLabel}</label>
                   <select className="select" value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)} disabled={busy}>
-                    <option value="full_time">Completa</option>
-                    <option value="part_time">Parcial</option>
+                    <option value="full_time">{t.directory.drawer.fullTime}</option>
+                    <option value="part_time">{t.directory.drawer.partTime}</option>
                   </select>
                 </div>
                 <div className="field">
-                  <label className="field-label">Centro de trabajo</label>
+                  <label className="field-label">{t.directory.drawer.workLocationLabel}</label>
                   <input className="input" value={form.work_location ?? ''} onChange={(e) => set('work_location', e.target.value)} disabled={busy} />
                 </div>
                 <div className="field">
-                  <label className="field-label">ID externo</label>
+                  <label className="field-label">{t.directory.drawer.externalIdLabel}</label>
                   <input className="input" value={form.employee_external_id ?? ''} onChange={(e) => set('employee_external_id', e.target.value)} disabled={busy} />
                 </div>
                 <div className="field">
-                  <label className="field-label">Estado</label>
+                  <label className="field-label">{t.directory.drawer.statusLabel}</label>
                   <select className="select" value={form.status} onChange={(e) => set('status', e.target.value)} disabled={busy}>
-                    <option value="active">Activo</option>
-                    <option value="inactive">Inactivo (no podrá iniciar sesión ni chatear)</option>
+                    <option value="active">{t.directory.statusActive}</option>
+                    <option value="inactive">{t.directory.drawer.inactiveHint}</option>
                   </select>
                 </div>
 
@@ -436,29 +438,29 @@ function EmployeeDrawer({
 
                 <div className="reassign">
                   <button className="btn btn-primary" onClick={() => submit(false)} disabled={busy || !form.full_name || !form.email || !form.convenio_id || !form.territory_id}>
-                    {busy ? 'Guardando…' : isNew ? 'Crear empleado' : 'Guardar cambios'}
+                    {busy ? t.directory.drawer.saving : isNew ? t.directory.drawer.createEmployee : t.directory.drawer.saveChanges}
                   </button>
                 </div>
               </section>
 
               {!isNew && detail && (
                 <section>
-                  <h4>Revisión del perfil</h4>
+                  <h4>{t.directory.drawer.reviewTitle}</h4>
                   <p className="timeline-meta">
                     {detail.profile_last_reviewed_at
-                      ? `Revisado por última vez el ${detail.profile_last_reviewed_at.slice(0, 10)}.`
-                      : 'Nunca revisado.'}
-                    {' '}Editar no cuenta como revisar: es una atestación explícita.
+                      ? `${t.directory.drawer.lastReviewedPrefix} ${formatDate(detail.profile_last_reviewed_at, locale)}.`
+                      : t.directory.drawer.neverReviewed}
+                    {' '}{t.directory.drawer.lastReviewedNote}
                   </p>
-                  <button className="btn btn-secondary" onClick={review} disabled={busy}>Marcar como revisado</button>
+                  <button className="btn btn-secondary" onClick={review} disabled={busy}>{t.directory.drawer.markReviewed}</button>
                 </section>
               )}
 
               {!isNew && (
                 <section>
-                  <h4>Historial de cambios</h4>
+                  <h4>{t.directory.drawer.historyTitle}</h4>
                   {audit.length === 0 ? (
-                    <p className="muted">Sin cambios registrados.</p>
+                    <p className="muted">{t.directory.drawer.noChangesRecorded}</p>
                   ) : (
                     <ol className="timeline">
                       {audit.map((a, i) => (
@@ -466,12 +468,15 @@ function EmployeeDrawer({
                           <span className="timeline-dot src-admin_manual" aria-hidden="true" />
                           <div>
                             <div className="timeline-action">
-                              {a.field_changed === '*' ? 'creado' : a.field_changed.replace(/_/g, ' ')}
+                              {a.field_changed === '*' ? t.directory.drawer.created : a.field_changed.replace(/_/g, ' ')}
                               {(a.old_value || a.new_value) && a.field_changed !== '*' && (
-                                <span className="timeline-value"> {a.old_value ?? '—'} → {a.new_value ?? '—'}</span>
+                                <span className="timeline-value"> {a.old_value ?? t.directory.dash} → {a.new_value ?? t.directory.dash}</span>
                               )}
                             </div>
-                            <div className="timeline-meta">{a.changed_at?.slice(0, 19).replace('T', ' ')}{a.changed_by ? ` · ${a.changed_by}` : ''}</div>
+                            <div className="timeline-meta">
+                              {formatDate(a.changed_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}
+                              {a.changed_by ? ` · ${a.changed_by}` : ''}
+                            </div>
                           </div>
                         </li>
                       ))}
@@ -485,16 +490,16 @@ function EmployeeDrawer({
       </aside>
 
       {emailConfirm && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar cambio de correo">
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t.directory.drawer.confirmEmailChange.ariaLabel}>
           <div className="modal">
-            <h4 className="modal-title"><span aria-hidden="true">⚠</span> ¿Cambiar el correo de acceso?</h4>
+            <h4 className="modal-title"><span aria-hidden="true">⚠</span> {t.directory.drawer.confirmEmailChange.title}</h4>
             <p className="modal-body">
-              El correo es la clave de inicio de sesión. Vas a cambiarlo de <code>{emailConfirm.old}</code> a{' '}
-              <code>{emailConfirm.next}</code>. La persona iniciará sesión con el nuevo correo. El cambio queda registrado.
+              {t.directory.drawer.confirmEmailChange.bodyPrefix} <code>{emailConfirm.old}</code> {t.directory.drawer.confirmEmailChange.bodyMiddle}{' '}
+              <code>{emailConfirm.next}</code>. {t.directory.drawer.confirmEmailChange.bodySuffix}
             </p>
             <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setEmailConfirm(null)} disabled={busy}>Cancelar</button>
-              <button className="btn btn-warning" onClick={() => { setEmailConfirm(null); submit(true); }} disabled={busy}>Confirmar cambio</button>
+              <button className="btn btn-ghost" onClick={() => setEmailConfirm(null)} disabled={busy}>{t.directory.drawer.confirmEmailChange.cancel}</button>
+              <button className="btn btn-warning" onClick={() => { setEmailConfirm(null); submit(true); }} disabled={busy}>{t.directory.drawer.confirmEmailChange.confirm}</button>
             </div>
           </div>
         </div>

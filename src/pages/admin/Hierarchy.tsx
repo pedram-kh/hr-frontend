@@ -6,7 +6,8 @@ import {
   type HierarchyNode,
   type Lens,
 } from '../../lib/api';
-import { GAP_META } from './gapMeta';
+import { gapMeta } from './gapMeta';
+import { useT } from '../../i18n/context';
 
 export type HierarchyForm = 'list' | 'graph';
 
@@ -30,6 +31,7 @@ export function Hierarchy({
   onOpenFact?: (uuid: string) => void;
   reloadKey?: number;
 }) {
+  const t = useT();
   const [roots, setRoots] = useState<HierarchyNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cache, setCache] = useState<Map<string, HierarchyNode[]>>(new Map());
@@ -53,13 +55,13 @@ export function Hierarchy({
   };
 
   if (error) return <p className="error">{error}</p>;
-  if (roots === null) return <p className="muted">Loading map…</p>;
+  if (roots === null) return <p className="muted">{t.hierarchy.loadingMapText}</p>;
   if (roots.length === 0)
     return (
       <p className="notice">
         {lens === 'topic'
-          ? 'No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7). You can tag topics by hand from a document card.'
-          : 'Nothing to show for this lens yet.'}
+          ? t.hierarchy.noTopicsNotice
+          : t.hierarchy.nothingToShowNotice}
       </p>
     );
 
@@ -94,20 +96,22 @@ export function Hierarchy({
  * (fuchsia is unverified-AI only — 7b-2). A manual unverified fact uses the
  * neutral "needs review" badge, exactly like a document under review. */
 function FactBadges({ node }: { node: HierarchyNode }) {
+  const t = useT();
   return (
     <>
-      <span className="badge badge-reference" title="Structured reference fact">dato</span>
+      <span className="badge badge-reference" title={t.hierarchy.factBadgeTitle}>{t.referenceFactPanel.typeBadge}</span>
       {node.status === 'verified' ? (
-        <span className="badge badge-verified">verified</span>
+        <span className="badge badge-verified">{t.referenceFactPanel.badgeVerified}</span>
       ) : (
-        <span className="badge badge-review">needs review</span>
+        <span className="badge badge-review">{t.referenceFactPanel.badgeNeedsReview}</span>
       )}
     </>
   );
 }
 
 function GapBadge({ kind }: { kind: GapKind }) {
-  const m = GAP_META[kind];
+  const t = useT();
+  const m = gapMeta(t, kind);
   return (
     <span className={`gap-badge ${m.cls}`} title={m.hint}>
       <span aria-hidden="true">●</span> {m.label}
@@ -156,6 +160,7 @@ function ListNode({
   ensureChildren: (key: string) => Promise<void>;
   onOpenLeaf: (node: HierarchyNode) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const leaf = isLeaf(node);
@@ -196,11 +201,11 @@ function ListNode({
       </button>
       {!leaf && open && (
         <ul role="group">
-          {busy && <li className="muted lens-loading">Loading…</li>}
+          {busy && <li className="muted lens-loading">{t.referenceFactPanel.loadingText}</li>}
           {(children ?? []).map((c) => (
             <ListNode key={c.key} node={c} depth={depth + 1} cache={cache} ensureChildren={ensureChildren} onOpenLeaf={onOpenLeaf} />
           ))}
-          {children && children.length === 0 && <li className="muted lens-loading">(empty)</li>}
+          {children && children.length === 0 && <li className="muted lens-loading">{t.hierarchy.emptyChildren}</li>}
         </ul>
       )}
     </li>
@@ -228,6 +233,7 @@ function GraphForm({
   ensureChildren: (key: string) => Promise<void>;
   onOpenLeaf: (node: HierarchyNode) => void;
 }) {
+  const t = useT();
   // selectedPath[k] = the key selected in column k (drives column k+1).
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
 
@@ -289,18 +295,18 @@ function GraphForm({
               title={node.label}
             >
               <span className="lens-node-label">
-                {node.knowledge_type === 'reference_fact' && <span className="badge badge-reference">dato</span>}
+                {node.knowledge_type === 'reference_fact' && <span className="badge badge-reference">{t.referenceFactPanel.typeBadge}</span>}
                 <span className="lens-node-label-text">{node.label}</span>
               </span>
               <span className="lens-node-sub">
-                {typeof node.count === 'number' && !isLeaf(node) ? `${node.count} item${node.count === 1 ? '' : 's'}` : null}
+                {typeof node.count === 'number' && !isLeaf(node) ? `${node.count} ${node.count === 1 ? t.hierarchy.itemWord : t.hierarchy.itemsWordPlural}` : null}
                 {isLeaf(node) && node.knowledge_type === 'reference_fact' && (
                   node.status === 'verified'
-                    ? <span className="badge badge-verified">verified</span>
-                    : <span className="badge badge-review">needs review</span>
+                    ? <span className="badge badge-verified">{t.referenceFactPanel.badgeVerified}</span>
+                    : <span className="badge badge-review">{t.referenceFactPanel.badgeNeedsReview}</span>
                 )}
                 {isLeaf(node) && node.knowledge_type !== 'reference_fact' && node.retrieval_status ? node.retrieval_status : null}
-                {node.gap_kind ? ` · ${GAP_META[node.gap_kind].label}` : null}
+                {node.gap_kind ? ` · ${gapMeta(t, node.gap_kind).label}` : null}
               </span>
             </button>
           )),

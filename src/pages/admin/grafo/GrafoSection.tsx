@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ApiError, getKnowledgeGraph, type KnowledgeGraphResponse } from '../../../lib/api';
+import { useT } from '../../../i18n/context';
 import { useTheme } from '../../../theme/context';
 import { buildRenderGraph } from './buildRenderGraph';
 import { computeVisibility, DEFAULT_GRAPH_FILTERS, type GraphFilters } from './graphFilters';
@@ -26,6 +27,7 @@ export function GrafoSection({
   onOpenDocument: (uuid: string) => void;
   onOpenFact: (uuid: string) => void;
 }) {
+  const t = useT();
   const { theme } = useTheme();
   const [response, setResponse] = useState<KnowledgeGraphResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function GrafoSection({
   const territories = useMemo(() => (graph ? graph.nodes.filter((n) => n.type === 'territory') : []), [graph]);
 
   if (error) return <p className="error">{error}</p>;
-  if (!response || !graph || !visibility) return <p className="muted">Cargando grafo…</p>;
+  if (!response || !graph || !visibility) return <p className="muted">{t.grafo.loadingGraphText}</p>;
 
   const { hidden } = response.counts;
 
@@ -64,12 +66,12 @@ export function GrafoSection({
   return (
     <>
       <div className="map-toolbar grafo-toolbar">
-        <div className="seg" role="group" aria-label="Modo">
+        <div className="seg" role="group" aria-label={t.grafo.modeAriaLabel}>
           <button
             className={`seg-btn ${mode === '3d' ? 'is-active' : ''}`}
             onClick={() => setMode('3d')}
             disabled={!webgl}
-            title={webgl ? undefined : 'WebGL no disponible en este navegador'}
+            title={webgl ? undefined : t.grafo.webglUnavailableTitle}
           >
             3D
           </button>
@@ -77,19 +79,19 @@ export function GrafoSection({
             2D
           </button>
         </div>
-        {!webgl && <span className="muted">WebGL no disponible — mostrando 2D.</span>}
+        {!webgl && <span className="muted">{t.grafo.webglUnavailableNotice}</span>}
       </div>
 
-      <div className="grafo-filters" role="group" aria-label="Filtros del grafo">
-        {territories.map((t) => (
+      <div className="grafo-filters" role="group" aria-label={t.grafo.filtersAriaLabel}>
+        {territories.map((node) => (
           <button
-            key={t.id}
+            key={node.id}
             type="button"
-            className={`chip chip-toggle ${filters.territory === t.id ? 'is-active' : ''}`}
-            aria-pressed={filters.territory === t.id}
-            onClick={() => toggleTerritory(t.id)}
+            className={`chip chip-toggle ${filters.territory === node.id ? 'is-active' : ''}`}
+            aria-pressed={filters.territory === node.id}
+            onClick={() => toggleTerritory(node.id)}
           >
-            {t.label}
+            {node.label}
           </button>
         ))}
         <button
@@ -98,7 +100,7 @@ export function GrafoSection({
           aria-pressed={filters.hideHistorical}
           onClick={() => setFilters((f) => ({ ...f, hideHistorical: !f.hideHistorical }))}
         >
-          Ocultar históricos
+          {t.grafo.hideHistoricalChip}
         </button>
         <button
           type="button"
@@ -106,17 +108,17 @@ export function GrafoSection({
           aria-pressed={filters.hideUnverifiedAi}
           onClick={() => setFilters((f) => ({ ...f, hideUnverifiedAi: !f.hideUnverifiedAi }))}
         >
-          Ocultar IA sin verificar
+          {t.grafo.hideUnverifiedAiChip}
         </button>
         {(filters.territory != null || filters.hideHistorical || filters.hideUnverifiedAi) && (
           <button type="button" className="chip-x grafo-filters-clear" onClick={() => setFilters(DEFAULT_GRAPH_FILTERS)}>
-            Limpiar filtros
+            {t.grafo.clearFiltersButton}
           </button>
         )}
       </div>
 
       <div className="map-canvas grafo-canvas-wrap">
-        <Suspense fallback={<p className="muted">Cargando renderizador…</p>}>
+        <Suspense fallback={<p className="muted">{t.grafo.loadingRendererText}</p>}>
           {mode === '3d' ? (
             <GrafoView data={graph} theme={theme} visibility={visibility} onSelectNode={setSelected} />
           ) : (
@@ -126,8 +128,13 @@ export function GrafoSection({
       </div>
 
       <p className="muted grafo-caption">
-        Verde = conocimiento vigente · Ámbar = borrador · Gris = histórico · <strong>Fucsia = IA sin verificar</strong> ·{' '}
-        {hidden.documents_orphan} documentos sin vínculo y {hidden.facts_rejected} datos rechazados no se dibujan.
+        {t.grafo.captionLegendBeforeFuchsia}
+        <strong>{t.grafo.captionFuchsia}</strong>
+        {' · '}
+        {hidden.documents_orphan}
+        {t.grafo.captionOrphanDocumentsMid}
+        {hidden.facts_rejected}
+        {t.grafo.captionRejectedFactsSuffix}
       </p>
 
       <GrafoNodeCard node={selected} onClose={() => setSelected(null)} onOpenDocument={onOpenDocument} onOpenFact={onOpenFact} />
