@@ -55,7 +55,7 @@ export const es = {
       mapa: 'Mapa',
       documentos: 'Documentos',
       revision: 'Revisión',
-      escalaciones: 'Escalaciones',
+      escalaciones: 'Escalado',
       historial: 'Historial',
       analitica: 'Analítica',
       cobertura: 'Cobertura',
@@ -98,7 +98,7 @@ export const es = {
           'Las colas de la cola larga: propuestas de etiquetado por IA para verificar, propuestas de vocabulario para aprobar y documentos próximos a vencer para sucesión. La fucsia marca contenido de IA sin verificar.',
       },
       escalations: {
-        heading: 'Atención · Escalaciones',
+        heading: 'Atención · Escalado',
         description:
           'Gestiona preguntas escaladas: asigna, responde al empleado y resuelve — opcionalmente publicando la respuesta como conocimiento reutilizable.',
       },

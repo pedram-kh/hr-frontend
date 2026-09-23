@@ -77,28 +77,28 @@ type Expected = Record<string, string[]>;
 const EXPECTED: Record<string, Expected> = {
   super_admin: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
-    Atención: ['Escalaciones', 'Historial'],
+    Atención: ['Escalado', 'Historial'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     Personas: ['Directorio', 'Administradores'],
     Gobierno: ['Guardrails', 'Ajustes'],
   },
   hr_agent: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
-    Atención: ['Escalaciones'],
+    Atención: ['Escalado'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     Personas: ['Directorio'],
     Gobierno: ['Guardrails', 'Ajustes'],
   },
   knowledge_editor: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
-    Atención: ['Escalaciones'],
+    Atención: ['Escalado'],
     Análisis: ['Cobertura', 'Calidad'],
     // Personas intentionally absent — deliberately no key here.
     Gobierno: ['Guardrails', 'Ajustes'],
   },
   auditor: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
-    Atención: ['Escalaciones', 'Historial'],
+    Atención: ['Escalado', 'Historial'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     // Personas intentionally absent.
     Gobierno: ['Guardrails', 'Ajustes'],
@@ -210,7 +210,7 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
       // reader (or the CSS tooltip, keyed off the same `data-tooltip` string)
       // announces once the visible label text is hidden by collapse.
       expect(screen.getByRole('button', { name: 'Conocimiento · Mapa' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Atención · Escalaciones' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Atención · Escalado' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Análisis · Analítica' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Personas · Directorio' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Gobierno · Ajustes' })).toBeInTheDocument();
