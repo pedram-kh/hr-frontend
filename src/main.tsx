@@ -8,13 +8,15 @@ import { AuthProvider } from './auth/AuthContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import { es } from './i18n/es';
+import { BRAND } from './theme/brand';
 import App from './App.tsx';
 import './index.css';
 
-// Sprint 11a (§A.5): index.html's <title> is static markup (no SSR/templating
-// in this build), so it's the one BRAND read that can't be a JSX expression —
-// set at runtime instead, once, here.
+// index.html's <title> and favicon link are static markup (no SSR). Both
+// shells share this document, so set them once here from brand data — no
+// client name in the markup.
 document.title = es.brand.productName;
+document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.setAttribute('href', BRAND.icon);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

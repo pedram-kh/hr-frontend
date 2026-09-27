@@ -30,13 +30,13 @@ export const es = {
     error: 'Error',
     convenio: 'Convenio',
     confianza: 'confianza',
-    validity: 'Validity', // already English live (DocumentDetailPanel.tsx:255 etc.) — preserved, see comment above
-    territory: 'Territory', // same as `validity` above
+    validity: 'Válido', // already English live (DocumentDetailPanel.tsx:255 etc.) — preserved, see comment above
+    territory: 'Territorio', // same as `validity` above
     sector: 'Sector', // same word both languages
-    type: 'Type', // already English live
-    topic: 'Topic', // already English live
+    type: 'Tipo', // already English live
+    topic: 'Tema', // already English live
     dash: '—',
-    jobCategory: 'Job category', // already English live (ReferenceFactPanel.tsx, GroupsQueue.tsx)
+    jobCategory: 'Categoría profesional', // already English live (ReferenceFactPanel.tsx, GroupsQueue.tsx)
   },
 
   // AdminShell.tsx — the shell chrome around every admin view: sidebar nav
@@ -62,7 +62,7 @@ export const es = {
       calidad: 'Calidad',
       directorio: 'Directorio',
       administradores: 'Administradores',
-      guardrails: 'Guardrails',
+      guardrails: 'Guardarraíles',
       ajustes: 'Ajustes',
     },
     collapseMenu: 'Colapsar menú',
@@ -74,7 +74,7 @@ export const es = {
     // Spanish chrome, one of the §0/finding-2 mixed-language spots this
     // sprint is meant to resolve into one deliberate choice per locale, not
     // an oversight carried over silently. Recorded in review.md.
-    logout: 'Log out',
+    logout: 'Cerrar sesión',
     // `heading` is stored verbatim per view rather than composed from
     // `groups`/`nav` above: four of these (history, admins, guardrails,
     // settings) genuinely differ from their nav-label text today
@@ -86,7 +86,7 @@ export const es = {
       map: {
         heading: 'Conocimiento · Mapa',
         description:
-          'Navigate the corpus by lens, spot coverage gaps, and open a document to inspect, test, or edit its labels.',
+          'Navega el corpus por criterio, localiza huecos de cobertura y abre un documento para inspeccionar, probar o editar sus etiquetas.',
       },
       documents: {
         heading: 'Conocimiento · Documentos',
@@ -108,7 +108,7 @@ export const es = {
         // untranslated JSX in AdminShell.tsx — a CLI command name is
         // invariant across locale, not chrome; see the guard test's
         // `ALLOWED_HARDCODED_STRINGS` entries for `stats:*`/`questions:cluster`).
-        description: 'Deflection, escalaciones por corrección y agrupación de preguntas — todo reproducible desde los comandos',
+        description: 'Tasa de resolución (deflection), escalaciones por corrección y agrupación de preguntas — todo reproducible desde los comandos',
       },
       coverage: {
         heading: 'Análisis · Cobertura',
@@ -139,12 +139,12 @@ export const es = {
           'Ajusta la capa configurable sobre la base de seguridad fija. Solo puede endurecer, nunca debilitar: el servidor aplica siempre el valor más estricto y rechaza cualquier valor por debajo del mínimo. Escritura solo para super_admin; auditor en solo lectura.',
       },
       settings: {
-        heading: 'Gobierno · Answer model',
-        description: 'Configure the external answer-model provider key (ADR-0015).',
+        heading: 'Gobierno · Modelo de respuesta',
+        description: 'Configura la clave del proveedor externo del modelo de respuesta.',
       },
       brandPreview: {
-        heading: 'Brand preview (CP-1 — sprint-11a)',
-        description: 'Not in the nav — reachable only via #view=brand-preview. See sprint-11a/plan.md §G.1 step 3.',
+        heading: 'Vista previa de marca',
+        description: 'No está en el menú — solo por #view=brand-preview.',
       },
     },
   },
@@ -237,119 +237,118 @@ export const es = {
   // the mixed-language precedent (`common`'s comment above), not silently
   // rewritten into proper Spanish.
   documentDetail: {
-    close: 'Close', // already English live
-    loadingTitle: 'Loading…', // already English live
-    confirmFailedPrefix: 'Confirm failed: ', // already English live
-    scanNoTextNotice: 'No extractable text — this is a scan PDF. AI tagging requires a text layer.', // already English live
+    close: 'Cerrar', // already English live
+    loadingTitle: 'Cargando…', // already English live
+    confirmFailedPrefix: 'No se pudo confirmar: ', // already English live
+    scanNoTextNotice: 'Sin texto extraíble: es un PDF escaneado. El etiquetado por IA necesita una capa de texto.', // already English live
     hrRulingBadge: 'Resolución RR. HH.',
-    ocrdBadge: "OCR'd", // already English live
+    ocrdBadge: 'Con OCR', // already English live
     createdFromEscalation: 'Creada desde la escalación',
     byAgent: 'por',
     viewCard: 'Ver la tarjeta →',
-    readOnlyPrefix: "Read-only — you don't have the", // already English live
-    readOnlySuffix: 'ability. You can browse, inspect, and run the sandbox.', // already English live
+    readOnlyPrefix: 'Solo lectura — no tienes permiso de edición. Puedes consultar, inspeccionar y usar el simulador.',
     noConvenioNotice:
-      "No convenio — this document carries no scope (scope is derived via the convenio), so employees won't receive it as an answer.", // already English live
-    noTextOcrPrefix: 'No extractable text — this looks like a scanned, image-only PDF. Run', // already English live
-    noTextOcrMiddle: '(Sprint 7e, ADR-0026) to OCR it, or re-ingest with', // already English live
-    suspectedMistagPrefix: 'Suspected salary-table mistag: tagged as convenio prose but named like a table.', // already English live
-    suspectedMistagEditHint: 'Use "Re-type document" below → Tablas salariales.', // already English live; "Tablas salariales" is a real backend vocabulary item name (OQ-2 — data, not chrome), kept as-is regardless of locale
-    suspectedMistagNoEditHint: 'A knowledge editor can retag this.', // already English live
-    aiTaggingUnverified: 'Unverified AI tagging —', // already English live
-    aiTaggingInert: 'inert',
-    aiTaggingUntilConfirm: 'until you confirm.',
-    aiTaggingStep1Label: 'Step 1:',
-    aiTaggingStep1Text: 'review the fuchsia suggestions below; use the edit pickers to accept or correct the convenio, type, and validity.', // already English live
-    aiTaggingStep2Label: 'Step 2:',
-    aiTaggingStep2Click: 'click',
-    confirmTagsButton: 'Confirm tags', // already English live
-    aiTaggingStep2Suffix: '— that writes the scope and makes the document retrievable.', // already English live
-    derivedLabel: 'derived', // already English live
-    derivedTitleHint: 'Derived from the convenio — not editable', // already English live
-    removedLabel: 'removed', // already English live
-    scopeHeading: 'Scope', // already English live
-    kvRetrieval: 'Retrieval', // already English live
-    kvAuthority: 'Authority', // already English live
-    kvLanguage: 'Language', // already English live
+      'Sin convenio: este documento no tiene alcance (el alcance se deriva del convenio), por lo que los empleados no lo recibirán como respuesta.', // already English live
+    noTextOcrPrefix: 'Sin texto extraíble: parece un PDF escaneado, solo imagen. Ejecuta', // already English live
+    noTextOcrMiddle: 'para hacer el OCR, o vuelve a importar con', // already English live
+    suspectedMistagPrefix: 'Posible confusión con tabla salarial: etiquetado como prosa de convenio, pero el nombre parece una tabla.', // already English live
+    suspectedMistagEditHint: 'Usa «Cambiar tipo de documento» más abajo → Tablas salariales.', // already English live; "Tablas salariales" is a real backend vocabulary item name (OQ-2 — data, not chrome), kept as-is regardless of locale
+    suspectedMistagNoEditHint: 'Un editor de conocimiento puede reetiquetarlo.', // already English live
+    aiTaggingUnverified: 'Etiquetado de IA sin verificar —', // already English live
+    aiTaggingInert: 'sin efecto',
+    aiTaggingUntilConfirm: 'hasta que confirmes.',
+    aiTaggingStep1Label: 'Paso 1:',
+    aiTaggingStep1Text: 'revisa las sugerencias en fucsia; usa los selectores para aceptar o corregir el convenio, el tipo y la vigencia.', // already English live
+    aiTaggingStep2Label: 'Paso 2:',
+    aiTaggingStep2Click: 'pulsa',
+    confirmTagsButton: 'Confirmar etiquetas', // already English live
+    aiTaggingStep2Suffix: '— eso fija el alcance y hace recuperable el documento.', // already English live
+    derivedLabel: 'derivado', // already English live
+    derivedTitleHint: 'Derivado del convenio — no editable', // already English live
+    removedLabel: 'eliminado', // already English live
+    scopeHeading: 'Alcance', // already English live
+    kvRetrieval: 'Recuperación', // already English live
+    kvAuthority: 'Autoridad', // already English live
+    kvLanguage: 'Idioma', // already English live
     kvStatus: 'Status', // already English live
-    reviewTasksHeading: 'Review tasks', // already English live
-    tagsConfirmed: 'Tags confirmed ✓', // already English live
-    resuggestButton: 'Re-suggest with AI', // already English live
-    proposing: 'Proposing…', // already English live
-    resuggestTitleNoText: 'No extractable text — scan PDF, cannot AI-tag', // already English live
-    resuggestTitleReady: 'Re-run the AI tagging proposal (queued)', // already English live
-    provenanceHeading: 'Provenance', // already English live
-    adminHashPrefix: 'admin #', // already English live
-    aiSuggestedHeading: 'Suggested facets',
-    aiSuggestedUnverified: '(unverified)', // already English live
-    aiUnresolvedNotice: 'The AI couldn\u2019t resolve a facet — see the flagged values below.', // already English live
-    aiSuggestionsNotChanged: 'These are suggestions only — they have NOT changed the document\u2019s scope.', // already English live
-    aiSuggestionsEditHint: 'Adjust below if needed, then Confirm tags to verify (the human write).', // already English live
-    aiSuggestionsNoEditHint: 'A knowledge editor verifies them.', // already English live
-    proposeVocabulary: 'Propose vocabulary', // already English live
-    cancelPropose: 'Cancel', // already English live
-    topicsHeading: 'Topics', // already English live
-    noTopicsNotice: 'No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7); a human can tag now.', // already English live
-    removeTopicAriaPrefix: 'Remove', // already English live
-    addTopicPlaceholder: 'Add a topic…', // already English live
-    addTopicButton: 'Add topic', // already English live
-    chunkHealthHeading: 'Chunk health', // already English live
-    zeroChunksNotice: 'Zero chunks — this document is not retrievable (unanswerable until re-chunked; re-chunking is not a Knowledge-Center action).',
-    chunksLabel: 'Chunks', // already English live
+    reviewTasksHeading: 'Tareas de revisión', // already English live
+    tagsConfirmed: 'Etiquetas confirmadas ✓', // already English live
+    resuggestButton: 'Volver a sugerir con IA', // already English live
+    proposing: 'Proponiendo…', // already English live
+    resuggestTitleNoText: 'Sin texto extraíble: PDF escaneado, no se puede etiquetar con IA', // already English live
+    resuggestTitleReady: 'Volver a lanzar la propuesta de etiquetado por IA (en cola)', // already English live
+    provenanceHeading: 'Procedencia', // already English live
+    adminHashPrefix: 'admin n.º ', // already English live
+    aiSuggestedHeading: 'Facetas sugeridas',
+    aiSuggestedUnverified: '(sin verificar)', // already English live
+    aiUnresolvedNotice: 'La IA no pudo resolver una faceta — mira los valores marcados abajo.', // already English live
+    aiSuggestionsNotChanged: 'Son solo sugerencias: NO han cambiado el alcance del documento.', // already English live
+    aiSuggestionsEditHint: 'Ajusta abajo si hace falta y luego Confirmar etiquetas para verificar (la escritura humana).', // already English live
+    aiSuggestionsNoEditHint: 'Las verifica un editor de conocimiento.', // already English live
+    proposeVocabulary: 'Proponer vocabulario', // already English live
+    cancelPropose: 'Cancelar', // already English live
+    topicsHeading: 'Temas', // already English live
+    noTopicsNotice: 'Aún no hay temas etiquetados; ya es posible etiquetarlos manualmente.', // already English live
+    removeTopicAriaPrefix: 'Quitar', // already English live
+    addTopicPlaceholder: 'Añadir un tema…', // already English live
+    addTopicButton: 'Añadir tema', // already English live
+    chunkHealthHeading: 'Estado de los fragmentos', // already English live
+    zeroChunksNotice: 'Sin fragmentos — este documento no es recuperable y no puede responder. Hay que volver a fragmentarlo (no disponible desde aquí).',
+    chunksLabel: 'Fragmentos', // already English live
     tokensLabel: 'Tokens', // already English live
-    pagesLabel: 'Pages', // already English live
+    pagesLabel: 'Páginas', // already English live
     embeddingsLabel: 'Embeddings', // already English live
-    embeddingsPresent: 'present', // already English live
-    embeddingsMissing: 'missing', // already English live
-    lineageHeading: 'Lineage', // already English live
-    lineageSupersedes: 'supersedes', // already English live
-    lineageSupersededBy: 'superseded by', // already English live
-    editLabelsHeading: 'Edit labels', // already English live
+    embeddingsPresent: 'presentes', // already English live
+    embeddingsMissing: 'ausentes', // already English live
+    lineageHeading: 'Sucesión', // already English live
+    lineageSupersedes: 'sucede a', // already English live
+    lineageSupersededBy: 'sucedido por', // already English live
+    editLabelsHeading: 'Editar etiquetas', // already English live
     editLabelsNotice:
-      'Bounded edit (FK pickers into existing vocabulary). Territory & sector are derived from the convenio and not editable. Every save appends append-only human provenance.', // already English live
-    rescopeConvenio: 'Re-scope convenio', // already English live
-    retypeDocument: 'Re-type document', // already English live
-    selectValuePlaceholder: 'Select a value…', // already English live
-    retagButton: 'Retag', // already English live
-    applyButton: 'Apply', // already English live
-    rescopeConfirmTitle: 'Re-scope this document?', // already English live
-    retypeConfirmTitle: 'Re-type to a salary table?', // already English live
+      'Edición acotada (selectores sobre el vocabulario existente). Territorio y sector se derivan del convenio y no se editan. Cada guardado añade procedencia humana, solo de añadido.', // already English live
+    rescopeConvenio: 'Cambiar convenio', // already English live
+    retypeDocument: 'Cambiar tipo de documento', // already English live
+    selectValuePlaceholder: 'Selecciona un valor…', // already English live
+    retagButton: 'Reetiquetar', // already English live
+    applyButton: 'Aplicar', // already English live
+    rescopeConfirmTitle: '¿Cambiar el convenio de este documento?', // already English live
+    retypeConfirmTitle: '¿Pasarlo a tabla salarial?', // already English live
     rescopeConfirmBody:
-      'Changing the convenio changes the document\u2019s derived territory + sector — i.e. which employees receive it as an answer. This appends human provenance and cannot rewrite history.', // already English live
+      'Cambiar el convenio cambia el territorio y el sector derivados — es decir, qué empleados lo reciben como respuesta. Añade procedencia humana y no reescribe el historial.', // already English live
     retypeConfirmBody:
-      'Marking this as a salary table moves it off the prose answer path onto the structured salary (SQL) path, and removes it from convenio-prose retrieval. This appends human provenance.', // already English live
-    retrievalFieldLabel: 'Retrieval', // already English live
-    taggingFieldLabel: 'Tagging', // already English live
-    validFromLabel: 'Valid from', // already English live
-    validToLabel: 'Valid to', // already English live
-    saveLifecycle: 'Save lifecycle', // already English live
-    scopeAffectingSuffix: '(scope-affecting)', // already English live
-    scopeAffectingModalTitle: 'Scope-affecting change', // already English live
+      'Marcarlo como tabla salarial lo saca de la vía de prosa y lo pasa a la vía salarial estructurada (SQL), y lo quita de la recuperación de prosa de convenio. Añade procedencia humana.', // already English live
+    retrievalFieldLabel: 'Recuperación', // already English live
+    taggingFieldLabel: 'Etiquetado', // already English live
+    validFromLabel: 'Vigente desde', // already English live
+    validToLabel: 'Vigente hasta', // already English live
+    saveLifecycle: 'Guardar vigencia', // already English live
+    scopeAffectingSuffix: '(afecta al alcance)', // already English live
+    scopeAffectingModalTitle: 'Cambio que afecta al alcance', // already English live
     scopeAffectingModalBody:
-      'Changing the retrieval status or validity window moves the eligibility window — which employees receive this document as an answer. This appends human provenance and cannot rewrite history.', // already English live
-    confirmChangeButton: 'Confirm change', // already English live
-    originalDocumentHeading: 'Original document', // already English live
-    hideSource: 'Hide source', // already English live
-    viewOriginal: 'View original', // already English live
-    cantEmbedPrefix: 'Can\u2019t embed inline —', // already English live
-    openTheFile: 'open the file', // already English live
-    downloadOrOpen: 'Download / open the original file', // already English live
-    sandboxHeading: 'Sandbox', // already English live
-    sandboxTag: 'read-only · persists nothing', // already English live
-    sandboxRunPrefix: 'Run the answer pipeline against',
-    sandboxRunSuffix: 'only. Same gates as production; no chat, no escalation is saved.', // already English live
+      'Cambiar el estado de recuperación o la ventana de vigencia mueve quién puede recibir este documento como respuesta. Añade procedencia humana y no reescribe el historial.', // already English live
+    confirmChangeButton: 'Confirmar cambio', // already English live
+    originalDocumentHeading: 'Documento original', // already English live
+    hideSource: 'Ocultar fuente', // already English live
+    viewOriginal: 'Ver original', // already English live
+    cantEmbedPrefix: 'No se puede incrustar —', // already English live
+    openTheFile: 'abrir el archivo', // already English live
+    downloadOrOpen: 'Descargar / abrir el archivo original', // already English live
+    sandboxHeading: 'Simulador', // already English live
+    sandboxTag: 'solo lectura · no guarda nada', // already English live
+    sandboxRunPrefix: 'Ejecuta el proceso de respuesta contra',
+    sandboxRunSuffix: 'solo. Las mismas compuertas que en producción; no se guarda ni el chat ni la escalación.', // already English live
     sandboxPlaceholder: '\u00bfcu\u00e1ntos d\u00edas de vacaciones tengo?',
-    testButton: 'Test', // already English live
-    running: 'Running…', // already English live
+    testButton: 'Probar', // already English live
+    running: 'Ejecutando…', // already English live
     outcomeAnswered: 'Respondida',
     outcomeEscalated: 'Escalada',
-    outcomeResult: 'result', // already English live
-    retrievedPrefix: 'retrieved', // already English live
-    topScorePrefix: 'top', // already English live
+    outcomeResult: 'resultado', // already English live
+    retrievedPrefix: 'recuperados', // already English live
+    topScorePrefix: 'máx.', // already English live
     pageAbbr: 'p.',
-    draftSummary: 'Draft the model produced (not served)', // already English live
-    groundingStoppedPrefix: 'Stopped by the grounding gate — ungrounded:', // already English live
-    sourcePagesHeading: 'Source pages', // already English live
+    draftSummary: 'Borrador que produjo el modelo (no se sirve)', // already English live
+    groundingStoppedPrefix: 'Detenido por la compuerta de fundamentación — sin respaldo:', // already English live
+    sourcePagesHeading: 'Páginas de origen', // already English live
     pagerPrev: '← Anterior',
     pagerNext: 'Siguiente →',
     pageCounter: 'Página',
@@ -368,74 +367,74 @@ export const es = {
   // vocabulary proposals, expiry/succession (77 matches, plan.md §A.1).
   // Mixed-language like documentDetail above — flagged inline.
   reviewQueue: {
-    tabTagging: 'AI tagging', // already English live
-    tabReferenceFacts: 'Reference facts', // already English live
-    tabGroups: 'Groups', // already English live
-    tabVocabulary: 'Vocabulary proposals', // already English live
-    tabExpiry: 'Expiry', // already English live
+    tabTagging: 'Etiquetado IA', // already English live
+    tabReferenceFacts: 'Datos de referencia', // already English live
+    tabGroups: 'Grupos', // already English live
+    tabVocabulary: 'Propuestas de vocabulario', // already English live
+    tabExpiry: 'Vencimiento', // already English live
     facts: {
       intro:
-        'Reference facts awaiting verification — AI-segmented or manually created —', // already English live
-      introUncertainFirst: 'uncertain-first',
+        'Datos de referencia pendientes de verificación — segmentados por IA o creados a mano —', // already English live
+      introUncertainFirst: 'primero los más inciertos',
       introRest:
-        ', then lowest-confidence, then (ties only) topic demand (a manual fact carries neither signal, so it falls to the bottom of its tier). Inert until a human verifies, whichever source it came from. Open one to check the source (the quoted line for an AI proposal, fuchsia; the linked document for a manual fact) against the assigned scope.', // already English live
-      allTopics: 'All topics', // already English live
+        ', luego menor confianza y, solo en empate, la demanda del tema (un dato manual no trae ninguna de las dos señales, así que cae al final de su tramo). Sin efecto hasta que una persona lo verifique, venga de donde venga. Abre uno para contrastar la fuente (la línea citada si es propuesta de IA, en fucsia; el documento enlazado si es un dato manual) con el alcance asignado.', // already English live
+      allTopics: 'Todos los temas', // already English live
       colId: 'Id', // already English live
-      colValue: 'Value', // already English live
-      colSource: 'Source', // already English live
-      colScope: 'Scope', // already English live
-      colGroup: 'Group', // already English live
-      colTopic: 'Topic', // already English live
+      colValue: 'Valor', // already English live
+      colSource: 'Fuente', // already English live
+      colScope: 'Alcance', // already English live
+      colGroup: 'Grupo', // already English live
+      colTopic: 'Tema', // already English live
       colConf: 'Conf.', // already English live
       colFlags: 'Flags', // already English live
       manualBadge: 'Manual', // already English live
-      versionBadge: 'version',
+      versionBadge: 'versión',
       resolveVersion: 'Resolver versión',
-      noFacts: 'No facts awaiting review — the queue is clear.', // already English live
-      totalOne: 'fact', // already English live
-      totalMany: 'facts', // already English live
+      noFacts: 'No hay datos pendientes de revisión — la cola está vacía.', // already English live
+      totalOne: 'dato', // already English live
+      totalMany: 'datos', // already English live
     },
     tagging: {
-      introPrefix: 'Documents', // already English live
-      underReview: 'under_review',
+      introPrefix: 'Documentos', // already English live
+      underReview: 'en revisión',
       introSuffix:
-        '— not retrievable until verified. The AI auto-proposes facets on ingest; lowest-confidence first. Open one to review the (fuchsia) AI suggestions and Confirm.', // already English live
-      colTitle: 'Title', // already English live
+        '— no recuperables hasta verificarlos. La IA propone las facetas al importar; primero los de menor confianza. Abre uno para revisar las sugerencias (fucsia) y Confirmar.', // already English live
+      colTitle: 'Título', // already English live
       colConvenio: 'Convenio',
-      colType: 'Type', // already English live
-      colConfidence: 'Confidence', // already English live
+      colType: 'Tipo', // already English live
+      colConfidence: 'Confianza', // already English live
       colFlags: 'Flags', // already English live
-      conflictBadge: 'Conflict', // already English live
-      noTextBadge: 'No text', // already English live
-      nothingUnderReview: 'Nothing under review — the queue is clear.', // already English live
-      totalOne: 'document', // already English live
-      totalMany: 'documents', // already English live
+      conflictBadge: 'Conflicto', // already English live
+      noTextBadge: 'Sin texto', // already English live
+      nothingUnderReview: 'Nada en revisión — la cola está vacía.', // already English live
+      totalOne: 'documento', // already English live
+      totalMany: 'documentos', // already English live
     },
     vocabulary: {
       introPrefix:
-        'Proposed vocabulary (variant→alias is the default; create-new is deliberate). Approving writes into the controlled vocabulary — gated by', // already English live
-      introSuffix: '(super_admin). The AI proposes only.', // already English live
-      noProposals: 'No open vocabulary proposals.', // already English live
-      looksLikePrefix: '· looks like #', // already English live
-      proposedByPrefix: 'proposed by', // already English live
-      fromDocumentPrefix: '· from', // already English live
-      reject: 'Reject', // already English live
-      awaitingApproval: 'Awaiting a super_admin to approve.', // already English live
-      totalOne: 'proposal', // already English live
-      totalMany: 'proposals', // already English live
+        'Vocabulario propuesto (variante→alias es lo habitual; crear uno nuevo es deliberado). Aprobar escribe en el vocabulario controlado — lo autoriza', // already English live
+      introSuffix: '(super_admin). La IA solo propone.', // already English live
+      noProposals: 'No hay propuestas de vocabulario abiertas.', // already English live
+      looksLikePrefix: '· se parece a n.º ', // already English live
+      proposedByPrefix: 'propuesto por', // already English live
+      fromDocumentPrefix: '· desde', // already English live
+      reject: 'Rechazar', // already English live
+      awaitingApproval: 'A la espera de que un super_admin lo apruebe.', // already English live
+      totalOne: 'propuesta', // already English live
+      totalMany: 'propuestas', // already English live
     },
     expiry: {
-      intro: 'Active prose within 90 days of expiry (or already past). Confirm a successor (same convenio only) to write the lineage —', // already English live
-      introOldDocIs: '— the old document is', // already English live
-      introNeverRetired: 'never auto-retired',
+      intro: 'Prosa vigente a menos de 90 días del vencimiento (o ya vencida). Confirma un sucesor (solo del mismo convenio) para escribir la sucesión —', // already English live
+      introOldDocIs: 'el documento antiguo', // already English live
+      introNeverRetired: 'nunca se retira solo',
       introSuffix: '.', // already English live
-      nothingExpiringPrefix: 'Nothing expiring — the queue is clear. (Run', // already English live
-      nothingExpiringSuffix: 'to refresh.)', // already English live
-      totalOne: 'task', // already English live
-      totalMany: 'tasks', // already English live
-      pastBadge: 'Past', // already English live
-      noConvenio: 'no convenio', // already English live
-      validPrefix: 'valid', // already English live
+      nothingExpiringPrefix: 'Nada próximo a vencer — la cola está vacía. (Ejecuta', // already English live
+      nothingExpiringSuffix: 'para actualizar.)', // already English live
+      totalOne: 'tarea', // already English live
+      totalMany: 'tareas', // already English live
+      pastBadge: 'Vencido', // already English live
+      noConvenio: 'sin convenio', // already English live
+      validPrefix: 'vigente', // already English live
       noSuggestion: 'Sin sugerencia de sucesión:',
       retry: 'Reintentar',
       aiRejectedNotice: 'Sugerencia de IA rechazada — sin efecto sobre el documento.',
@@ -462,13 +461,13 @@ export const es = {
       escalatedForAdjudication: 'Escalado para adjudicación.',
       aiRejectedTaskOpen: 'Sugerencia de IA rechazada — no se ha escrito ninguna relación; la tarea sigue abierta.',
       queuedForComparison: 'Comparación en cola — vuelve a cargar en unos segundos.',
-      noConvenioSuccessionNotice: 'No convenio — succession is scope-based, so no same-convenio successor can be linked. Dismiss or escalate.', // already English live
-      pickSuccessor: 'Pick the successor (same convenio)…', // already English live
-      alsoRetire: 'Also retire this one (historical)', // already English live
-      confirmSuccessionRetire: 'Confirm succession + retire', // already English live
-      confirmSuccessionButton: 'Confirm succession', // already English live
-      dismissAction: 'Dismiss (renewed in place / no action)', // already English live
-      escalateAction: 'Escalate', // already English live
+      noConvenioSuccessionNotice: 'Sin convenio: la sucesión se basa en el alcance, así que no se puede enlazar un sucesor del mismo convenio. Descartar o escalar.', // already English live
+      pickSuccessor: 'Elige el sucesor (mismo convenio)…', // already English live
+      alsoRetire: 'Retirar también este (histórico)', // already English live
+      confirmSuccessionRetire: 'Confirmar sucesión y retirar', // already English live
+      confirmSuccessionButton: 'Confirmar sucesión', // already English live
+      dismissAction: 'Descartar (renovado en el sitio / sin acción)', // already English live
+      escalateAction: 'Escalar', // already English live
     },
   },
 
@@ -518,7 +517,7 @@ export const es = {
     employeeHeading: 'Empleado',
     employeeContextRestrictedNotice: 'No tienes permiso para ver el contexto del empleado. Se requiere',
     colName: 'Nombre',
-    colEmail: 'Email',
+    colEmail: 'Correo',
     colTerritory: 'Territorio',
     colCategoryGroup: 'Categoría / grupo',
     colSeniority: 'Antigüedad',
@@ -547,7 +546,7 @@ export const es = {
     resolutionPlaceholder: 'Redacta la resolución para esta consulta…',
     publishAsKnowledge: 'Publicar como conocimiento (resolución interna de RR. HH.)',
     topicPlaceholder: 'Tema… (recomendado)',
-    noTopicScopeWarning: 'Sin tema, la verja de conflicto bloquea por ámbito completo (sobreprotege). Asigna un tema para afinarla.',
+    noTopicScopeWarning: 'Sin tema, la verja de conflicto bloquea por alcance completo (sobreprotege). Asigna un tema para afinarla.',
     publishedLosslessPrefix: 'Publicada —',
     publishedLosslessSuffix: 'fragmento(s) indexados (texto íntegro verificado).',
     publishedMismatch: 'Publicada, pero el texto indexado NO coincide exactamente con el escrito (revisar — posible mangling).',
@@ -557,10 +556,10 @@ export const es = {
     publishWithConfirmation: 'Publicar con esta confirmación',
     publishAsKnowledgeButton: 'Publicar como conocimiento',
     markResolved: 'Marcar como resuelta',
-    confirmScopeAriaLabel: 'Confirmar ámbito',
-    confirmScopeTitle: '¿Publicar e heredar el ámbito del empleado?',
+    confirmScopeAriaLabel: 'Confirmar alcance',
+    confirmScopeTitle: '¿Publicar e heredar el alcance del empleado?',
     confirmScopeBody:
-      'La resolución se publicará como internal_hr_ruling heredando el convenio del empleado (territorio y sector incluidos) y pasará a responder a otras personas de ese ámbito. No puede prevalecer sobre un convenio oficial vigente para el mismo ámbito y tema (se bloqueará si lo hace).',
+      'La resolución se publicará como internal_hr_ruling heredando el convenio del empleado (territorio y sector incluidos) y pasará a responder a otras personas de ese alcance. No puede prevalecer sobre un convenio oficial vigente para el mismo alcance y tema (se bloqueará si lo hace).',
     cancel: 'Cancelar',
     confirmAndPublish: 'Confirmar y publicar',
     activityHeading: 'Actividad',
@@ -579,8 +578,8 @@ export const es = {
       'sensitive_topic.admin_blocked_topic': 'Tema bloqueado por admin',
       'off_domain.legal_medical': 'Consejo legal/médico',
       'off_domain.other_employee_data': 'Datos de otra persona',
-      'off_domain.router_off_domain': 'Fuera de ámbito',
-      'off_domain.admin_off_domain': 'Fuera de ámbito (admin)',
+      'off_domain.router_off_domain': 'Fuera de alcance',
+      'off_domain.admin_off_domain': 'Fuera de alcance (admin)',
       'explicit_request.explicit_request': 'Petición explícita de RR.HH.',
       'low_confidence.no_retrieval': 'Sin contenido encontrado',
       'low_confidence.weak_retrieval': 'Contenido poco relevante',
@@ -615,7 +614,7 @@ export const es = {
       'publish.semantic_compare_unavailable': 'Comparación no disponible',
       'publish.semantic_no_text_to_compare': 'Sin texto para comparar',
       'publish.convert_blocked': 'Motivo no convertible',
-      'quality_sample_wrong.wrong_scope': 'Ámbito incorrecto',
+      'quality_sample_wrong.wrong_scope': 'Alcance incorrecto',
       'quality_sample_wrong.wrong_figure': 'Cifra incorrecta',
       'quality_sample_wrong.stale_document': 'Documento desactualizado',
       'quality_sample_wrong.unclear': 'Respuesta poco clara',
@@ -655,24 +654,24 @@ export const es = {
   // block) are translated normally into en.ts, applying the approved
   // glossary's "vigencia" → "validity" rule where it appears.
   referenceFactPanel: {
-    heading: 'Reference fact', // already English live
-    loadingText: 'Loading…', // already English live (distinct from `common.loading`'s Spanish 'Cargando…', which is NOT what this file showed)
+    heading: 'Dato de referencia', // already English live
+    loadingText: 'Cargando…', // already English live (distinct from `common.loading`'s Spanish 'Cargando…', which is NOT what this file showed)
     typeBadge: 'dato', // glossary: "dato (de referencia)" → translate for en.ts only
-    aiProposalBadge: 'AI proposal', // already English live
+    aiProposalBadge: 'Propuesta de IA', // already English live
     manualBadge: 'Manual', // already English live
-    badgeVerified: 'verified', // already English live
-    badgeNeedsReview: 'needs review', // already English live
-    badgeRejected: 'rejected', // already English live
-    closeAriaLabel: 'Close', // already English live
-    readOnlyNoticePrefix: "Read-only — you don't have the", // already English live
-    readOnlyNoticeSuffix: 'ability.', // already English live
-    aiProposalNoticeBold: 'AI-segmented proposal — unverified.', // already English live
+    badgeVerified: 'verificado', // already English live
+    badgeNeedsReview: 'pendiente de revisión', // already English live
+    badgeRejected: 'rechazado', // already English live
+    closeAriaLabel: 'Cerrar', // already English live
+    readOnlyNoticePrefix: 'Solo lectura — no tienes el permiso', // already English live
+    readOnlyNoticeSuffix: 'para editar.', // already English live
+    aiProposalNoticeBold: 'Propuesta segmentada por IA — sin verificar.', // already English live
     aiProposalNoticeRest:
-      'Check the scope against the quoted source line below before verifying. The agent only proposes; it never verifies itself.', // already English live
-    confidencePrefix: 'Confidence:', // already English live
-    versionDuplicateBold: 'Possible version/duplicate', // already English live
-    versionDuplicatePrefix: '— same scope as an existing fact with a different value ("', // already English live
-    versionDuplicateSuffix: '"). Decide which is true, and since when.', // already English live
+      'Contrasta el alcance con la línea de origen citada abajo antes de verificar. El agente solo propone; nunca se verifica a sí mismo.', // already English live
+    confidencePrefix: 'Confianza:', // already English live
+    versionDuplicateBold: 'Posible versión o duplicado', // already English live
+    versionDuplicatePrefix: '— mismo alcance que un dato existente, con otro valor («', // already English live
+    versionDuplicateSuffix: '»). Decide cuál es el válido y desde cuándo.', // already English live
     resolveDuplicateButton: 'Resolver versión (comparar lado a lado)',
     supersededBold: 'Sustituido',
     supersededByPrefix: 'por “',
@@ -686,44 +685,44 @@ export const es = {
     coexistsTrailing: 'con el hecho marcado: no son versiones del mismo dato.',
     rejectedDuplicateBold: 'Descartado',
     rejectedDuplicateTrailing: 'como duplicado incorrecto.',
-    inertNoticeBold: 'Inert until verified', // already English live
-    inertNoticeRest: 'this fact is not answerable until a human verifies it (once verified, it can be served directly as a live answer).', // already English live
-    sourceLineHeading: 'Source line (check the scope)', // already English live
-    valueHeading: 'Value', // already English live
+    inertNoticeBold: 'Sin efecto hasta verificarlo', // already English live
+    inertNoticeRest: 'este dato no se puede responder hasta que una persona lo verifique (una vez verificado, puede servirse tal cual como respuesta vigente).', // already English live
+    sourceLineHeading: 'Línea de origen (comprueba el alcance)', // already English live
+    valueHeading: 'Valor', // already English live
     rawValuesSummary: 'Original (raw_values)', // already English live
-    scopeHeading: 'Scope', // already English live
-    groupLabel: 'Group', // already English live
-    noJobCategoryFallback: '— (convenio-wide)', // already English live
-    authorityLabel: 'Authority', // already English live
-    authorityLockTitle: 'A reference fact can never outrank a convenio (enforced in schema + validation).', // already English live
-    sourceLabel: 'Source', // already English live
+    scopeHeading: 'Alcance', // already English live
+    groupLabel: 'Grupo', // already English live
+    noJobCategoryFallback: '— (todo el convenio)', // already English live
+    authorityLabel: 'Autoridad', // already English live
+    authorityLockTitle: 'Un dato de referencia nunca puede estar por encima de un convenio (forzado en el esquema y en la validación).', // already English live
+    sourceLabel: 'Fuente', // already English live
     sourceManual: 'manual', // already English live
     statusLabel: 'Status', // already English live
-    verifiedByPrefix: 'by', // already English live
-    noSourceDocLinked: 'No source document linked', // already English live
-    verifying: 'Verifying…', // already English live
-    verifyProposal: 'Verify proposal', // already English live
-    verifyFact: 'Verify fact', // already English live
-    cancelEdit: 'Cancel edit', // already English live
-    fixThenVerify: 'Fix then verify', // already English live
-    editButton: 'Edit', // already English live
-    rejecting: 'Rejecting…', // already English live
-    rejectButton: 'Reject', // already English live
-    resegmentTitle: 'Re-run the segmentation agent on the source (idempotent upsert)', // already English live
-    resegmentButton: 'Re-segment source', // already English live
-    provenanceHeading: 'Provenance', // already English live
-    adminHashPrefix: 'admin #', // already English live
-    validityStartLabel: 'Validity start', // already English live
-    validityEndLabel: 'Validity end', // already English live
-    sourceLocatorLabel: 'Source locator', // already English live
+    verifiedByPrefix: 'por', // already English live
+    noSourceDocLinked: 'Sin documento de origen enlazado', // already English live
+    verifying: 'Verificando…', // already English live
+    verifyProposal: 'Verificar propuesta', // already English live
+    verifyFact: 'Verificar dato', // already English live
+    cancelEdit: 'Cancelar edición', // already English live
+    fixThenVerify: 'Corregir y verificar', // already English live
+    editButton: 'Editar', // already English live
+    rejecting: 'Rechazando…', // already English live
+    rejectButton: 'Rechazar', // already English live
+    resegmentTitle: 'Volver a ejecutar el agente de segmentación sobre la fuente (actualización idempotente)', // already English live
+    resegmentButton: 'Re-segmentar fuente', // already English live
+    provenanceHeading: 'Procedencia', // already English live
+    adminHashPrefix: 'admin n.º ', // already English live
+    validityStartLabel: 'Inicio de vigencia', // already English live
+    validityEndLabel: 'Fin de vigencia', // already English live
+    sourceLocatorLabel: 'Localizador de la fuente', // already English live
     sourceLocatorPlaceholder: 'p.3 §2 / sheet:smi26', // already English/technical live
-    authorityLockedPrefix: 'Authority is locked to', // already English live
-    authorityLockedSuffix: '— it cannot be raised.', // already English live
-    saving: 'Saving…', // already English live
-    confirmScopeChangeAriaLabel: 'Confirm scope change', // already English live
-    scopeChangeTitle: 'Scope change', // already English live
-    scopeChangeBody: 'This changes the validity/scope of the fact (which employees it would answer). Confirm to apply.', // already English live
-    confirmChangeButton: 'Confirm change', // already English live
+    authorityLockedPrefix: 'La autoridad está fijada en', // already English live
+    authorityLockedSuffix: '— no se puede subir.', // already English live
+    saving: 'Guardando…', // already English live
+    confirmScopeChangeAriaLabel: 'Confirmar cambio de alcance', // already English live
+    scopeChangeTitle: 'Cambio de alcance', // already English live
+    scopeChangeBody: 'Esto cambia la vigencia o el alcance del dato (a qué empleados respondería). Confirma para aplicar.', // already English live
+    confirmChangeButton: 'Confirmar cambio', // already English live
   },
 
   // QualitySampleQueue.tsx — the Calidad screen: the monthly verdict
@@ -740,7 +739,7 @@ export const es = {
       wrong: 'Incorrecta',
     },
     failureKindLabels: {
-      wrong_scope: 'Ámbito incorrecto',
+      wrong_scope: 'Alcance incorrecto',
       wrong_figure: 'Cifra incorrecta',
       stale_document: 'Documento obsoleto',
       unclear: 'Poco claro',
@@ -761,7 +760,7 @@ export const es = {
     sampleWord: 'muestra',
     monthPlaceholder: 'Mes (AAAA-MM)…',
     unreviewedOnlyLabel: 'Solo sin revisar',
-    loadingText: 'Loading…', // already English live (distinct from `common.loading`'s Spanish 'Cargando…')
+    loadingText: 'Cargando…', // already English live (distinct from `common.loading`'s Spanish 'Cargando…')
     colMonth: 'Mes',
     colQuestion: 'Pregunta',
     colStratum: 'Estrato',
@@ -770,7 +769,7 @@ export const es = {
     colReviewer: 'Revisor',
     colCard: 'Tarjeta',
     viewAnswerSummary: 'Ver respuesta',
-    stratumPathFallback: 'prose', // already English live — a technical fallback token, not prose-about-prose
+    stratumPathFallback: 'prosa', // already English live — a technical fallback token, not prose-about-prose
     nationalFallback: 'nacional',
     notReviewedBadge: 'Sin revisar',
     noSamplesPrefix: 'No hay muestras para este filtro. (Ejecuta',
@@ -797,12 +796,12 @@ export const es = {
   // thresholds, blocked-topics list, off-domain message, tone constraints,
   // convert-by-reason, change history (53 matches, plan.md §A.1). Entirely
   // Spanish source text — straight translation, applying the approved
-  // glossary's "ámbito" → "scope" rule where it appears.
+  // glossary: alcance (not ámbito) → "scope". See sprint-12a/glossary.md.
   guardrailsPage: {
     reasonLabels: {
       low_confidence: 'Baja confianza',
       salary_coverage_gap: 'Hueco en tablas salariales',
-      off_domain: 'Fuera de ámbito',
+      off_domain: 'Fuera de alcance',
       explicit_request: 'Petición explícita',
       sensitive_topic: 'Tema sensible',
     } as Record<string, string>,
@@ -838,7 +837,7 @@ export const es = {
     usingMinimumSuffix: '(usando el mínimo)',
     savingThresholds: 'Guardando…',
     saveThresholdsButton: 'Guardar umbrales',
-    blockedTopicsHeading: 'Temas bloqueados y fuera de ámbito',
+    blockedTopicsHeading: 'Temas bloqueados y fuera de alcance',
     blockedTopicsIntro1: 'Lista',
     blockedTopicsIntroBold: 'aditiva',
     blockedTopicsIntro2:
@@ -846,14 +845,14 @@ export const es = {
     blockedTopicsIntroBold2: 'antes',
     blockedTopicsIntro3: 'de llegar al proveedor.',
     noEntriesYet: 'Sin entradas todavía.',
-    kindOffDomainBadge: 'Fuera de ámbito',
+    kindOffDomainBadge: 'Fuera de alcance',
     kindSensitiveTopicBadge: 'Tema sensible',
     disableButton: 'Desactivar',
     disabledLabel: 'desactivado',
     addPatternPlaceholder: 'palabra o frase',
     addButton: 'Añadir',
-    offDomainHeading: 'Mensaje de «fuera de ámbito»',
-    offDomainIntro: 'Texto que se muestra al escalar por estar fuera de ámbito. Solo afecta al texto; no cambia ninguna decisión.',
+    offDomainHeading: 'Mensaje de «fuera de alcance»',
+    offDomainIntro: 'Texto que se muestra al escalar por estar fuera de alcance. Solo afecta al texto; no cambia ninguna decisión.',
     saveMessageButton: 'Guardar mensaje',
     toneHeading: 'Tono y estilo',
     toneIntro1: 'Solo',
@@ -905,7 +904,7 @@ export const es = {
     colReason: 'Motivo',
     colBindTo: 'Vincular a',
     boundManuallyBadge: 'vinculado a mano',
-    convenioWideScopeNotice: 'ámbito convenio — no se acota',
+    convenioWideScopeNotice: 'alcance convenio — no se acota',
     approveNodeFirstNotice: 'aprueba primero un nodo',
     chooseNodePlaceholder: 'Elegir nodo…',
     bindButton: 'Vincular',
@@ -928,7 +927,7 @@ export const es = {
     colValidity: 'Vigencia',
     colStatus: 'Estado',
     alsoBindsPrefix: 'Este dato abarca también otro(s) nodo(s):',
-    alsoBindsSuffix: 'Vincúlalo allí también o su ámbito quedará incompleto.',
+    alsoBindsSuffix: 'Vincúlalo allí también o su alcance quedará incompleto.',
     openEndedFallback: 'abierta',
     alreadyBoundBadge: 'ya vinculado',
     manualBindingNeededHeading: 'No se resuelven solos',
@@ -986,44 +985,44 @@ export const es = {
   // `validityEndLabel`/`sourceLocatorPlaceholder` reuse `referenceFactPanel`'s
   // identical keys rather than duplicating.
   referenceFactCreatePanel: {
-    heading: 'New reference fact', // already English live
-    requiredFieldsError: 'A convenio and a value are required.', // already English live
+    heading: 'Nuevo dato de referencia', // already English live
+    requiredFieldsError: 'Hacen falta un convenio y un valor.', // already English live
     convenioRequiredLabel: 'Convenio *', // already English live
-    selectConvenioPlaceholder: 'Select a convenio…', // already English live
-    derivedScopePrefix: 'Derived scope:', // already English live
-    derivedScopeSuffix: '(territory & sector ride the convenio — not editable)', // already English live
-    jobCategoryOptionalLabel: 'Job category (optional)', // already English live
-    convenioWideOption: 'Convenio-wide', // already English live
-    topicOptionalLabel: 'Topic (optional)', // already English live
-    noTopicOption: 'No topic', // already English live
-    valueRequiredLabel: 'Value *', // already English live
+    selectConvenioPlaceholder: 'Selecciona un convenio…', // already English live
+    derivedScopePrefix: 'Alcance derivado:', // already English live
+    derivedScopeSuffix: '(territorio y sector van con el convenio — no editables)', // already English live
+    jobCategoryOptionalLabel: 'Categoría profesional (opcional)', // already English live
+    convenioWideOption: 'Todo el convenio', // already English live
+    topicOptionalLabel: 'Tema (opcional)', // already English live
+    noTopicOption: 'Sin tema', // already English live
+    valueRequiredLabel: 'Valor *', // already English live
     valuePlaceholder: 'periodo de prueba 90/75 días', // intentionally untranslated: a real convenio value example, not UI chrome
-    originalTextOptionalLabel: 'Original text (raw, optional)', // already English live
-    rawTextPlaceholder: 'Paste the verbatim source phrasing (kept in raw_values)…', // already English live
-    sourceDocumentOptionalLabel: 'Source document (optional)', // already English live
-    noSourceLinkOption: 'No source link', // already English live
-    sourceLocatorOptionalLabel: 'Source locator (optional)', // already English live
-    authorityPrefix: 'Authority:', // already English live
-    lockedSuffix: '— locked.', // already English live
-    authorityNeverOutrankNotice: 'A reference fact can never outrank a convenio.', // already English live
-    willLandPrefix: 'The fact will land', // already English live
-    willLandSuffix: '— verify it from its card to make it count.', // already English live
-    creating: 'Creating…', // already English live
-    createFactButton: 'Create fact', // already English live
-    cancelButton: 'Cancel', // already English live
-    readerHeading: 'Reference source', // already English live
-    readerIntroPrefix: 'Read a non-salary .docx/.xlsx to enter facts by hand. Tagging it', // already English live
-    readerIntroSuffix: 'keeps it off the salary path.', // already English live
-    uploadLabel: 'Upload a new source (.docx / .xlsx)', // already English live
-    uploadingText: 'Uploading + reading…', // already English live
-    uploadedNote: 'Uploaded — select it below to read its content.', // already English live
-    openSourceLabel: 'Open a source', // already English live
-    selectSourcePlaceholder: 'Select a reference source…', // already English live
-    loadingContentText: 'Loading content…', // already English live
-    noExtractableContent: '(no extractable content)', // already English live
-    sectionPrefix: 'Section', // already English live
-    useAsLocatorTitle: 'Use as source locator', // already English live
-    useLocatorButton: 'use locator', // already English live
+    originalTextOptionalLabel: 'Texto original (en bruto, opcional)', // already English live
+    rawTextPlaceholder: 'Pega la redacción literal de la fuente (se guarda en raw_values)…', // already English live
+    sourceDocumentOptionalLabel: 'Documento de origen (opcional)', // already English live
+    noSourceLinkOption: 'Sin enlace a la fuente', // already English live
+    sourceLocatorOptionalLabel: 'Localizador de la fuente (opcional)', // already English live
+    authorityPrefix: 'Autoridad:', // already English live
+    lockedSuffix: '— fijada.', // already English live
+    authorityNeverOutrankNotice: 'Un dato de referencia nunca puede estar por encima de un convenio.', // already English live
+    willLandPrefix: 'El dato quedará', // already English live
+    willLandSuffix: '— verifícalo desde su ficha para que cuente.', // already English live
+    creating: 'Creando…', // already English live
+    createFactButton: 'Crear dato', // already English live
+    cancelButton: 'Cancelar', // already English live
+    readerHeading: 'Fuente de referencia', // already English live
+    readerIntroPrefix: 'Lee un .docx/.xlsx que no sea salarial para introducir datos a mano. Etiquetarlo', // already English live
+    readerIntroSuffix: 'lo mantiene fuera de la vía salarial.', // already English live
+    uploadLabel: 'Subir una fuente nueva (.docx / .xlsx)', // already English live
+    uploadingText: 'Subiendo y leyendo…', // already English live
+    uploadedNote: 'Subido — selecciónalo abajo para leer el contenido.', // already English live
+    openSourceLabel: 'Abrir una fuente', // already English live
+    selectSourcePlaceholder: 'Selecciona una fuente de referencia…', // already English live
+    loadingContentText: 'Cargando contenido…', // already English live
+    noExtractableContent: '(sin contenido extraíble)', // already English live
+    sectionPrefix: 'Sección', // already English live
+    useAsLocatorTitle: 'Usar como localizador de la fuente', // already English live
+    useLocatorButton: 'usar localizador', // already English live
   },
 
   // CsvImportPanel.tsx — the employee-directory CSV bootstrap (ADR-0004):
@@ -1061,7 +1060,7 @@ export const es = {
     validSuffix: 'válidas ·',
     invalidSuffix: 'con error.',
     colRow: 'Fila',
-    colEmail: 'Email',
+    colEmail: 'Correo',
     colAction: 'Acción',
     colStatus: 'Estado',
     colDetail: 'Detalle',
@@ -1077,14 +1076,14 @@ export const es = {
   // `supersedeSuccessMsg`, the exact site the glossary review called out as
   // reading better with per-site phrasing than a bare noun-swap.
   factDuplicatePanel: {
-    supersedeSuccessMsg: "Superseded — the previous fact's validity period has closed. Neither has been deleted.",
-    coexistSuccessMsg: 'Marked as coexisting — both remain answerable.',
-    rejectSuccessMsg: 'Discarded as a duplicate — it is no longer answerable.',
+    supersedeSuccessMsg: 'Sucedido — se ha cerrado la vigencia del dato anterior. No se ha borrado ninguno.',
+    coexistSuccessMsg: 'Marcados como coexistentes — los dos siguen pudiendo responder.',
+    rejectSuccessMsg: 'Descartado como duplicado — ya no puede responder.',
     heading: 'Resolver versión',
     readOnlyPrefix: 'Solo lectura — necesitas',
     readOnlySuffix: 'para resolver una versión.',
     resolvedNotice: 'Este par ya está resuelto. El enlace se conserva como linaje de versiones; nada se ha borrado.',
-    noticeIntro: 'Dos hechos del mismo ámbito y tema con valores distintos. Decide si uno',
+    noticeIntro: 'Dos hechos del mismo alcance y tema con valores distintos. Decide si uno',
     supersedeBold: 'sustituye',
     noticeMid1: 'al otro (una versión posterior), si',
     coexistBold: 'coexisten',
@@ -1130,33 +1129,33 @@ export const es = {
   // `common.validity`/`common.dash` and `documentDetail.retrievalFieldLabel`/
   // `kvStatus`/`ocrdBadge` (identical English text) rather than duplicating.
   documentsPage: {
-    uploadFolderLabel: 'Upload folder', // already English live
-    convenioFilterPrefix: 'Convenio #', // already English live
+    uploadFolderLabel: 'Subir documento', // already English live
+    convenioFilterPrefix: 'Convenio n.º ', // already English live
     removeConvenioFilterAriaLabel: 'Quitar filtro de convenio', // the one Spanish string in an otherwise-English toolbar — translated for en.ts, preserved verbatim here
-    ingestingPrefix: 'Ingesting', // already English live
-    ingestingSuffix: 'file(s)…', // already English live
-    ingestedLabel: 'Ingested', // already English live
-    skippedLabel: 'skipped', // already English live
-    failedLabel: 'failed', // already English live
-    ingestFailedPrefix: "Couldn't ingest these files:", // already English live
-    documentWord: 'document', // already English live
-    documentsWordPlural: 'documents', // already English live
-    allStatusesOption: 'All statuses', // already English live
-    autoProposedOption: 'Auto-proposed', // already English live
-    underReviewOption: 'Under review', // already English live
-    verifiedOption: 'Verified', // already English live
-    conflictsOnlyLabel: 'Conflicts only', // already English live
-    titleHeader: 'Title', // already English live
+    ingestingPrefix: 'Importando', // already English live
+    ingestingSuffix: 'archivo(s)…', // already English live
+    ingestedLabel: 'Importados', // already English live
+    skippedLabel: 'omitidos', // already English live
+    failedLabel: 'fallidos', // already English live
+    ingestFailedPrefix: 'No se pudieron importar estos archivos:', // already English live
+    documentWord: 'documento', // already English live
+    documentsWordPlural: 'documentos', // already English live
+    allStatusesOption: 'Todos los estados', // already English live
+    autoProposedOption: 'Propuesta automática', // already English live
+    underReviewOption: 'En revisión', // already English live
+    verifiedOption: 'Verificado', // already English live
+    conflictsOnlyLabel: 'Solo conflictos', // already English live
+    titleHeader: 'Título', // already English live
     flagsHeader: 'Flags', // already English live
-    conflictBadge: 'Conflict', // already English live
-    noTextBadge: 'No text', // already English live
-    nationalBadge: 'National', // already English live
-    noDocumentsMatchFilters: 'No documents match these filters.', // already English live
-    noDocumentsYet: 'No documents yet — upload a convenio folder to ingest.', // already English live
-    prevButton: '‹ Prev', // already English live
-    nextButton: 'Next ›', // already English live
-    pagePrefix: 'Page', // already English live
-    pageOfConnector: 'of', // already English live
+    conflictBadge: 'Conflicto', // already English live
+    noTextBadge: 'Sin texto', // already English live
+    nationalBadge: 'Nacional', // already English live
+    noDocumentsMatchFilters: 'Ningún documento coincide con estos filtros.', // already English live
+    noDocumentsYet: 'Aún no hay documentos — sube una carpeta de convenio para importarla.', // already English live
+    prevButton: '‹ Ant.', // already English live
+    nextButton: 'Sig. ›', // already English live
+    pagePrefix: 'Página', // already English live
+    pageOfConnector: 'de', // already English live
   },
 
   // AnalyticsPage.tsx — the Analítica screen (Sprint 8 step 7, ADR-0030):
@@ -1167,9 +1166,9 @@ export const es = {
   // `escalationCard.fixLinkLabel`'s identical "Corregir" rather than
   // duplicating it.
   analyticsPage: {
-    loadingText: 'Loading…', // already English live
+    loadingText: 'Cargando…', // already English live
     periodPrefix: 'Periodo',
-    periodNote: 'Deflection rate excluye `needs_category` del denominador (§2.1, resuelto).',
+    periodNote: 'La tasa de resolución excluye «necesitan categoría» del denominador.',
     kpiDeflectionRateLabel: 'Tasa de resolución (deflection)',
     kpiAnsweredLabel: 'Respondidas',
     kpiEscalatedLabel: 'Escaladas',
@@ -1204,7 +1203,7 @@ export const es = {
     volumeLabel: 'volumen',
     rateLabel: 'tasa',
     headcountWeightLabel: 'peso por plantilla',
-    scoreLabel: 'score',
+    scoreLabel: 'puntuación',
     noDataNotice: 'Sin datos.',
   },
 
@@ -1216,52 +1215,52 @@ export const es = {
   // itself rather than moving into the dictionary.
   gapMeta: {
     unanswerable: {
-      label: 'Unanswerable',
-      hint: 'Active document with 0 indexed chunks (e.g. a scanned PDF, or still under review) — it cannot answer.',
+      label: 'Sin respuesta posible',
+      hint: 'Documento vigente con 0 fragmentos indexados (p. ej. un PDF escaneado, o aún en revisión) — no puede responder.',
     },
     expired_no_successor: {
-      label: 'No active successor',
-      hint: 'Only historical prose remains for this scope — no active version to answer from (coverage hole).',
+      label: 'Sin sucesor vigente',
+      hint: 'Solo queda prosa histórica para este alcance — no hay versión vigente desde la que responder (hueco de cobertura).',
     },
     suspected_mistag: {
-      label: 'Suspected mistag',
-      hint: 'Tagged as convenio prose but the title/filename says "tabla" — likely a salary table. Human decides (retag in the card).',
+      label: 'Posible error de etiquetado',
+      hint: 'Etiquetado como prosa de convenio, pero el título o el nombre de archivo dice «tabla» — probable tabla salarial. Lo decide una persona (reetiquetar en la ficha).',
     },
     date_expired_active: {
-      label: 'Date-expired (still active)',
-      hint: 'Validity end is in the past but the document is still active — a staleness signal, not a hole. The scope is still answerable.',
+      label: 'Fecha vencida (sigue vigente)',
+      hint: 'El fin de vigencia ya pasó, pero el documento sigue activo — señal de obsolescencia, no un hueco. El alcance aún se puede responder.',
     },
     unscoped: {
-      label: 'Unscoped',
-      hint: 'A non-national document with no convenio carries no scope (the scope-rides-on-convenio limitation).',
+      label: 'Sin alcance',
+      hint: 'Un documento no nacional sin convenio no tiene alcance (el alcance va ligado al convenio).',
     },
     SCAN_NO_TEXT: {
-      label: 'Scan, no text',
-      hint: 'Active prose document(s) exist but have 0 indexed chunks (e.g. a scanned PDF) — it cannot answer.',
+      label: 'Escaneo, sin texto',
+      hint: 'Hay documento(s) de prosa vigentes, pero con 0 fragmentos indexados (p. ej. un PDF escaneado) — no puede responder.',
     },
     UNDER_REVIEW_SCOPE: {
-      label: 'Scope under review',
-      hint: 'Prose document(s) exist but tagging is not yet verified — the scope is provisional, not yet answerable.',
+      label: 'Alcance en revisión',
+      hint: 'Hay documento(s) de prosa, pero el etiquetado aún no está verificado — el alcance es provisional y todavía no se puede responder.',
     },
     EXPIRED_NO_SUCCESSOR: {
-      label: 'Expired, no successor',
-      hint: 'Only historical/expired prose exists for this cell — no active successor to answer from.',
+      label: 'Vencido, sin sucesor',
+      hint: 'Solo hay prosa histórica o vencida en esta celda — no hay sucesor vigente desde el que responder.',
     },
     SALARY_PDF_NOT_IMPORTED: {
-      label: 'Salary PDF not imported',
-      hint: 'A PDF salary document exists but has not been converted/imported into the salary table yet.',
+      label: 'PDF salarial no importado',
+      hint: 'Existe un PDF salarial, pero aún no se ha convertido ni importado a la tabla salarial.',
     },
     FACT_NEEDS_REVIEW: {
-      label: 'Fact needs review',
-      hint: 'A proposed reference fact exists but no human has verified it yet.',
+      label: 'Dato pendiente de revisión',
+      hint: 'Hay un dato de referencia propuesto, pero ninguna persona lo ha verificado todavía.',
     },
     NO_SALARY_SOURCE: {
-      label: 'No salary source',
-      hint: 'No salary table, and no salary PDF either — nothing to import from yet.',
+      label: 'Sin fuente salarial',
+      hint: 'No hay tabla salarial, ni tampoco PDF salarial — aún no hay nada que importar.',
     },
     coverage_gap_unclassified: {
-      label: 'Unclassified gap',
-      hint: 'This cell is uncovered but does not match a known reason code — needs manual investigation.',
+      label: 'Hueco sin clasificar',
+      hint: 'Esta celda no está cubierta y no encaja en un motivo conocido — hay que investigarlo a mano.',
     },
   } as Record<string, { label: string; hint: string }>,
 
@@ -1274,7 +1273,7 @@ export const es = {
   // `common.cancel`/`common.save`.
   adminsPage: {
     roleLabels: {
-      super_admin: 'Super admin',
+      super_admin: 'Superadministrador',
       hr_agent: 'Agente de RR. HH.',
       knowledge_editor: 'Editor de conocimiento',
       auditor: 'Auditor',
@@ -1307,52 +1306,52 @@ export const es = {
   // verbatim preservation throughout; the 'provincial'/'regional'/'national'
   // level enum values are real API values, not translated.
   proposeVocabularyForm: {
-    proposeForPrefix: 'Propose vocabulary for', // already English live
-    foldIntoPrefix: 'Fold into', // already English live
-    foldAsAliasLabel: 'as an alias', // already English live
-    similarityPrefix: '(similarity', // already English live
+    proposeForPrefix: 'Proponer vocabulario para', // already English live
+    foldIntoPrefix: 'Incorporar a', // already English live
+    foldAsAliasLabel: 'como alias', // already English live
+    similarityPrefix: '(similitud', // already English live
     percentCloseParen: '%)', // already English live
-    foldIntoExistingLabel: 'Fold into an existing value', // already English live
-    nothingCloseFoundHint: '(nothing close enough was found)', // already English live
-    createNewPrefix: 'Create a new', // already English live
-    deliberateHint: '(deliberate)', // already English live
-    levelLabel: 'Level', // already English live
-    convenioBlockedNotice: 'Convenios are created by the registry import, not this flow. Fold the spelling into an existing convenio instead.', // already English live
-    approveAsAliasButton: 'Approve as alias', // already English live
-    proposeOnlyButton: 'Propose (a super_admin approves)', // already English live
-    approveAsNewValueButton: 'Approve as new value', // already English live
-    foldedMsgPrefix: 'Folded “', // already English live
-    foldedMsgMid: '” into', // already English live
+    foldIntoExistingLabel: 'Incorporar a un valor existente', // already English live
+    nothingCloseFoundHint: '(no se encontró nada lo bastante parecido)', // already English live
+    createNewPrefix: 'Crear un nuevo', // already English live
+    deliberateHint: '(deliberado)', // already English live
+    levelLabel: 'Nivel', // already English live
+    convenioBlockedNotice: 'Los convenios los crea la importación del registro, no este flujo. Incorpora la grafía a un convenio existente.', // already English live
+    approveAsAliasButton: 'Aprobar como alias', // already English live
+    proposeOnlyButton: 'Proponer (lo aprueba un super_admin)', // already English live
+    approveAsNewValueButton: 'Aprobar como valor nuevo', // already English live
+    foldedMsgPrefix: 'Se incorporó «', // already English live
+    foldedMsgMid: '» a', // already English live
     foldedMsgSuffix: '.', // already English live
-    createdNewMsgPrefix: 'Created new', // already English live
+    createdNewMsgPrefix: 'Se creó un', // already English live
     createdNewMsgMid: '“', // already English live
     createdNewMsgSuffix: '”.', // already English live
-    proposedMsgPrefix: 'Proposed “', // already English live
-    proposedMsgSuffix: '” — a super_admin will approve it.', // already English live
-    foldedExistingMsg: 'Folded into the existing value.', // already English live
-    createdNewValueMsg: 'Created the new value.', // already English live
-    topicNoAliasNotice: 'Topics have no alias-fold mechanism — spelling variants are resolved in code via TopicLexicon, not here.', // already English live
+    proposedMsgPrefix: 'Se propuso «', // already English live
+    proposedMsgSuffix: '» — un super_admin lo aprobará.', // already English live
+    foldedExistingMsg: 'Incorporado al valor existente.', // already English live
+    createdNewValueMsg: 'Se creó el valor nuevo.', // already English live
+    topicNoAliasNotice: 'Los temas no tienen mecanismo de alias: las variantes de grafía se resuelven en el código, no aquí.', // already English live
   },
 
   // CoveragePage.tsx — the Cobertura screen (Sprint 8, plan.md §5, ADR-0030):
   // graph/list toggle, export/refresh controls, and the two ranked-gap
   // sections + trend chart below the Hierarchy map (17 matches, §A.1).
   coveragePage: {
-    viewGroupAriaLabel: 'View', // already English live
-    graphButton: 'Graph', // already English live
-    listButton: 'List', // already English live
+    viewGroupAriaLabel: 'Vista', // already English live
+    graphButton: 'Gráfico', // already English live
+    listButton: 'Lista', // already English live
     exportingButton: 'Exportando…',
     exportButton: '↓ Exportar (.md)',
     refreshButton: '↻ Actualizar',
     asOfPrefix: 'a fecha de',
-    loadingText: 'Loading…', // already English live
+    loadingText: 'Cargando…', // already English live
     fullGapHeadingPrefix: 'Convenios con brecha total',
     fullGapIntro: 'Ni prosa, ni salario, ni datos, ni resoluciones — ordenados por plantilla afectada.',
     personWord: 'persona',
     personsWordPlural: 'personas',
     viewLink: 'Ver',
     noFullGapConvenios: 'Ningún convenio con brecha total.',
-    noRegistryHeadingPrefix: 'Ámbitos sin convenio de registro',
+    noRegistryHeadingPrefix: 'Alcances sin convenio de registro',
     territoryColumn: 'Territorio',
     sectorColumn: 'Sector',
     headcountColumn: 'Plantilla',
@@ -1405,13 +1404,13 @@ export const es = {
   // matches, §A.1). Reuses `referenceFactPanel`'s `typeBadge`/badge-status
   // keys for the identical "dato"/verified/needs-review badges.
   hierarchy: {
-    loadingMapText: 'Loading map…', // already English live
-    noTopicsNotice: 'No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7). You can tag topics by hand from a document card.', // already English live
-    nothingToShowNotice: 'Nothing to show for this lens yet.', // already English live
-    factBadgeTitle: 'Structured reference fact', // already English live
-    emptyChildren: '(empty)', // already English live
-    itemWord: 'item', // already English live
-    itemsWordPlural: 'items', // already English live
+    loadingMapText: 'Cargando mapa…', // already English live
+    noTopicsNotice: 'Aún no hay temas etiquetados. Puedes etiquetar temas a mano desde la ficha del documento.', // already English live
+    nothingToShowNotice: 'Nada que mostrar para este criterio todavía.', // already English live
+    factBadgeTitle: 'Dato de referencia estructurado', // already English live
+    emptyChildren: '(vacío)', // already English live
+    itemWord: 'elemento', // already English live
+    itemsWordPlural: 'elementos', // already English live
   },
 
   // Pager.tsx — the shared pager control (Sprint 8, used by ReviewQueuePage
@@ -1419,22 +1418,22 @@ export const es = {
   // text as `documentsPage`'s own copy-pasted inline pager, kept as its own
   // namespace since this is a distinct, reused component (1 match, §A.1).
   pager: {
-    prevButton: '‹ Prev', // already English live
-    pagePrefix: 'Page', // already English live
-    pageOfConnector: 'of', // already English live
-    nextButton: 'Next ›', // already English live
+    prevButton: '‹ Ant.', // already English live
+    pagePrefix: 'Página', // already English live
+    pageOfConnector: 'de', // already English live
+    nextButton: 'Sig. ›', // already English live
   },
 
   // charts.tsx — the shared chart primitives (KpiTile/BarChart/LineChart,
   // Sprint 8 §10, ADR-0030) used across CoveragePage/AnalyticsPage (4 matches).
   charts: {
     noDataText: 'Sin datos.',
-    trendChartAriaLabel: 'trend chart', // already English live
+    trendChartAriaLabel: 'gráfico de tendencia', // already English live
   },
 
   // ProtectedRoute.tsx — the route guard's loading state (1 match).
   protectedRoute: {
-    loadingText: 'Loading…', // already English live
+    loadingText: 'Cargando…', // already English live
   },
 
   // FilterToolbar.tsx — the shared filter-chrome shell (Sprint 11a §C.2),
@@ -1462,7 +1461,7 @@ export const es = {
     groupPrefix: ' (grupo ',
     groupSuffix: ')',
     categorySelectedNote: 'Categoría seleccionada.',
-    welcomeText: 'Pregúntame sobre tu convenio: jornada, vacaciones, permisos, festivos… Te respondo según tu ámbito, citando las fuentes.',
+    welcomeText: 'Pregúntame sobre tu convenio: jornada, vacaciones, permisos, festivos… Te respondo según tu alcance, citando las fuentes.',
     faqAriaLabel: 'Preguntas frecuentes',
     sendFailed: 'No se pudo enviar la pregunta. Inténtalo de nuevo.',
     myCategoryPrefix: 'Mi categoría: ',
@@ -1478,19 +1477,19 @@ export const es = {
   // pre-auth so before any locale switcher is reachable — entirely English
   // source text already, preserved verbatim throughout).
   login: {
-    subtitle: 'Sign in with a one-time email code (email OTP).', // already English live
-    emailRequestFailed: "We couldn't send the code. Check the email address and try again.", // already English live
-    codeVerifyFailed: "That code didn't match. Request a new one and try again.", // already English live
-    emailLabel: 'Email', // already English live
-    sendingButton: 'Sending…', // already English live
-    sendCodeButton: 'Send code', // already English live
-    codeSentPrefix: 'We sent a 6-digit code to', // already English live
+    subtitle: 'Entra con un código de un solo uso enviado por correo.', // already English live
+    emailRequestFailed: 'No pudimos enviar el código. Revisa el correo e inténtalo de nuevo.', // already English live
+    codeVerifyFailed: 'Ese código no coincide. Pide otro e inténtalo de nuevo.', // already English live
+    emailLabel: 'Correo', // already English live
+    sendingButton: 'Enviando…', // already English live
+    sendCodeButton: 'Enviar código', // already English live
+    codeSentPrefix: 'Enviamos un código de 6 dígitos a', // already English live
     codeSentMailhogPrefix: '. In local dev it is visible in MailHog at', // already English live
     codeSentMailhogSuffix: '.', // already English live
-    codeLabel: 'Code', // already English live
-    verifyingButton: 'Verifying…', // already English live
-    verifyAndSignInButton: 'Verify & sign in', // already English live
-    useDifferentEmailButton: 'Use a different email', // already English live
+    codeLabel: 'Código', // already English live
+    verifyingButton: 'Verificando…', // already English live
+    verifyAndSignInButton: 'Verificar y entrar', // already English live
+    useDifferentEmailButton: 'Usar otro correo', // already English live
   },
 
   // CitationList.tsx — the numbered source list under a chat answer
@@ -1514,7 +1513,7 @@ export const es = {
   // Spanish fragments that are StringLiterals (ternary arms) are extracted too
   // so English locale doesn't leave half the timeline in Spanish.
   tracePanel: {
-    scopeResolvedLabel: 'Ámbito resuelto',
+    scopeResolvedLabel: 'Alcance resuelto',
     guardrailLabel: 'Salvaguarda',
     routedLabel: 'Enrutado',
     salarySqlLabel: 'Salario (SQL)',
@@ -1535,7 +1534,7 @@ export const es = {
     confidencePrefix: ' · confianza ',
     categoryPrefix: ' · categoría: ',
     yearPrefix: ' · año ',
-    scopePrefix: ' · ámbito: ',
+    scopePrefix: ' · alcance: ',
     validityPrefix: ' · validez: ',
     conflictPrefix: ' · CONFLICTO (',
     conflictFactMid: ': dato ',
@@ -1591,7 +1590,7 @@ export const es = {
       topic: 'Tema',
     },
     stateLabels: {
-      scope: 'Ámbito',
+      scope: 'Alcance',
       active: 'Vigente',
       verified: 'Verificado',
       draft: 'Borrador',
@@ -1617,17 +1616,17 @@ export const es = {
     sectionAriaLabel: 'Sección',
     hierarchyTab: 'Jerarquía',
     grafoTab: 'Grafo',
-    lensAriaLabel: 'Lens', // already English live
-    lensTerritory: 'Territory', // already English live
+    lensAriaLabel: 'Criterio', // already English live
+    lensTerritory: 'Territorio', // already English live
     lensSector: 'Sector', // already English live
-    lensValidity: 'Validity', // already English live
-    lensTopic: 'Topic', // already English live
-    viewAriaLabel: 'View', // already English live
-    viewGraph: 'Graph', // already English live
-    viewList: 'List', // already English live
-    newReferenceFactButton: '+ New reference fact', // already English live
-    coverageGapsTitle: 'Coverage gaps', // already English live
-    coverageGapsNone: 'None detected.', // already English live
+    lensValidity: 'Válido', // already English live
+    lensTopic: 'Tema', // already English live
+    viewAriaLabel: 'Vista', // already English live
+    viewGraph: 'Gráfico', // already English live
+    viewList: 'Lista', // already English live
+    newReferenceFactButton: '+ Insertar nuevo dato de referencia', // already English live
+    coverageGapsTitle: 'Brechas de cobertura', // already English live
+    coverageGapsNone: 'Ninguno detectado.', // already English live
   },
 
   // Network/HTTP fallback strings (plan.md §A.2, "generic network/HTTP
@@ -1646,7 +1645,7 @@ export const es = {
     allReasons: 'Todos los motivos',
     labels: {
       low_confidence: 'Baja confianza',
-      off_domain: 'Fuera de ámbito',
+      off_domain: 'Fuera de alcance',
       sensitive_topic: 'Tema sensible',
       explicit_request: 'Petición explícita',
       salary_coverage_gap: 'Hueco salarial',

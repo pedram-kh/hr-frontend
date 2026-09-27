@@ -204,11 +204,6 @@ const ALLOWED_HARDCODED_STRINGS: Array<{ file: string; text: string; reason: str
   // string-join picks up around interpolated values (not prose on their own).
   {
     file: 'pages/admin/DocumentDetailPanel.tsx',
-    text: 'knowledge.edit',
-    reason: 'Real ability/permission name, rendered in <code> — invariant across locale, not chrome.',
-  },
-  {
-    file: 'pages/admin/DocumentDetailPanel.tsx',
     text: 'documents:ocr-backfill',
     reason: 'Real CLI command name, rendered in <code> — invariant across locale, not chrome.',
   },

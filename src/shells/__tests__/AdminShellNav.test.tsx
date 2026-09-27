@@ -80,28 +80,28 @@ const EXPECTED: Record<string, Expected> = {
     Atención: ['Escalado', 'Historial'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     Personas: ['Directorio', 'Administradores'],
-    Gobierno: ['Guardrails', 'Ajustes'],
+    Gobierno: ['Guardarraíles', 'Ajustes'],
   },
   hr_agent: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
     Atención: ['Escalado'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     Personas: ['Directorio'],
-    Gobierno: ['Guardrails', 'Ajustes'],
+    Gobierno: ['Guardarraíles', 'Ajustes'],
   },
   knowledge_editor: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
     Atención: ['Escalado'],
     Análisis: ['Cobertura', 'Calidad'],
     // Personas intentionally absent — deliberately no key here.
-    Gobierno: ['Guardrails', 'Ajustes'],
+    Gobierno: ['Guardarraíles', 'Ajustes'],
   },
   auditor: {
     Conocimiento: ['Mapa', 'Documentos', 'Revisión'],
     Atención: ['Escalado', 'Historial'],
     Análisis: ['Analítica', 'Cobertura', 'Calidad'],
     // Personas intentionally absent.
-    Gobierno: ['Guardrails', 'Ajustes'],
+    Gobierno: ['Guardarraíles', 'Ajustes'],
   },
 };
 

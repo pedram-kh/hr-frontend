@@ -79,9 +79,9 @@ describe('KnowledgeMapPage — Jerarquía|Grafo section toggle (plan.md §D.1)',
 
   it('the lens/form segmented controls only show in the Jerarquía section', () => {
     renderPage('grafo');
-    expect(screen.queryByRole('tab', { name: 'Territory' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Territorio' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Jerarquía' }));
-    expect(screen.getByRole('tab', { name: 'Territory' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Territorio' })).toBeInTheDocument();
   });
 });

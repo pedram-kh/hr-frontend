@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { ApiError, requestCode, verifyCode } from '../lib/api';
 import { useT } from '../i18n/context';
+import { BRAND } from '../theme/brand';
 
 type Step = 'email' | 'code';
 
@@ -48,7 +49,7 @@ export function LoginPage() {
   return (
     <div className="centered">
       <div className="card">
-        <h1>{t.brand.productName}</h1>
+        <img src={BRAND.logo} alt={t.brand.productName} className="login-logo" />
         <p className="muted">{t.login.subtitle}</p>
 
         {step === 'email' && (
@@ -75,7 +76,13 @@ export function LoginPage() {
         {step === 'code' && (
           <form className="login-form" onSubmit={onVerifyCode}>
             <p className="muted">
-              {t.login.codeSentPrefix} <strong>{email}</strong>{t.login.codeSentMailhogPrefix} <code>localhost:8025</code>{t.login.codeSentMailhogSuffix}
+              {t.login.codeSentPrefix} <strong>{email}</strong>
+              {import.meta.env.DEV && (
+                <>
+                  {t.login.codeSentMailhogPrefix} <code>localhost:8025</code>
+                </>
+              )}
+              {t.login.codeSentMailhogSuffix}
             </p>
             <div className="field">
               <label htmlFor="code">{t.login.codeLabel}</label>
