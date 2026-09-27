@@ -42,7 +42,7 @@ describe('LocaleProvider (plan.md §B.7 — default resolution order: localStora
       </LocaleProvider>,
     );
     expect(screen.getByTestId('locale').textContent).toBe('es');
-    expect(screen.getByTestId('logout').textContent).toBe('Log out'); // es.ts keeps this one verbatim too — see es.ts's own comment
+    expect(screen.getByTestId('logout').textContent).toBe('Cerrar sesión');
   });
 
   it('honors a persisted locale on mount', () => {

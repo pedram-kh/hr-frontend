@@ -34,7 +34,7 @@ export const BACKEND_MESSAGE_MAP: Record<string, string> = {
   'There is no live AI proposal on this task.': 'No hay una propuesta de IA activa en esta tarea.',
   'A document cannot succeed itself.': 'Un documento no puede sucederse a sí mismo.',
   'Succession is scope-based: a successor must be a newer version of the SAME convenio. Different-convenio documents coexist and are never succession candidates.':
-    'La sucesión es por ámbito: un sucesor debe ser una versión más reciente del MISMO convenio. Los documentos de convenios distintos coexisten y nunca son candidatos a sucesión.',
+    'La sucesión es por alcance: un sucesor debe ser una versión más reciente del MISMO convenio. Los documentos de convenios distintos coexisten y nunca son candidatos a sucesión.',
   'Retiring the predecessor changes which employees receive it as an answer. Re-send with retire_predecessor=true and confirm_scope_change=true to apply.':
     'Retirar el predecesor cambia qué empleados lo reciben como respuesta. Vuelve a enviar con retire_predecessor=true y confirm_scope_change=true para aplicar.',
   'Re-suggest applies only to a document still under review (an AI proposal is inert and never re-tags an already-verified document).':
@@ -48,7 +48,7 @@ export const BACKEND_MESSAGE_MAP: Record<string, string> = {
   'Topic already applied.': 'Tema ya aplicado.',
   'Topic is not applied to this document.': 'El tema no está aplicado a este documento.',
   'This changes the scope of the fact (which employees it would answer). Re-send with confirm_scope_change=true to apply.':
-    'Esto cambia el ámbito del hecho (a qué empleados respondería). Vuelve a enviar con confirm_scope_change=true para aplicar.',
+    'Esto cambia el alcance del hecho (a qué empleados respondería). Vuelve a enviar con confirm_scope_change=true para aplicar.',
   'A verified fact cannot be rejected; edit or re-verify instead.':
     'Un hecho verificado no puede rechazarse; edítalo o vuelve a verificarlo.',
   'failure_kind is required when verdict is not "correct".':

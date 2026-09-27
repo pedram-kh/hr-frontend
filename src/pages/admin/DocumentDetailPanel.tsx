@@ -206,7 +206,7 @@ export function DocumentDetailPanel({
       {!canEdit && (
         <p className="notice notice--neutral">
           <span aria-hidden="true">🔒</span>
-          {t.documentDetail.readOnlyPrefix} <code>knowledge.edit</code> {t.documentDetail.readOnlySuffix}
+          {t.documentDetail.readOnlyPrefix}
         </p>
       )}
 

@@ -110,11 +110,11 @@ export const en: Dict = {
       },
       settings: {
         heading: 'Governance · Answer model',
-        description: 'Configure the external answer-model provider key (ADR-0015).',
+        description: 'Configure the external answer-model provider key.',
       },
       brandPreview: {
-        heading: 'Brand preview (CP-1 — sprint-11a)',
-        description: 'Not in the nav — reachable only via #view=brand-preview. See sprint-11a/plan.md §G.1 step 3.',
+        heading: 'Brand preview',
+        description: 'Not in the nav — reachable only via #view=brand-preview.',
       },
     },
   },
@@ -207,12 +207,11 @@ export const en: Dict = {
     createdFromEscalation: 'Created from escalation',
     byAgent: 'by',
     viewCard: 'View card →',
-    readOnlyPrefix: "Read-only — you don't have the",
-    readOnlySuffix: 'ability. You can browse, inspect, and run the sandbox.',
+    readOnlyPrefix: "Read-only — you don't have edit permission. You can browse, inspect, and run the sandbox.",
     noConvenioNotice:
       "No convenio — this document carries no scope (scope is derived via the convenio), so employees won't receive it as an answer.",
     noTextOcrPrefix: 'No extractable text — this looks like a scanned, image-only PDF. Run',
-    noTextOcrMiddle: '(Sprint 7e, ADR-0026) to OCR it, or re-ingest with',
+    noTextOcrMiddle: 'to OCR it, or re-import with',
     suspectedMistagPrefix: 'Suspected salary-table mistag: tagged as convenio prose but named like a table.',
     suspectedMistagEditHint: 'Use "Re-type document" below → Tablas salariales.',
     suspectedMistagNoEditHint: 'A knowledge editor can retag this.',
@@ -250,12 +249,12 @@ export const en: Dict = {
     proposeVocabulary: 'Propose vocabulary',
     cancelPropose: 'Cancel',
     topicsHeading: 'Topics',
-    noTopicsNotice: 'No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7); a human can tag now.',
+    noTopicsNotice: 'No topics tagged yet. You can tag them by hand.',
     removeTopicAriaPrefix: 'Remove',
     addTopicPlaceholder: 'Add a topic…',
     addTopicButton: 'Add topic',
     chunkHealthHeading: 'Chunk health',
-    zeroChunksNotice: 'Zero chunks — this document is not retrievable (unanswerable until re-chunked; re-chunking is not a Knowledge-Center action).',
+    zeroChunksNotice: 'No chunks — this document is not retrievable and cannot answer. It has to be re-chunked (not available from here).',
     chunksLabel: 'Chunks',
     tokensLabel: 'Tokens',
     pagesLabel: 'Pages',
@@ -353,7 +352,7 @@ export const en: Dict = {
     },
     tagging: {
       introPrefix: 'Documents',
-      underReview: 'under_review',
+      underReview: 'under review',
       introSuffix:
         '— not retrievable until verified. The AI auto-proposes facets on ingest; lowest-confidence first. Open one to review the (fuchsia) AI suggestions and Confirm.',
       colTitle: 'Title',
@@ -1047,7 +1046,7 @@ export const en: Dict = {
   analyticsPage: {
     loadingText: 'Loading…',
     periodPrefix: 'Period',
-    periodNote: 'The deflection rate excludes `needs_category` from the denominator (§2.1, resolved).',
+    periodNote: 'The deflection rate excludes questions that need a category from the denominator.',
     kpiDeflectionRateLabel: 'Resolution rate (deflection)',
     kpiAnsweredLabel: 'Answered',
     kpiEscalatedLabel: 'Escalated',
@@ -1191,7 +1190,7 @@ export const en: Dict = {
     proposedMsgSuffix: '” — a super_admin will approve it.',
     foldedExistingMsg: 'Folded into the existing value.',
     createdNewValueMsg: 'Created the new value.',
-    topicNoAliasNotice: 'Topics have no alias-fold mechanism — spelling variants are resolved in code via TopicLexicon, not here.',
+    topicNoAliasNotice: 'Topics have no alias-fold mechanism — spelling variants are resolved in code, not here.',
   },
 
   coveragePage: {
@@ -1255,7 +1254,7 @@ export const en: Dict = {
 
   hierarchy: {
     loadingMapText: 'Loading map…',
-    noTopicsNotice: 'No topics tagged yet — topic tagging arrives with the AI tier (Sprint 7). You can tag topics by hand from a document card.',
+    noTopicsNotice: 'No topics tagged yet. You can tag topics by hand from a document card.',
     nothingToShowNotice: 'Nothing to show for this lens yet.',
     factBadgeTitle: 'Structured reference fact',
     emptyChildren: '(empty)',

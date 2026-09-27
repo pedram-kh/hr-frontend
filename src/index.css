@@ -341,6 +341,14 @@ a {
   max-width: 380px;
 }
 
+.login-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 var(--space-3);
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
