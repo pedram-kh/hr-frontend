@@ -1697,6 +1697,53 @@ a {
   font-size: var(--text-xs);
 }
 
+/* Sprint 13, build step 8 (plan.md §D.13/§E.15) — the review button row
+   under an answered turn. Shares the row with .chat-feedback (thumbs) rather
+   than stacking two separate margin-top blocks, so both actions read as one
+   group. Wraps on narrow viewports — see the mobile block below. */
+.chat-bubble-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.chat-bubble-actions .chat-feedback {
+  margin-top: 0;
+}
+
+.chat-review-btn {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3);
+}
+
+.chat-review-sent {
+  font-size: var(--text-xs);
+}
+
+/* The `ask` outcome (Sprint 13, plan.md §E.15 step 8) — the agent's own
+   clarifying question. Reuses .badge-agent's info tint (an "assistant
+   process" signal, same family as the human-reply bubble above) rather than
+   inventing a new colour semantic. */
+.chat-bubble--ask {
+  border-left: 3px solid var(--info);
+}
+
+/* Sprint 13, build step 9 — the general_knowledge-lane badge. */
+.chat-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: var(--space-2);
+}
+
+.chat-badge--general-lane {
+  background: var(--info-bg, #eef2ff);
+  color: var(--info, #4338ca);
+}
+
 /* --- Citations --- */
 .citation-list {
   margin-top: var(--space-4);
@@ -1849,6 +1896,45 @@ a {
 
 .chat-error {
   padding: 0 var(--space-5);
+}
+
+/* Sprint 13, build step 8 (plan.md §E.15) — the chat screen is the one
+   surface CP-1's own eyes-on explicitly checks "on desktop and phone"
+   (spec §11), and it had no phone-width rule at all before this step. Tighter
+   padding + full-width input/send controls below ~480px (a phone in
+   portrait); nothing else in the app is touched — every other screen here is
+   admin-only console material, out of this step's scope. */
+@media (max-width: 480px) {
+  .chat-list {
+    padding: var(--space-3);
+  }
+
+  .chat-input-bar {
+    padding: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .chat-input-field {
+    flex-basis: 100%;
+  }
+
+  .chat-input-bar .btn {
+    flex: 1;
+  }
+
+  .chat-bubble,
+  .chat-bubble--user {
+    max-width: 100%;
+  }
+
+  .chat-bubble-actions {
+    gap: var(--space-2);
+  }
+
+  .chat-review-btn {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* =============================================================================

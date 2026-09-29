@@ -132,6 +132,7 @@ describe('SUB_OUTCOME_LABELS', () => {
     'low_confidence.cross_path',
     'low_confidence.answer_model_not_configured',
     'low_confidence.provider_error',
+    'low_confidence.period_unsupported',
     'low_confidence.unspecified',
     'conflict.fact_vs_convenio',
     'salary_coverage_gap.no_convenio',
@@ -164,10 +165,31 @@ describe('SUB_OUTCOME_LABELS', () => {
     'estatuto_fallback_gap.tagging_under_review',
     'estatuto_fallback_gap.scan_no_text',
     'estatuto_fallback_gap.not_yet_embedded',
+    // Sprint 13 (plan.md §D.12) — the five agent-engine reasons.
+    'general_lane_blocked.question_prescreen',
+    'general_lane_blocked.figure',
+    'general_lane_blocked.entitlement_language',
+    'general_lane_blocked.ungrounded',
+    'profile_incomplete.professional_group',
+    'profile_incomplete.job_category',
+    'profile_incomplete.seniority',
+    'profile_incomplete.contract_type',
+    'profile_incomplete.asserted_differs',
+    'employee_requested_review.answer_reviewed',
+    'planner_escalated.off_domain',
+    'planner_escalated.unsafe',
+    'planner_escalated.unanswerable',
+    'planner_escalated.needs_human_judgement',
+    'planner_escalated.other',
+    'tool_budget_exhausted.rounds',
+    'tool_budget_exhausted.tool_calls',
+    'tool_budget_exhausted.clarifications',
+    'tool_budget_exhausted.wall_clock',
+    'tool_budget_exhausted.malformed',
   ];
 
-  it('has exactly 49 keys, matching EscalationExplainer::MATRIX', () => {
-    expect(MATRIX_KEYS.length).toBe(49);
+  it('has exactly 70 keys, matching EscalationExplainer::MATRIX', () => {
+    expect(MATRIX_KEYS.length).toBe(70);
   });
 
   for (const [lang, dict] of Object.entries(DICTS)) {

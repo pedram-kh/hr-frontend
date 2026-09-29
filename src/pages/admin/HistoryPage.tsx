@@ -119,6 +119,7 @@ export function HistoryPage() {
             <option value="">{t.historyPage.outcomeAllOption}</option>
             <option value="answered">{t.historyPage.outcomeAnsweredOnlyOption}</option>
             <option value="escalated">{t.historyPage.outcomeEscalatedOnlyOption}</option>
+            <option value="asked">{t.historyPage.outcomeAskedOnlyOption}</option>
           </select>
           <select className="select" value={filters.reason ?? ''} onChange={(e) => setFilter('reason', e.target.value)} aria-label={t.historyPage.escalationReasonAriaLabel}>
             {REASONS.map((r) => (<option key={r.id} value={r.id}>{r.label}</option>))}
@@ -154,6 +155,10 @@ export function HistoryPage() {
                     ) : (
                       <span className="badge badge-verified">{t.historyPage.answeredBadge}</span>
                     )}
+                    {/* Sprint 13, build step 8 — independent of the badge above
+                        (a session can contain an ask turn AND, separately,
+                        an escalation elsewhere in it). */}
+                    {r.asked && <span className="badge badge-agent">{t.historyPage.askedBadge}</span>}
                   </td>
                 </tr>
               ))}

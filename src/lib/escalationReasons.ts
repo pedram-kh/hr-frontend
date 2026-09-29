@@ -30,6 +30,12 @@ export const ESCALATION_REASON_IDS = [
   'estatuto_fallback_gap',
   'conflict',
   'quality_sample_wrong',
+  // Sprint 13 (plan.md §D.12) — the five agent-engine reasons.
+  'general_lane_blocked',
+  'profile_incomplete',
+  'employee_requested_review',
+  'planner_escalated',
+  'tool_budget_exhausted',
 ] as const;
 
 /** Filter-dropdown options: "Todos los motivos" + one row per known reason. */

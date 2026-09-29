@@ -583,8 +583,11 @@ export interface JobCategoryOption {
   group_code: string | null;
 }
 
-// One turn's outcome (Sprint 2b-2). 'needs_category' renders the constrained pick.
-export type ChatOutcome = 'answer' | 'escalate' | 'needs_category';
+// One turn's outcome (Sprint 2b-2). 'needs_category' renders the constrained
+// pick. 'ask' (Sprint 13, plan.md §E.15 step 8) is the agent engine's own
+// `ask_employee` clarifying question — a terminal turn that is neither an
+// answer nor an escalation.
+export type ChatOutcome = 'answer' | 'escalate' | 'needs_category' | 'ask';
 
 // The structured "how I got here" trace. Rendered read-only; never contains the
 // API key or any secret (the backend builds it without them).
@@ -703,6 +706,20 @@ export interface MessageTrace {
     fallback?: string;
     note?: string;
   };
+  // Sprint 13, build step 8 (plan.md §D.12/§E.15) — the agent engine's own
+  // trace block. Absent entirely on a classic-engine turn (not null — the
+  // key itself is missing, same "additive, never a forced key" posture as
+  // `fallback` above). `steps` is a raw, append-only log of what the loop
+  // actually did each round — rendered generically below rather than one
+  // bespoke line per step `type`, since new tool/step types are expected.
+  agent?: {
+    planner: { model?: string | null; prompt_version?: string | null; tool_choice?: string; thinking?: boolean } | null;
+    budget: { max_rounds: number; max_tool_calls: number; asks_used_before_turn: number };
+    window: { message_ids: number[] };
+    steps: Array<{ type: string; [k: string]: unknown }>;
+    termination: string | null;
+    planner_escalation: { category?: string; reason?: string } | null;
+  };
 }
 
 export interface ChatResponse {
@@ -728,6 +745,12 @@ export interface ChatResponse {
   // `trace`/`citations` and never reads `source_labels`.
   trace?: MessageTrace;
   source_labels?: string[];
+  // Sprint 13, build step 9 (plan.md §B.6.6) — populated ONLY on a
+  // `general_knowledge`-lane answer (`authority_used` includes
+  // `'general_knowledge'`); `{sources: []}` otherwise. Each source is a
+  // display label + the catalogue's own url (never a raw fetched excerpt —
+  // that never leaves hr-backend).
+  general_lane?: { sources: Array<{ label: string; url: string | null }> };
 }
 
 export function sendChatMessage(
@@ -769,6 +792,7 @@ export interface ConversationMessage {
   citations: Citation[];
   trace?: MessageTrace;
   source_labels?: string[];
+  general_lane?: { sources: Array<{ label: string; url: string | null }> };
 }
 
 // Hydrate the employee's OWN most-recent session (Q-D). Self-scoped; the UI
@@ -850,6 +874,10 @@ export interface GuardrailConfig {
   convert_by_reason: { baseline: string[]; allowed: string[]; locked: string[] };
   blocked_topics: GuardrailBlockedTopic[];
   history: GuardrailHistoryEntry[];
+  // Sprint 13, build step 9 (plan.md §B.6.6) — RESTRICT-only, the mirror
+  // image of `GuardrailThreshold`'s raise-only shape: `admin` can only
+  // narrow `env_baseline`, never widen it.
+  general_lane: { admin: boolean | null; env_baseline: boolean; effective: boolean };
 }
 
 /** The fields a super_admin may write. Only present fields are applied (partial save); a null value reverts/clears. */
@@ -860,6 +888,7 @@ export interface GuardrailConfigUpdate {
   off_domain_message?: string | null;
   tone_constraints?: string | null;
   convert_allowed_reasons?: string[];
+  general_lane_enabled?: boolean | null;
 }
 
 export function getGuardrails(): Promise<GuardrailConfig> {
@@ -896,6 +925,9 @@ export interface EscalationCardSummary {
   reason: string;
   reason_label: string;
   question: string | null;
+  // Sprint 13, build step 8 — the original answer, on an
+  // `employee_requested_review` card only (null on every other reason).
+  reviewed_message: string | null;
   employee: {
     uuid: string;
     full_name: string;
@@ -1445,6 +1477,9 @@ export interface HistoryRow {
   message_count: number;
   escalated: boolean;
   escalation_reason: string | null;
+  // Sprint 13, build step 8 — independent of `escalated` (a session can
+  // contain an ask turn and, separately, an escalation).
+  asked: boolean;
 }
 
 export interface HistoryConversation {
@@ -1476,7 +1511,7 @@ export interface HistoryFilters {
   from?: string;
   to?: string;
   reason?: string;
-  outcome?: 'answered' | 'escalated';
+  outcome?: 'answered' | 'escalated' | 'asked';
 }
 
 export function listHistory(filters: HistoryFilters = {}): Promise<Paginated<HistoryRow>> {
@@ -1947,6 +1982,10 @@ export interface DeflectionSummary {
   answered: number;
   escalated: number;
   needs_category: number;
+  // Sprint 13, build step 8 (plan.md §E.15) — the agent engine's `ask_employee`
+  // clarifying turns; excluded from `deflection_rate`'s denominator, same as
+  // `needs_category` above.
+  ask: number;
   deflection_rate: number | null;
   path_split: Record<string, number>;
   authority_split: Record<string, number>;
@@ -2236,4 +2275,11 @@ export function submitMessageFeedback(
     method: 'POST',
     body: JSON.stringify({ rating, comment: comment || undefined }),
   });
+}
+
+// Sprint 13, build step 8 (plan.md §D.13/§E.15) — "¿Quieres que lo revise
+// RR. HH.?" on an answered turn. Idempotent server-side: a second call
+// returns the same escalation_uuid rather than creating a second card.
+export function requestMessageReview(messageId: number): Promise<{ escalation_uuid: string }> {
+  return request(`/chat/message/${messageId}/review`, { method: 'POST' });
 }

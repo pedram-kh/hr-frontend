@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ApiError,
   getChatSession,
+  requestMessageReview,
   sendChatMessage,
   submitMessageFeedback,
   type ChatResponse,
@@ -10,6 +11,7 @@ import {
   type JobCategoryOption,
 } from '../../lib/api';
 import { stripSourceMarkers } from '../../lib/citationMarkers';
+import { isGeneralLaneAnswer, stripGeneralLaneCaveat } from '../../lib/generalLane';
 import { SUGGESTED_QUESTIONS } from '../../lib/suggestedQuestions';
 import { useT } from '../../i18n/context';
 import type { Dict } from '../../i18n/es';
@@ -82,6 +84,7 @@ function toResponse(m: ConversationMessage, sessionUuid: string | null): ChatRes
     categories: [],
     authority_used: m.authority_used,
     source_labels: m.source_labels,
+    general_lane: m.general_lane,
   };
 }
 
@@ -112,11 +115,89 @@ function sourceLine(t: Dict, sourceLabels: string[] | undefined): string | null 
 function AnswerBlock({ response }: { response: ChatResponse }) {
   const t = useT();
   const source = sourceLine(t, response.source_labels);
+  const isGeneralLane = isGeneralLaneAnswer(response.authority_used);
+  const prose = isGeneralLane ? stripGeneralLaneCaveat(response.answer) : response.answer;
+  const generalLaneSources = response.general_lane?.sources ?? [];
   return (
     <div className="card chat-bubble chat-bubble--assistant">
-      <p className="answer-prose">{stripSourceMarkers(response.answer)}</p>
-      {source && <p className="answer-source-line muted">{source}</p>}
-      <ThumbsFeedback messageId={response.message_id} />
+      {isGeneralLane && <span className="chat-badge chat-badge--general-lane">{t.chat.generalLaneBadge}</span>}
+      <p className="answer-prose">{stripSourceMarkers(prose)}</p>
+      {isGeneralLane && generalLaneSources.length > 0 && (
+        <p className="answer-source-line muted">
+          {t.chat.generalLaneMoreInfo}{' '}
+          {generalLaneSources.map((s, i) => (
+            <span key={i}>
+              {i > 0 && ', '}
+              {s.url ? (
+                <a href={s.url} target="_blank" rel="noreferrer">
+                  {s.label}
+                </a>
+              ) : (
+                s.label
+              )}
+            </span>
+          ))}
+        </p>
+      )}
+      {!isGeneralLane && source && <p className="answer-source-line muted">{source}</p>}
+      <div className="chat-bubble-actions">
+        <ThumbsFeedback messageId={response.message_id} />
+        <ReviewButton messageId={response.message_id} />
+      </div>
+    </div>
+  );
+}
+
+// Sprint 13, build step 8 (plan.md §D.13/§E.15) — "¿Quieres que lo revise
+// RR. HH.?" under an answered turn (classic and agent alike, spec §8: the
+// review button is not agent-only — a shared UI). One click, self-scoped
+// server-side, idempotent (a second click is harmless — it re-hits the same
+// endpoint and gets back the same card, but the UI never needs to know that;
+// once sent, the button stays "sent" for this render's lifetime).
+function ReviewButton({ messageId }: { messageId: number }) {
+  const t = useT();
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  const send = async () => {
+    if (state !== 'idle') return;
+    setState('sending');
+    try {
+      await requestMessageReview(messageId);
+      setState('sent');
+    } catch {
+      // Best-effort — same posture as ThumbsFeedback: never blocks the chat,
+      // just let them try again.
+      setState('idle');
+    }
+  };
+
+  if (state === 'sent') {
+    return <span className="muted chat-review-sent">{t.chat.reviewSentNote}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost chat-review-btn"
+      disabled={state === 'sending'}
+      onClick={() => void send()}
+    >
+      {state === 'sending' ? t.chat.reviewSendingButton : t.chat.reviewButtonLabel}
+    </button>
+  );
+}
+
+// The `ask` outcome (Sprint 13, plan.md §E.15 step 8) — the agent engine's own
+// clarifying question (`ask_employee`), rendered distinctly from a real
+// answer: a badge names it as a question, not a finished answer, and there is
+// no source line / thumbs / review button (nothing was answered yet to rate
+// or review).
+function AskBlock({ response }: { response: ChatResponse }) {
+  const t = useT();
+  return (
+    <div className="card chat-bubble chat-bubble--assistant chat-bubble--ask">
+      <span className="badge badge-agent">{t.chat.askBadge}</span>
+      <p className="answer-prose">{response.answer}</p>
     </div>
   );
 }
@@ -395,6 +476,8 @@ export function ChatScreen() {
                   pending={sending}
                   onPick={(category) => void pickCategory(item, category)}
                 />
+              ) : item.response.outcome === 'ask' ? (
+                <AskBlock response={item.response} />
               ) : item.response.escalated ? (
                 <EscalationBlock response={item.response} />
               ) : (

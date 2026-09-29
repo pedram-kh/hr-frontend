@@ -1,5 +1,6 @@
 import type { MessageTrace } from '../../lib/api';
 import { useT } from '../../i18n/context';
+import { agentStepMeta } from './agentTrace';
 
 // The expandable "how I got here" view (design-system §8). Read-only; renders the
 // pipeline as a provenance timeline. It never shows the API key or any secret —
@@ -153,6 +154,35 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
       label: t.tracePanel.decisionLabel,
       meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}${fallback}`,
       dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' ? 'src-ai_agent' : 'src-system',
+    });
+  }
+
+  // Sprint 13, build step 8 (plan.md §D.12/§E.15) — the agent engine's own
+  // section. Absent entirely (no `trace.agent` key) on a classic-engine
+  // turn — nothing below renders for those, same additive posture as
+  // `prose_gap`/`fallback` above.
+  if (trace.agent) {
+    const a = trace.agent;
+    if (a.planner) {
+      steps.push({
+        label: t.tracePanel.agentPlannerLabel,
+        meta: `${a.planner.model ?? ''}${a.planner.prompt_version ? ` · ${a.planner.prompt_version}` : ''}`,
+        dot: 'src-ai_agent',
+      });
+    }
+    // A turn in which no rule objected has no `rule_verdict` step at all — say so once instead of showing nothing.
+    if (!a.steps.some((s) => s.type === 'rule_verdict')) {
+      steps.push({ label: t.tracePanel.agentRuleVerdictLabel, meta: t.tracePanel.agentRuleNoObjectionsMeta, dot: 'src-ai_agent' });
+    }
+    a.steps.forEach((s) => {
+      const { label, meta } = agentStepMeta(t, s);
+      steps.push({ label, meta, dot: 'src-ai_agent' });
+    });
+    steps.push({
+      label: t.tracePanel.agentBudgetLabel,
+      meta: `${t.tracePanel.agentRoundsPrefix}${a.budget.max_rounds} · ${t.tracePanel.agentToolCallsPrefix}${a.budget.max_tool_calls} · ${t.tracePanel.agentAsksPrefix}${a.budget.asks_used_before_turn}`
+        + (a.termination ? `${t.tracePanel.agentTerminationPrefix}${a.termination}` : ''),
+      dot: 'src-ai_agent',
     });
   }
 

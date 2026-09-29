@@ -346,6 +346,29 @@ export function GuardrailsPage() {
         </div>
       </section>
 
+      {/* 6 — General-knowledge lane toggle (Sprint 13, step 9). RESTRICT-only:
+          this switch can only turn the lane OFF; it can never turn it ON if
+          the deploy-level env flag is itself off (env_baseline). */}
+      <section className="card">
+        <h3>{t.guardrailsPage.generalLaneHeading}</h3>
+        <p className="muted">{t.guardrailsPage.generalLaneIntro}</p>
+        {!config.general_lane.env_baseline && (
+          <p className="muted">{t.guardrailsPage.generalLaneEnvOffNote}</p>
+        )}
+        <label className="guardrails-reason">
+          <input
+            type="checkbox"
+            checked={config.general_lane.admin ?? true}
+            disabled={!canManage || busy || !config.general_lane.env_baseline}
+            onChange={(e) => void save({ general_lane_enabled: e.target.checked })}
+          />
+          {t.guardrailsPage.generalLaneToggleLabel}
+        </label>
+        <p className="muted">
+          {t.guardrailsPage.generalLaneEffectiveLabel} {config.general_lane.effective ? t.guardrailsPage.generalLaneEffectiveOn : t.guardrailsPage.generalLaneEffectiveOff}
+        </p>
+      </section>
+
       {/* Change history */}
       <section className="card">
         <h3>{t.guardrailsPage.historyHeading}</h3>
