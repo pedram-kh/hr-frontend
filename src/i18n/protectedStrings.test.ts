@@ -83,6 +83,11 @@ const PROTECTED_STRINGS: Array<{ name: string; citation: string; value: string }
       'equipo de Recursos Humanos.',
   },
   {
+    name: 'ChatService::GENERAL_LANE_CAVEAT',
+    citation: 'hr-backend/app/Services/ChatService.php (Sprint 13, step 9)',
+    value: 'Información general — no procede de tu convenio ni de la normativa cargada.',
+  },
+  {
     name: 'SalaryAnswerService::COVERAGE_GAP_MESSAGE',
     citation: 'hr-backend/app/Services/SalaryAnswerService.php:54-56',
     value:

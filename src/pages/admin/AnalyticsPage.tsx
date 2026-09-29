@@ -63,6 +63,7 @@ export function AnalyticsPage() {
         <KpiTile label={t.analyticsPage.kpiAnsweredLabel} value={String(summary.answered)} />
         <KpiTile label={t.analyticsPage.kpiEscalatedLabel} value={String(summary.escalated)} />
         <KpiTile label={t.analyticsPage.kpiNeedsCategoryLabel} value={String(summary.needs_category)} sub={t.analyticsPage.kpiNeedsCategorySub} />
+        <KpiTile label={t.analyticsPage.kpiAskLabel} value={String(summary.ask)} sub={t.analyticsPage.kpiAskSub} />
         <KpiTile
           label={t.analyticsPage.kpiHrRepliesLabel}
           value={String(deflection.hr_agent_replies.reduce((s, r) => s + r.reply_count, 0))}
