@@ -1,6 +1,7 @@
 import type { MessageTrace } from '../../lib/api';
 import { useT } from '../../i18n/context';
 import { agentStepMeta, normalizationDetail } from './agentTrace';
+import { compositionFactsMeta, factSetMeta } from './factSetTrace';
 
 // The expandable "how I got here" view (design-system §8). Read-only; renders the
 // pipeline as a provenance timeline. It never shows the API key or any secret —
@@ -71,7 +72,7 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     const validity = rf.validity_selection ? `${t.tracePanel.validityPrefix}${rf.validity_selection}` : '';
     steps.push({
       label: t.tracePanel.referenceFactLabel,
-      meta: `${rf.outcome ?? ''}${rf.fact_id ? ` · fact #${rf.fact_id}` : ''}${match}${validity} · structured_reference`,
+      meta: `${rf.outcome ?? ''}${rf.fact_id ? ` · fact #${rf.fact_id}` : ''}${match}${validity}${factSetMeta(t, rf.fact_set)} · structured_reference`,
       dot: rf.outcome === 'answer' ? 'src-admin_manual' : 'src-system',
     });
   }
@@ -83,7 +84,7 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
       : t.tracePanel.convenioGoverns;
     steps.push({
       label: t.tracePanel.compositionLabel,
-      meta: `${c.governing_on_topic_chunks ?? 0}${t.tracePanel.convenioChunkCountSuffix}${conflict}`,
+      meta: `${c.governing_on_topic_chunks ?? 0}${t.tracePanel.convenioChunkCountSuffix}${conflict}${compositionFactsMeta(t, c)}`,
       dot: c.conflict?.conflict ? 'src-system' : 'src-ai_agent',
     });
   }
