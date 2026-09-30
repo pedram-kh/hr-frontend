@@ -591,6 +591,21 @@ export type ChatOutcome = 'answer' | 'escalate' | 'needs_category' | 'ask';
 
 // The structured "how I got here" trace. Rendered read-only; never contains the
 // API key or any secret (the backend builds it without them).
+/** Slice 13d (ADR-0037) — `trace.reference_fact.fact_set`: how a same-validity tie was classified. */
+export interface FactSetTrace {
+  composition: 'complementary' | 'conflict';
+  facts_selected: number[];
+  facts_omitted: number[];
+  order_rule: string | null;
+  pairs: {
+    a: number;
+    b: number;
+    relation: 'complementary' | 'contradictory';
+    reason: 'disjoint_quantity_keys' | 'same_quantity' | 'no_quantity_keys' | 'flagged_duplicate_unresolved';
+    shared_keys: string[];
+  }[];
+}
+
 export interface MessageTrace {
   profile?: Record<string, unknown>;
   scope_filters?: Record<string, unknown>;
@@ -629,7 +644,9 @@ export interface MessageTrace {
     topic_id?: number | null;
     fact_id?: number | null;
     match_kind?: string; // 'job_category' | 'group' | 'convenio_wide'
-    validity_selection?: string | null; // 'single' | 'most_recent_validity' | 'ambiguous_conflict'
+    validity_selection?: string | null; // 'single' | 'most_recent_validity' | 'ambiguous_conflict' | 'same_validity_complementary'
+    /** Slice 13d (ADR-0037): present ONLY when a same-validity tie cohort was evaluated. */
+    fact_set?: FactSetTrace;
     /** The fact's printed label, for display — not what the match was made on. */
     group_label?: string | null;
     /** The approved node the match was actually made on (Sprint 7f, ADR-0028). */
@@ -647,7 +664,10 @@ export interface MessageTrace {
     governing_on_topic_chunks?: number;
     governing_top_score?: number;
     check_a?: boolean;
-    conflict?: { conflict: boolean; unit: string | null; fact_values: string[]; prose_values: string[] };
+    conflict?: { conflict: boolean; unit: string | null; fact_values: string[]; prose_values: string[]; fact_id?: number };
+    /** Slice 13d: a fact SET only — the facts handed to synthesis, and the ones the answer cited. */
+    fact_ids_offered?: number[];
+    fact_ids_cited?: number[];
     synthesis_error?: string;
     [k: string]: unknown;
   };
