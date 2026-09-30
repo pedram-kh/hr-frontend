@@ -1,6 +1,6 @@
 import type { MessageTrace } from '../../lib/api';
 import { useT } from '../../i18n/context';
-import { agentStepMeta } from './agentTrace';
+import { agentStepMeta, normalizationDetail } from './agentTrace';
 
 // The expandable "how I got here" view (design-system §8). Read-only; renders the
 // pipeline as a provenance timeline. It never shows the API key or any secret —
@@ -11,7 +11,7 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
   // only ever populated by the "Enrutado" step below — the actual
   // decomposed_queries rewrite texts, not just their count, so a reviewer can
   // read what the rewrite said.
-  const steps: { label: string; meta: string; dot: string; list?: string[] }[] = [];
+  const steps: { label: string; meta: string; dot: string; list?: string[]; listSummary?: string }[] = [];
 
   if (trace.scope_filters) {
     const sf = trace.scope_filters as Record<string, unknown>;
@@ -176,7 +176,9 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     }
     a.steps.forEach((s) => {
       const { label, meta } = agentStepMeta(t, s);
-      steps.push({ label, meta, dot: 'src-ai_agent' });
+      // Sprint 13b: the normalization entry carries the full literal → canonical block as its expandable list.
+      const detail = s.type === 'normalization' && a.normalization ? normalizationDetail(t, a.normalization) : undefined;
+      steps.push({ label, meta, dot: 'src-ai_agent', list: detail, listSummary: detail ? t.tracePanel.normShowDetailSummary : undefined });
     });
     steps.push({
       label: t.tracePanel.agentBudgetLabel,
@@ -199,9 +201,9 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
                 <div className="timeline-meta">{step.meta}</div>
                 {step.list && step.list.length > 0 && (
                   <details className="trace-decomp">
-                    <summary>{t.tracePanel.showReformulationsSummary}</summary>
+                    <summary>{step.listSummary ?? t.tracePanel.showReformulationsSummary}</summary>
                     <ul className="trace-decomp-list">
-                      {step.list.map((q, j) => <li key={j}>«{q}»</li>)}
+                      {step.list.map((q, j) => <li key={j}>{step.listSummary ? q : `«${q}»`}</li>)}
                     </ul>
                   </details>
                 )}
