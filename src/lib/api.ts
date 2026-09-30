@@ -719,6 +719,29 @@ export interface MessageTrace {
     steps: Array<{ type: string; [k: string]: unknown }>;
     termination: string | null;
     planner_escalation: { category?: string; reason?: string } | null;
+    // Sprint 13b (plan.md §6.1) — the planner's question normalization, present only when the turn offered it.
+    // `verdict`: accepted | rejected | declined | absent. `used` is set only for an accepted one.
+    normalization?: {
+      requested: boolean;
+      literal: string;
+      proposed: { topic_id?: number | null; canonical_query?: string | null; confidence?: number | null; reason?: string | null } | null;
+      verdict: 'accepted' | 'rejected' | 'declined' | 'absent';
+      rejections: Array<{ rule: string; span: string | null }>;
+      used: { topic_id: number | null; topic_name: string | null; canonical_query: string | null } | null;
+      topic_dropped: boolean;
+      round1a: { ran: boolean; skipped?: string; topic_id?: number } | null;
+      consumers: Array<{
+        tool: string;
+        via: string;
+        literal_top_score: number | null;
+        canonical_top_score: number | null;
+        union_top_score: number | null;
+        check_a_rescued: boolean;
+        rescued_answer: boolean;
+      }>;
+      validator_version?: string;
+      planner_prompt_version?: string | null;
+    };
   };
 }
 
