@@ -64,6 +64,8 @@ export function AnalyticsPage() {
         <KpiTile label={t.analyticsPage.kpiEscalatedLabel} value={String(summary.escalated)} />
         <KpiTile label={t.analyticsPage.kpiNeedsCategoryLabel} value={String(summary.needs_category)} sub={t.analyticsPage.kpiNeedsCategorySub} />
         <KpiTile label={t.analyticsPage.kpiAskLabel} value={String(summary.ask)} sub={t.analyticsPage.kpiAskSub} />
+        {/* Slice 13e — confirmed off-domain declines (no card); excluded from the denominator like the two above. */}
+        <KpiTile label={t.analyticsPage.kpiDeclinedLabel} value={String(summary.declined ?? 0)} sub={t.analyticsPage.kpiDeclinedSub} />
         <KpiTile
           label={t.analyticsPage.kpiHrRepliesLabel}
           value={String(deflection.hr_agent_replies.reduce((s, r) => s + r.reply_count, 0))}
@@ -78,6 +80,11 @@ export function AnalyticsPage() {
       <section>
         <h4>{t.analyticsPage.pathSplitHeading}</h4>
         <BarChart data={pathData} />
+      </section>
+
+      <section>
+        <h4>{t.analyticsPage.declinedByDayHeading}</h4>
+        <BarChart data={(deflection.declined_by_day ?? []).map((d) => ({ label: d.date, value: d.declined }))} />
       </section>
 
       <section>
@@ -169,6 +176,29 @@ export function AnalyticsPage() {
             </li>
           ))}
           {clusters.unanswered_ranking.length === 0 && <p className="muted">{t.analyticsPage.noDataNotice}</p>}
+        </ul>
+      </section>
+
+      {/* Slice 13e (R2's weekly view) — what the assistant declined, so HR can spot a real work question that was declined. */}
+      <section>
+        <h4>{t.analyticsPage.declinedRankingHeading}</h4>
+        <p className="timeline-meta">
+          {t.analyticsPage.declinedRankingNote}
+        </p>
+        <ul className="ranked-list">
+          {(clusters.declined_ranking ?? []).map((r, i) => (
+            <li className="ranked-row" key={`${r.cluster_id ?? 'n'}-${i}`}>
+              <span className="ranked-rank">#{i + 1}</span>
+              <div className="ranked-main">
+                <div className="ranked-title">{r.medoid_text}</div>
+                <div className="ranked-meta">
+                  {r.declined_count} {t.analyticsPage.declinedCountLabel}
+                  {r.last_declined_at ? ` · ${formatDate(r.last_declined_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+                </div>
+              </div>
+            </li>
+          ))}
+          {(clusters.declined_ranking ?? []).length === 0 && <p className="muted">{t.analyticsPage.noDataNotice}</p>}
         </ul>
       </section>
     </div>

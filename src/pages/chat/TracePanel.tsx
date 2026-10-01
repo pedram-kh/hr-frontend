@@ -1,6 +1,6 @@
 import type { MessageTrace } from '../../lib/api';
 import { useT } from '../../i18n/context';
-import { agentStepMeta, laneRow, normalizationDetail } from './agentTrace';
+import { agentStepMeta, declineMeta, laneRow, normalizationDetail, traceOutcomeLabel } from './agentTrace';
 import { compositionFactsMeta, factSetMeta } from './factSetTrace';
 
 // The expandable "how I got here" view (design-system §8). Read-only; renders the
@@ -142,8 +142,7 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
 
   if (trace.floor_decision) {
     const f = trace.floor_decision;
-    const outcomeLabel =
-      f.outcome === 'answer' ? t.tracePanel.outcomeAnswer : f.outcome === 'needs_category' ? t.tracePanel.outcomeNeedsCategory : t.tracePanel.outcomeEscalate;
+    const outcomeLabel = traceOutcomeLabel(t, f.outcome);
     // Structured paths (salary SQL, reference fact) are grounded by construction —
     // they have no Check A/B retrieval+citation gate to show.
     const structuredPath = f.path === 'salary_sql' || f.path === 'reference_fact' || f.path === 'reference_fact_composition';
@@ -154,7 +153,16 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
     steps.push({
       label: t.tracePanel.decisionLabel,
       meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}${fallback}`,
-      dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' ? 'src-ai_agent' : 'src-system',
+      dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' || f.outcome === 'ask' || f.outcome === 'decline' ? 'src-ai_agent' : 'src-system',
+    });
+  }
+
+  // Slice 13e — the decline gate's evidence: a granted decline AND a denied one (planner said off_domain, a check refused).
+  if (trace.decline) {
+    steps.push({
+      label: t.tracePanel.declineLabel,
+      meta: declineMeta(t, trace.decline),
+      dot: trace.decline.granted ? 'src-ai_agent' : 'src-system',
     });
   }
 

@@ -586,8 +586,10 @@ export interface JobCategoryOption {
 // One turn's outcome (Sprint 2b-2). 'needs_category' renders the constrained
 // pick. 'ask' (Sprint 13, plan.md §E.15 step 8) is the agent engine's own
 // `ask_employee` clarifying question — a terminal turn that is neither an
-// answer nor an escalation.
-export type ChatOutcome = 'answer' | 'escalate' | 'needs_category' | 'ask';
+// answer nor an escalation. 'decline' (Slice 13e) is a confirmed off-domain
+// question: no card is created, the employee is told it is outside what the
+// assistant answers and can still tap "review" (-> employee_requested_review).
+export type ChatOutcome = 'answer' | 'escalate' | 'needs_category' | 'ask' | 'decline';
 
 // The structured "how I got here" trace. Rendered read-only; never contains the
 // API key or any secret (the backend builds it without them).
@@ -617,6 +619,18 @@ export interface GeneralLaneTrace {
   word_count?: number;
   prompt_sha256?: string | null;
   draft?: { model?: string; general_knowledge_ms?: number; prompt_tokens?: number; completion_tokens?: number; cost_usd?: number };
+}
+
+export interface DeclineTrace {
+  granted: boolean;
+  source: 'planner' | 'guard_admin' | string;
+  reason: string;
+  checks: Array<{ id: string; pass: boolean; detail?: string | null }>;
+  denied_by: string | null;
+  confirm: { label: string; confidence: number; floor: number; source: string | null } | null;
+  gate_version: string;
+  matched_pattern?: string;
+  planner?: { category?: string; reason?: string };
 }
 
 export interface MessageTrace {
@@ -730,6 +744,8 @@ export interface MessageTrace {
     authority_used?: string[];
     outcome?: string;
     escalation_reason?: string | null;
+    // Slice 13e — set only on a decline (always 'off_domain'); a decline has no escalation_reason.
+    decline_reason?: string;
     // Sprint 10a: `'estatuto_gap'` when the answer was built from the Estatuto
     // because the employee's convenio has never been ingested. The key is
     // ABSENT (not false, not null) on every other turn — Sprint 7c's golden
@@ -747,6 +763,9 @@ export interface MessageTrace {
   // bespoke line per step `type`, since new tool/step types are expected.
   // Slice 13c (plan.md §2.5) — the general-knowledge lane's own block (admin trace only). `basis` is absent on a pre-13c turn.
   general_lane?: GeneralLaneTrace;
+  // Slice 13e — the decline gate's evidence, present only on a turn where the gate was evaluated (a planner `off_domain`
+  // verdict or an admin off-domain guard hit), whether it granted or denied. Admin trace only.
+  decline?: DeclineTrace;
   agent?: {
     planner: { model?: string | null; prompt_version?: string | null; tool_choice?: string; thinking?: boolean } | null;
     budget: { max_rounds: number; max_tool_calls: number; asks_used_before_turn: number };
@@ -1572,6 +1591,10 @@ export interface HistoryRow {
   // Sprint 13, build step 8 — independent of `escalated` (a session can
   // contain an ask turn and, separately, an escalation).
   asked: boolean;
+  // Slice 13e — the session contains a declined (off-domain) turn.
+  declined: boolean;
+  // True when EVERY assistant turn in the session was a decline — such a session is not "answered".
+  declined_only: boolean;
 }
 
 export interface HistoryConversation {
@@ -1603,7 +1626,7 @@ export interface HistoryFilters {
   from?: string;
   to?: string;
   reason?: string;
-  outcome?: 'answered' | 'escalated' | 'asked';
+  outcome?: 'answered' | 'escalated' | 'asked' | 'declined';
 }
 
 export function listHistory(filters: HistoryFilters = {}): Promise<Paginated<HistoryRow>> {
@@ -2078,6 +2101,9 @@ export interface DeflectionSummary {
   // clarifying turns; excluded from `deflection_rate`'s denominator, same as
   // `needs_category` above.
   ask: number;
+  // Slice 13e — confirmed off-domain declines (no card). Excluded from the
+  // `deflection_rate` denominator, same as `needs_category` and `ask`.
+  declined: number;
   deflection_rate: number | null;
   path_split: Record<string, number>;
   authority_split: Record<string, number>;
@@ -2090,6 +2116,8 @@ export interface DeflectionResponse {
   // Sprint 8, Step 8 (plan.md §7) — optional/additive; always present (0/0/null
   // when no feedback has been submitted yet), never blocking the tile.
   satisfaction: { up: number; down: number; rate: number | null };
+  // Slice 13e — declines per day over the period (live turns + rollups).
+  declined_by_day: { date: string; declined: number }[];
 }
 
 export function getDeflection(params: Record<string, string> = {}): Promise<DeflectionResponse> {
@@ -2163,6 +2191,15 @@ export interface ClustersResponse {
   clusters: QuestionCluster[];
   topic_breakdown: Record<string, number>;
   unanswered_ranking: UnansweredRankingRow[];
+  // Slice 13e — the questions declined in the last 7 days (R2's weekly view).
+  declined_ranking: DeclinedRankingRow[];
+}
+
+export interface DeclinedRankingRow {
+  cluster_id: number | null;
+  medoid_text: string;
+  declined_count: number;
+  last_declined_at: string | null;
 }
 
 export function getClusters(params: Record<string, string> = {}): Promise<ClustersResponse> {

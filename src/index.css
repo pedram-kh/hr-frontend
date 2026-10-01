@@ -1744,6 +1744,21 @@ a {
   color: var(--info, #4338ca);
 }
 
+/* Slice 13e: a declined (out-of-scope) turn — a quiet neutral chip and a muted hint, no alarm colour: nothing went wrong. */
+.chat-bubble--decline {
+  border-left: 3px solid var(--border);
+}
+
+.chat-badge--decline {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
+.chat-decline-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm, 0.875rem);
+}
+
 /* Slice 13c: an answer written from the model's own knowledge (no page consulted) reads as a quieter, unverified chip. */
 .chat-badge--model-knowledge {
   background: var(--warning-bg, #fef9e7);
