@@ -1,4 +1,4 @@
-import type { MessageTrace } from '../../lib/api';
+import type { GeneralLaneTrace, MessageTrace } from '../../lib/api';
 import type { Dict } from '../../i18n/es';
 
 // Sprint 13, build step 8 (plan.md §D.12/§E.15) — one timeline entry per
@@ -122,4 +122,44 @@ export function normalizationDetail(t: Dict, n: NormalizationBlock): string[] {
     );
   });
   return lines;
+}
+
+/**
+ * Slice 13c — the trace panel's "Lane" row: what the general-knowledge lane did this turn, in one line plus an expandable
+ * detail. Null when the turn never reached the lane. Every field is optional (a Sprint-13 trace has no `basis`, `shape`,
+ * `word_count` or `prompt_sha256`), so an older turn renders what it has and nothing else.
+ */
+export function laneRow(t: Dict, lane: GeneralLaneTrace | undefined): { label: string; meta: string; detail: string[] } | null {
+  if (!lane) return null;
+  const p = t.tracePanel;
+  const basis = lane.basis === 'model_knowledge' ? p.laneBasisModel : lane.basis === 'web' ? p.laneBasisWeb : p.laneBasisUnknown;
+  const blocked = lane.postcheck && lane.postcheck.passed === false ? p.laneBlockedPostcheck : lane.shape?.verdict === 'blocked' ? p.laneBlockedShape : p.laneNotBlocked;
+  const meta = [basis, typeof lane.word_count === 'number' ? `${lane.word_count} ${p.laneWords}` : null, blocked].filter(Boolean).join(' · ');
+
+  const detail: string[] = [];
+  const sources = (lane.sources ?? []).map((s) => s.title || s.id || s.kind).filter(Boolean);
+  if (sources.length > 0) detail.push(`${p.laneSourcesPrefix}${sources.join(', ')}`);
+  if (lane.web_attempted !== undefined) detail.push(`${p.laneWebAttemptedPrefix}${lane.web_attempted ? p.laneYes : p.laneNo}`);
+  (lane.fetch_errors ?? []).forEach((f) => detail.push(`${p.laneFetchErrorPrefix}${f.url ?? '?'} · ${f.error ?? f.status ?? '?'}`));
+  if (lane.grounding) {
+    detail.push(`${p.laneGroundingPrefix}${lane.grounding.checked ? (lane.grounding.grounded ? p.laneGroundingVerified : p.laneGroundingUnverified) : p.laneGroundingNotApplicable}`);
+  }
+  if (lane.postcheck) {
+    detail.push(`${p.lanePostcheckPrefix}${lane.postcheck.passed ? p.lanePass : (lane.postcheck.hits ?? []).map((h) => `${h.pattern_id} «${h.matched_span}»`).join(', ')}`);
+  }
+  if (lane.shape) {
+    detail.push(`${p.laneShapePrefix}${lane.shape.verdict === 'pass' ? p.lanePass : (lane.shape.hits ?? []).map((h) => `${h.rule_id} (${h.detail})`).join(', ') || lane.shape.rule_ids.join(', ')}`);
+  }
+  if (lane.draft) {
+    const d = lane.draft;
+    const bits = [
+      typeof d.cost_usd === 'number' ? `$${d.cost_usd.toFixed(4)}` : null,
+      typeof d.general_knowledge_ms === 'number' ? `${d.general_knowledge_ms} ms` : null,
+      d.model ?? null,
+    ].filter(Boolean);
+    if (bits.length > 0) detail.push(`${p.laneDraftPrefix}${bits.join(' · ')}`);
+  }
+  if (lane.prompt_sha256) detail.push(`${p.lanePromptPrefix}${lane.prompt_sha256.slice(0, 12)}`);
+
+  return { label: p.laneLabel, meta, detail };
 }

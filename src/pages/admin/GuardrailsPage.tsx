@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   addGuardrailBlockedTopic,
+  addGuardrailCataloguePage,
   ApiError,
   disableGuardrailBlockedTopic,
+  updateGuardrailCataloguePage,
   getGuardrails,
   updateGuardrails,
   type GuardrailConfig,
@@ -58,6 +60,10 @@ export function GuardrailsPage() {
   const [tone, setTone] = useState('');
   const [newPattern, setNewPattern] = useState('');
   const [newKind, setNewKind] = useState<'blocked_topic' | 'off_domain'>('blocked_topic');
+  // Slice 13c: the "add a catalogue page" form.
+  const [pageTitle, setPageTitle] = useState('');
+  const [pageUrl, setPageUrl] = useState('');
+  const [pageTopics, setPageTopics] = useState('');
 
   function hydrate(c: GuardrailConfig) {
     setConfig(c);
@@ -138,6 +144,37 @@ export function GuardrailsPage() {
       setNewPattern('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.guardrailsPage.addFailedError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addPage() {
+    const topics = pageTopics.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
+    if (!pageTitle.trim() || !pageUrl.trim() || topics.length === 0 || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await addGuardrailCataloguePage({ title: pageTitle.trim(), url: pageUrl.trim(), topics });
+      hydrate(updated);
+      setPageTitle('');
+      setPageUrl('');
+      setPageTopics('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.guardrailsPage.catalogueAddFailedError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setPageEnabled(id: number, enabled: boolean) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      hydrate(await updateGuardrailCataloguePage(id, { enabled }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.guardrailsPage.catalogueUpdateFailedError);
     } finally {
       setBusy(false);
     }
@@ -367,6 +404,83 @@ export function GuardrailsPage() {
         <p className="muted">
           {t.guardrailsPage.generalLaneEffectiveLabel} {config.general_lane.effective ? t.guardrailsPage.generalLaneEffectiveOn : t.guardrailsPage.generalLaneEffectiveOff}
         </p>
+      </section>
+
+      {/* 6b — Model knowledge as a lane source (Slice 13c, plan.md §2.6). Same RESTRICT-only contract as the lane switch above. */}
+      <section className="card">
+        <h3>{t.guardrailsPage.generalLaneModelHeading}</h3>
+        <p className="muted">{t.guardrailsPage.generalLaneModelIntro}</p>
+        {!config.general_lane_model_knowledge.env_baseline && (
+          <p className="muted">{t.guardrailsPage.generalLaneModelEnvOffNote}</p>
+        )}
+        {!config.general_lane.effective && <p className="muted">{t.guardrailsPage.generalLaneModelLaneOffNote}</p>}
+        <label className="guardrails-reason">
+          <input
+            type="checkbox"
+            checked={config.general_lane_model_knowledge.admin ?? true}
+            disabled={!canManage || busy || !config.general_lane_model_knowledge.env_baseline}
+            onChange={(e) => void save({ general_lane_model_knowledge_enabled: e.target.checked })}
+          />
+          {t.guardrailsPage.generalLaneModelToggleLabel}
+        </label>
+        <p className="muted">
+          {t.guardrailsPage.generalLaneEffectiveLabel} {config.general_lane_model_knowledge.effective ? t.guardrailsPage.generalLaneEffectiveOn : t.guardrailsPage.generalLaneEffectiveOff}
+        </p>
+      </section>
+
+      {/* 6c — The lane's official-page catalogue (Slice 13c, plan.md §6). Hosts are allowlisted server-side; nothing is deleted. */}
+      <section className="card">
+        <h3>{t.guardrailsPage.catalogueHeading}</h3>
+        <p className="muted">{t.guardrailsPage.catalogueIntro}</p>
+        <p className="muted">
+          {t.guardrailsPage.catalogueDomainsLabel} {config.general_lane_catalogue.allowed_domains.join(', ')}
+        </p>
+        {config.general_lane_catalogue.pages.length === 0 && <p className="muted">{t.guardrailsPage.catalogueEmpty}</p>}
+        <ul className="guardrails-topics">
+          {config.general_lane_catalogue.pages.map((page) => (
+            <li key={page.id} className={page.enabled ? '' : 'guardrails-topic--disabled'}>
+              <div>
+                <strong>{page.title}</strong>
+                {page.baseline && <span className="muted"> · {t.guardrailsPage.catalogueBaselineTag}</span>}
+                {!page.enabled && <span className="muted"> · {t.guardrailsPage.catalogueDisabledTag}</span>}
+                <br />
+                <a href={page.url} target="_blank" rel="noreferrer">{page.url}</a>
+                <br />
+                <span className="muted">{t.guardrailsPage.catalogueTopicsPrefix}{page.topics.join(', ')}</span>
+              </div>
+              {canManage && (
+                <button className="btn btn-ghost" onClick={() => void setPageEnabled(page.id, !page.enabled)} disabled={busy}>
+                  {page.enabled ? t.guardrailsPage.catalogueDisableButton : t.guardrailsPage.catalogueEnableButton}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {canManage && (
+          <div className="guardrails-add-topic guardrails-add-page">
+            <h4>{t.guardrailsPage.catalogueAddSubheading}</h4>
+            <div className="field">
+              <label htmlFor="cat-title">{t.guardrailsPage.catalogueTitleLabel}</label>
+              <input id="cat-title" className="input" value={pageTitle} onChange={(e) => setPageTitle(e.target.value)} maxLength={160} disabled={busy} />
+            </div>
+            <div className="field">
+              <label htmlFor="cat-url">{t.guardrailsPage.catalogueUrlLabel}</label>
+              <input id="cat-url" className="input" value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} maxLength={500} disabled={busy} placeholder={t.guardrailsPage.catalogueUrlPlaceholder} />
+            </div>
+            <div className="field">
+              <label htmlFor="cat-topics">{t.guardrailsPage.catalogueTopicsLabel}</label>
+              <input id="cat-topics" className="input" value={pageTopics} onChange={(e) => setPageTopics(e.target.value)} disabled={busy} />
+              <p className="muted">{t.guardrailsPage.catalogueTopicsHelp}</p>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={() => void addPage()}
+              disabled={busy || !pageTitle.trim() || !pageUrl.trim() || pageTopics.trim() === ''}
+            >
+              {busy ? t.guardrailsPage.catalogueAddingButton : t.guardrailsPage.catalogueAddButton}
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Change history */}

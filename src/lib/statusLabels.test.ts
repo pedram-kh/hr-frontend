@@ -169,6 +169,7 @@ describe('SUB_OUTCOME_LABELS', () => {
     'general_lane_blocked.question_prescreen',
     'general_lane_blocked.figure',
     'general_lane_blocked.entitlement_language',
+    'general_lane_blocked.shape',
     'general_lane_blocked.ungrounded',
     'profile_incomplete.professional_group',
     'profile_incomplete.job_category',
@@ -188,8 +189,8 @@ describe('SUB_OUTCOME_LABELS', () => {
     'tool_budget_exhausted.malformed',
   ];
 
-  it('has exactly 70 keys, matching EscalationExplainer::MATRIX', () => {
-    expect(MATRIX_KEYS.length).toBe(70);
+  it('has exactly 71 keys, matching EscalationExplainer::MATRIX', () => {
+    expect(MATRIX_KEYS.length).toBe(71);
   });
 
   for (const [lang, dict] of Object.entries(DICTS)) {

@@ -606,6 +606,19 @@ export interface FactSetTrace {
   }[];
 }
 
+export interface GeneralLaneTrace {
+  basis?: 'web' | 'model_knowledge';
+  sources?: Array<{ kind: string; title?: string; id?: string; url?: string }>;
+  web_attempted?: boolean;
+  fetch_errors?: Array<{ url: string | null; status: number | null; error: string | null }>;
+  grounding?: { checked: boolean; grounded?: boolean; reason?: string };
+  postcheck?: { passed: boolean; hits?: Array<{ pattern_id: string; matched_span: string }> };
+  shape?: { verdict: 'pass' | 'blocked'; rule_ids: string[]; hits?: Array<{ rule_id: string; detail: string }>; word_count?: number };
+  word_count?: number;
+  prompt_sha256?: string | null;
+  draft?: { model?: string; general_knowledge_ms?: number; prompt_tokens?: number; completion_tokens?: number; cost_usd?: number };
+}
+
 export interface MessageTrace {
   profile?: Record<string, unknown>;
   scope_filters?: Record<string, unknown>;
@@ -732,6 +745,8 @@ export interface MessageTrace {
   // `fallback` above). `steps` is a raw, append-only log of what the loop
   // actually did each round — rendered generically below rather than one
   // bespoke line per step `type`, since new tool/step types are expected.
+  // Slice 13c (plan.md §2.5) — the general-knowledge lane's own block (admin trace only). `basis` is absent on a pre-13c turn.
+  general_lane?: GeneralLaneTrace;
   agent?: {
     planner: { model?: string | null; prompt_version?: string | null; tool_choice?: string; thinking?: boolean } | null;
     budget: { max_rounds: number; max_tool_calls: number; asks_used_before_turn: number };
@@ -793,7 +808,7 @@ export interface ChatResponse {
   // `'general_knowledge'`); `{sources: []}` otherwise. Each source is a
   // display label + the catalogue's own url (never a raw fetched excerpt —
   // that never leaves hr-backend).
-  general_lane?: { sources: Array<{ label: string; url: string | null }> };
+  general_lane?: { sources: Array<{ label: string; url: string | null }>; basis?: 'web' | 'model_knowledge' };
 }
 
 export function sendChatMessage(
@@ -835,7 +850,7 @@ export interface ConversationMessage {
   citations: Citation[];
   trace?: MessageTrace;
   source_labels?: string[];
-  general_lane?: { sources: Array<{ label: string; url: string | null }> };
+  general_lane?: { sources: Array<{ label: string; url: string | null }>; basis?: 'web' | 'model_knowledge' };
 }
 
 // Hydrate the employee's OWN most-recent session (Q-D). Self-scoped; the UI
@@ -921,6 +936,22 @@ export interface GuardrailConfig {
   // image of `GuardrailThreshold`'s raise-only shape: `admin` can only
   // narrow `env_baseline`, never widen it.
   general_lane: { admin: boolean | null; env_baseline: boolean; effective: boolean };
+  // Slice 13c (plan.md §2.6) — same restrict-only shape for "model knowledge as a lane source".
+  general_lane_model_knowledge: { admin: boolean | null; env_baseline: boolean; effective: boolean };
+  // Slice 13c (plan.md §6) — the lane's official-page catalogue (data) + the fixed host allowlist (deploy config).
+  general_lane_catalogue: { allowed_domains: string[]; pages: GuardrailCataloguePage[] };
+}
+
+export interface GuardrailCataloguePage {
+  id: number;
+  slug: string;
+  title: string;
+  url: string;
+  topics: string[];
+  enabled: boolean;
+  /** Seeded from the deploy config (the Sprint-13 pages) rather than added by an admin. */
+  baseline: boolean;
+  updated_at: string | null;
 }
 
 /** The fields a super_admin may write. Only present fields are applied (partial save); a null value reverts/clears. */
@@ -932,6 +963,7 @@ export interface GuardrailConfigUpdate {
   tone_constraints?: string | null;
   convert_allowed_reasons?: string[];
   general_lane_enabled?: boolean | null;
+  general_lane_model_knowledge_enabled?: boolean | null;
 }
 
 export function getGuardrails(): Promise<GuardrailConfig> {
@@ -954,6 +986,23 @@ export function addGuardrailBlockedTopic(
 
 export function disableGuardrailBlockedTopic(id: number): Promise<GuardrailConfig> {
   return request(`/admin/guardrails/blocked-topics/${id}`, { method: 'DELETE' });
+}
+
+// Slice 13c (plan.md §6) — the general-lane catalogue. The server enforces the host allowlist (422 otherwise) and only ever
+// soft-disables.
+export function addGuardrailCataloguePage(page: { title: string; url: string; topics: string[] }): Promise<GuardrailConfig> {
+  return request('/admin/guardrails/catalogue', { method: 'POST', body: JSON.stringify(page) });
+}
+
+export function updateGuardrailCataloguePage(
+  id: number,
+  patch: Partial<{ title: string; url: string; topics: string[]; enabled: boolean }>,
+): Promise<GuardrailConfig> {
+  return request(`/admin/guardrails/catalogue/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export function disableGuardrailCataloguePage(id: number): Promise<GuardrailConfig> {
+  return request(`/admin/guardrails/catalogue/${id}`, { method: 'DELETE' });
 }
 
 // ----------------------------------------------------------------------------
