@@ -24,6 +24,7 @@ import { useAuth } from '../../auth/context';
 import { ProposeVocabularyForm } from './ProposeVocabularyForm';
 import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels';
 import { useT, useLocale } from '../../i18n/context';
+import { showChunkHealth } from '../../lib/featureFlags';
 
 // Right-hand document card: scope facets + inline provenance, validity/status,
 // chunk health, lineage, the provenance timeline, the real-document viewer, the
@@ -268,7 +269,9 @@ export function DocumentDetailPanel({
 
       <TopicsSection doc={doc} canEdit={canEdit} onChanged={reload} />
 
-      <ChunkHealthSection health={doc.chunk_health} />
+      {/* Sprint 12b item 1 — hidden in the demo build (VITE_SHOW_CHUNK_HEALTH,
+          default off). The component and its dictionary strings stay. */}
+      {showChunkHealth() && <ChunkHealthSection health={doc.chunk_health} />}
 
       <LineageSection lineage={doc.lineage} />
 

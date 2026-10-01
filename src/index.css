@@ -59,6 +59,20 @@
   --border: #d6d7d5;
   --border-strong: #bebebd;
 
+  /* --- Drawer / popup separation (Sprint 12b item 4, plan.md §3.3) ---
+     A grey well behind white cards inside every `.detail` drawer. A NEW token
+     rather than --surface-inset: dark --surface-inset is a blue-black that is
+     not in the brand palette and is what INPUTS use, so reusing it would repaint
+     panels off-brand and couple them to input styling. #eeefed is the lightest
+     canvas that keeps bare --warning text >= 4.5:1 on it (a darker #eceeeb drops
+     to 4.49). Separation is carried by the border + gap, not the 1.15:1 fill
+     step. Contrast rows for both themes: sprint-12b/plan.md §3.4. */
+  --panel-canvas: #eeefed;
+  --panel-card-border: #bebebd;
+  --panel-card-radius: var(--radius-md);
+  --panel-card-gap: var(--space-3);
+  --panel-card-pad: var(--space-4);
+
   /* --- Map/graph edge (non-text UI) --- CP-1 dark-mode fix: SVG connector
      lines (lens-graph tree edges, trend-chart axes) were reading --border /
      --border-strong, which are tuned for hairline borders next to their own
@@ -139,6 +153,10 @@
   --text-faint: #667085;
   --border: #222936;
   --border-strong: #333c4a;
+  /* Drawer separation (Sprint 12b item 4): Verde Profundo, darkened one step
+     below --canvas so the card surface (--surface #173f3e) lifts off it. */
+  --panel-canvas: #0b2120;
+  --panel-card-border: #3a6563;
   /* 3.22:1 on --canvas, 2.48:1 on --surface — both clear the reviewer's ≥2:1
      floor for non-text UI, unlike --border-strong's 1.04–1.35:1 here. */
   --map-edge: #5c7a78;
@@ -559,6 +577,87 @@ a {
   color: var(--text-faint);
 }
 
+/* Sprint 12b item 8 — the group header is a real button that folds its items.
+   The label keeps its micro-label look; the TOGGLE text is --text-muted
+   (7.29:1 on --surface) rather than the label's --text-faint, since it is now
+   interactive. Focus ring comes from the global :focus-visible rule. */
+.shell-nav-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.shell-nav-group-toggle .shell-nav-group-label {
+  padding: 0;
+  color: inherit;
+}
+
+.shell-nav-group-toggle:hover {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+/* The active group can't fold: still focusable (aria-disabled, not disabled),
+   but it does not invite a click. */
+.shell-nav-group-toggle[aria-disabled='true'] {
+  cursor: default;
+}
+.shell-nav-group-toggle[aria-disabled='true']:hover {
+  color: var(--text-muted);
+  background: none;
+}
+
+.shell-nav-group-chevron {
+  flex-shrink: 0;
+  transform: rotate(0deg);
+}
+
+.shell-nav-group-toggle.is-folded .shell-nav-group-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shell-nav-group-chevron {
+    transition: transform 0.15s ease;
+  }
+}
+
+/* A `hidden` attribute loses to any author `display`, so say it explicitly. */
+.shell-nav-group-toggle[hidden],
+.shell-nav-group-items[hidden] {
+  display: none;
+}
+
+.shell-nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Text for assistive tech only (the active group's "can't fold" hint). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .shell-nav-item {
   position: relative;
   display: flex;
@@ -746,8 +845,96 @@ a {
   margin-bottom: 0;
 }
 
+/* Sprint 12b item 5 (plan.md §6.2) — Historial's search + filters on ONE line.
+   Why it wrapped before: `.input` is `width: 100%`, so the search box and each
+   date input claimed a full row inside the wrapping flex container (only
+   `.select` was reset to `width: auto`). The fix is sizing, not layout hacks:
+   - search flexes between 9rem and 20rem; dates are compact (9rem, no grow);
+     selects are capped (ellipsis) so a long convenio name can't blow the row.
+   - the filters wrapper is `display: contents` once the TOOLBAR itself is at
+     least 960px wide (a container query, not a viewport media query: the 230px
+     sidebar takes width the viewport doesn't know about), so everything flows
+     as one wrapping line; narrower, it is a full-width row of its own — the
+     previous two-row layout — and wraps control by control. */
+.filter-toolbar {
+  container-type: inline-size;
+}
+
 .filter-toolbar-filters {
-  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 100%;
+}
+
+@container (min-width: 960px) {
+  .filter-toolbar-filters {
+    display: contents;
+  }
+}
+/* Inline mode flows only from 975px (its own, tighter budget — see below). */
+@container (min-width: 960px) and (max-width: 974px) {
+  .filter-toolbar--inline .filter-toolbar-filters {
+    display: flex;
+  }
+}
+
+.filter-toolbar .input[type='date'] {
+  width: 9rem;
+  flex: 0 0 auto;
+}
+
+/* Compact one-line mode (Historial only, `inlineWhenWide`). Measured in Chrome:
+   at the natural control widths (176px selects, 144px dates) the row needs ~1390px
+   and wraps to two lines even at 1440. With the sizes below the six controls +
+   search + Buscar need ~970px, which fits the 1002px of content at a 1280px
+   viewport with the sidebar open (and the 987px left when a classic scrollbar
+   takes 15px). The breakpoint sits just above that sum, so anything narrower
+   falls back to the clean two-row layout instead of orphaning one control. */
+.filter-toolbar--inline .filter-toolbar-row {
+  gap: var(--space-2);
+}
+.filter-toolbar--inline .filter-toolbar-filters {
+  gap: var(--space-2);
+}
+.filter-toolbar--inline .filter-toolbar-filters.is-collapsed {
+  display: none;
+}
+@container (min-width: 975px) {
+  .filter-toolbar--inline .select,
+  .filter-toolbar--inline .input[type='date'] {
+    width: 7.5rem;
+    max-width: 7.5rem;
+    min-width: 0;
+    flex: 0 0 auto;
+    font-size: var(--text-sm);
+    padding-inline: var(--space-2);
+  }
+  .filter-toolbar--inline .filter-toolbar-row form .input {
+    flex: 1 1 7rem;
+    min-width: 7rem;
+    font-size: var(--text-sm);
+  }
+  .filter-toolbar--inline .filter-toolbar-toggle {
+    display: none;
+  }
+  /* Wide enough for one line: filters are always shown, whatever the toggle said. */
+  .filter-toolbar--inline .filter-toolbar-filters.is-collapsed {
+    display: contents;
+  }
+}
+
+.filter-toolbar .select {
+  max-width: 11rem;
+  text-overflow: ellipsis;
+}
+
+.filter-toolbar-row form .input {
+  flex: 1 1 11rem;
+  min-width: 9rem;
+  max-width: 20rem;
+  width: auto;
 }
 
 .filter-toolbar-badge {
@@ -1085,6 +1272,9 @@ a {
   border-radius: var(--radius-lg);
   overflow: hidden;
   /* body scrolls, head stays fixed */
+  /* Sprint 12b item 4 — the grey well. Scoped to `.detail` (not `.panel`, which
+     other surfaces share) and beats .panel's --surface only here. */
+  background: var(--panel-canvas);
 }
 
 /* Sticky header inside the modal */
@@ -1096,7 +1286,23 @@ a {
 .detail-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--space-4) var(--space-6);
+  /* Sprint 12b item 4 — blocks are white cards separated by a vertical gap on
+     the grey well (was: border-top hairlines between bare sections). */
+  padding: var(--space-3) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-card-gap);
+}
+
+/* Flex children don't collapse margins, so the browser's default <p>/<dl>
+   margins would stack on top of the gap. The gap owns the spacing. */
+.detail-body > :is(p, dl, ul, ol, div, pre) {
+  margin: 0;
+}
+
+/* Hold the drawer to one scroll axis; the flex column must not shrink cards. */
+.detail-body > * {
+  flex-shrink: 0;
 }
 
 /* Paginated page viewer */
@@ -1161,15 +1367,65 @@ a {
   font-weight: 600;
 }
 
-.detail-body section {
+/* A content block = a white card with its own border, radius and padding.
+   `.panel-card` is the same look for blocks that are not direct <section>
+   children (the two-column fact-create view). */
+.detail-body > section,
+.detail-body .panel-card {
+  background: var(--surface);
+  border: 1px solid var(--panel-card-border);
+  border-radius: var(--panel-card-radius);
+  padding: var(--panel-card-pad);
+  margin: 0;
+}
+
+/* ADR-0020: unverified-AI content keeps its 3px fuchsia left border. The
+   `border:` shorthand above would otherwise erase it (.ai-marked is a single
+   class and loses on specificity), so it is restated here. */
+.detail-body > section.ai-marked {
+  border-left: 3px solid var(--provenance-ai);
+}
+
+/* The AI-suggestions card keeps its fuchsia tint (it is `transparent`-based,
+   so it must be mixed onto the card surface to stay opaque). */
+.detail-body > section.ai-suggestions {
+  background: color-mix(in srgb, var(--provenance-ai) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--provenance-ai) 30%, var(--panel-card-border));
+}
+
+/* `.edit-block` was an inset-tinted sub-panel (--surface-inset, which in dark is
+   the off-palette blue-black). As a top-level block it is an ordinary card now:
+   the rule above out-ranks `.edit-block`'s own background/border, so the inset
+   tint is dropped without a second rule. */
+
+/* A section nested INSIDE a card keeps the old plain top rule. */
+.detail-body section section {
   margin-top: var(--space-4);
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
 }
-.detail-body section:first-child {
-  margin-top: var(--space-3);
+.detail-body section section:first-child {
+  margin-top: 0;
   border-top: none;
   padding-top: 0;
+}
+
+/* Phone: tighter well and card padding. */
+@media (max-width: 640px) {
+  .detail-body {
+    --panel-card-pad: var(--space-3);
+    padding: var(--space-3) var(--space-2) var(--space-5);
+  }
+}
+
+/* The Grafo node card is a 4-line info popup, not a multi-block drawer: it keeps
+   the plain white surface and its original flowing body. */
+.detail.grafo-node-card {
+  background: var(--surface);
+}
+.grafo-node-card .detail-body {
+  display: block;
+  padding: 0 var(--space-4) var(--space-6);
 }
 
 .detail-body h4 {
@@ -2012,6 +2268,8 @@ a {
     --surface: #ffffff;
     --surface-raised: #ffffff;
     --surface-inset: #ffffff;
+    --panel-canvas: #ffffff;
+    --panel-card-border: #999999;
     --text: #000000;
     --text-muted: #1a1a1a;
     --text-faint: #333333;
@@ -2662,6 +2920,26 @@ a {
 .board-readonly {
   margin-left: auto;
 }
+.convo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.convo-head h4 {
+  margin: 0;
+}
+.convo-toggle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: underline;
+}
+#card-convo-body[hidden] {
+  display: none;
+}
+
 .card-trigger {
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);

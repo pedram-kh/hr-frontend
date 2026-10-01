@@ -27,7 +27,7 @@
 // here — only the structural pieces: the `.shell-sidebar--collapsed`
 // modifier class and every item's accessible name).
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../../auth/context';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -110,6 +110,12 @@ const EXPECTED: Record<string, Expected> = {
 // literals in ROLES above).
 const SIDEBAR_COLLAPSED_KEY = 'hr-admin-sidebar-collapsed';
 
+// Sprint 12b item 8 — one key per group, keyed by the stable English slug.
+const GROUP_IDS = ['conocimiento', 'atencion', 'analisis', 'personas', 'gobierno'] as const;
+const groupKey = (id: string) => `hr-admin-sidebar-group-${id}`;
+const clearGroupKeys = () => GROUP_IDS.forEach((id) => window.localStorage.removeItem(groupKey(id)));
+const storedGroupKeys = () => GROUP_IDS.filter((id) => window.localStorage.getItem(groupKey(id)) !== null);
+
 function renderedGroups(): Record<string, string[]> {
   // Scoped by class, not role: a child page rendered under the default 'map'
   // view (KnowledgeMapPage) also renders its own <nav>, making
@@ -120,7 +126,9 @@ function renderedGroups(): Record<string, string[]> {
   const groups: Record<string, string[]> = {};
   nav.querySelectorAll('.shell-nav-group').forEach((el) => {
     const label = el.querySelector('.shell-nav-group-label')?.textContent ?? '';
-    const items = Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim() ?? '');
+    // Sprint 12b item 8: the group header is now a <button> too, so items are
+    // selected by their own class rather than by tag.
+    const items = Array.from(el.querySelectorAll('.shell-nav-item')).map((b) => b.textContent?.trim() ?? '');
     groups[label] = items;
   });
   return groups;
@@ -138,6 +146,8 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
     // Default expanded (AdminShell's own default when the key is absent) —
     // a test that wants collapsed sets this explicitly before rendering.
     window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+    clearGroupKeys();
+    window.location.hash = '';
   });
 
   // No global RTL setup file in this project (only one prior test, a plain
@@ -147,6 +157,8 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
   afterEach(() => {
     cleanup();
     window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+    clearGroupKeys();
+    window.location.hash = '';
   });
 
   for (const [role, identity] of Object.entries(ROLES)) {
@@ -176,6 +188,267 @@ describe('AdminShell nav — per-role grouping (Sprint 11a §B.3)', () => {
       </LocaleProvider>,
     );
     expect(screen.queryByText(/brand.preview/i)).not.toBeInTheDocument();
+  });
+
+  describe('Cobertura flag (Sprint 12b item 7)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      window.location.hash = '';
+    });
+
+    const mount = (identity: Identity) =>
+      render(
+        <LocaleProvider>
+          <ThemeProvider>
+            <AuthContext.Provider value={{ identity, loading: false, login: vi.fn(), logout: vi.fn() }}>
+              <AdminShell />
+            </AuthContext.Provider>
+          </ThemeProvider>
+        </LocaleProvider>,
+      );
+
+    for (const [role, identity] of Object.entries(ROLES)) {
+      it(`flag off → no Cobertura nav item for ${role}; every other item is unchanged`, () => {
+        vi.stubEnv('VITE_SHOW_COVERAGE', 'false');
+        mount(identity);
+        const expected: Expected = {};
+        for (const [group, items] of Object.entries(EXPECTED[role])) {
+          expected[group] = items.filter((i) => i !== 'Cobertura');
+        }
+        expect(renderedGroups()).toEqual(expected);
+        expect(screen.queryByRole('button', { name: 'Análisis · Cobertura' })).not.toBeInTheDocument();
+      });
+    }
+
+    it('flag on (or unset) → Cobertura is in the nav', () => {
+      vi.stubEnv('VITE_SHOW_COVERAGE', 'true');
+      mount(ROLES.super_admin);
+      expect(screen.getByRole('button', { name: 'Análisis · Cobertura' })).toBeInTheDocument();
+      cleanup();
+      vi.stubEnv('VITE_SHOW_COVERAGE', '');
+      mount(ROLES.super_admin);
+      expect(screen.getByRole('button', { name: 'Análisis · Cobertura' })).toBeInTheDocument();
+    });
+
+    it('flag off → #view=coverage still opens the Cobertura page (backend Corregir links keep working)', () => {
+      vi.stubEnv('VITE_SHOW_COVERAGE', 'false');
+      window.location.hash = '#view=coverage';
+      mount(ROLES.super_admin);
+      expect(screen.getByRole('heading', { name: 'Análisis · Cobertura' })).toBeInTheDocument();
+    });
+
+    it('flag off → #view=coverage still respects the permission check', () => {
+      vi.stubEnv('VITE_SHOW_COVERAGE', 'false');
+      window.location.hash = '#view=coverage';
+      // An admin with neither analytics.view nor knowledge.edit (ADR-0018):
+      // the flag never grants access, the hash alone cannot open the page.
+      mount(identityWith({ 'escalation.work': true }));
+      expect(screen.queryByRole('heading', { name: 'Análisis · Cobertura' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('collapsible groups (Sprint 12b item 8)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const mount = (identity: Identity = ROLES.super_admin) =>
+      render(
+        <LocaleProvider>
+          <ThemeProvider>
+            <AuthContext.Provider value={{ identity, loading: false, login: vi.fn(), logout: vi.fn() }}>
+              <AdminShell />
+            </AuthContext.Provider>
+          </ThemeProvider>
+        </LocaleProvider>,
+      );
+
+    // The group wrapper for a visible group label ('Gobierno', …).
+    const groupEl = (label: string): HTMLElement => {
+      const el = Array.from(document.querySelectorAll<HTMLElement>('.shell-nav-group')).find(
+        (g) => g.querySelector('.shell-nav-group-label')?.textContent === label,
+      );
+      if (!el) throw new Error(`group "${label}" not rendered`);
+      return el;
+    };
+    const toggleOf = (label: string) => groupEl(label).querySelector<HTMLButtonElement>('.shell-nav-group-toggle')!;
+    const itemsOf = (label: string) => groupEl(label).querySelector<HTMLElement>('.shell-nav-group-items')!;
+    const goTo = (hash: string) =>
+      act(() => {
+        window.location.hash = hash;
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      });
+
+    it('defaults to every group open, with nothing written to storage on mount', () => {
+      mount();
+      for (const label of ['Conocimiento', 'Atención', 'Análisis', 'Personas', 'Gobierno']) {
+        expect(itemsOf(label)).not.toHaveAttribute('hidden');
+        expect(toggleOf(label)).toHaveAttribute('aria-expanded', 'true');
+      }
+      expect(storedGroupKeys()).toEqual([]);
+    });
+
+    it('each header is a real button wired to its items (aria-controls / aria-expanded)', () => {
+      mount();
+      const toggle = toggleOf('Gobierno');
+      expect(toggle.tagName).toBe('BUTTON');
+      expect(toggle).toHaveAttribute('type', 'button');
+      expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBe(itemsOf('Gobierno'));
+      expect(itemsOf('Gobierno')).toHaveAttribute('role', 'group');
+      expect(itemsOf('Gobierno')).toHaveAttribute('aria-labelledby');
+    });
+
+    it('folds on click, writes only that group\'s key, survives a remount, and unfolds (key removed)', () => {
+      mount();
+      fireEvent.click(toggleOf('Gobierno'));
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+      expect(toggleOf('Gobierno')).toHaveAttribute('aria-expanded', 'false');
+      expect(window.localStorage.getItem(groupKey('gobierno'))).toBe('folded');
+      expect(storedGroupKeys()).toEqual(['gobierno']);
+      // Other groups untouched.
+      expect(itemsOf('Atención')).not.toHaveAttribute('hidden');
+
+      cleanup();
+      mount();
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+
+      fireEvent.click(toggleOf('Gobierno'));
+      expect(itemsOf('Gobierno')).not.toHaveAttribute('hidden');
+      expect(window.localStorage.getItem(groupKey('gobierno'))).toBeNull();
+    });
+
+    it('folded items leave the accessibility tree; open ones stay', () => {
+      mount();
+      fireEvent.click(toggleOf('Gobierno'));
+      expect(screen.queryByRole('button', { name: 'Gobierno · Ajustes' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Atención · Escalado' })).toBeInTheDocument();
+    });
+
+    it('the active group cannot fold: aria-disabled + hint, items stay, nothing written', () => {
+      mount(); // default view is "map" → Conocimiento is the active group
+      const toggle = toggleOf('Conocimiento');
+      expect(toggle).toHaveAttribute('aria-disabled', 'true');
+      expect(toggle).not.toBeDisabled(); // still focusable, so a screen reader hears the hint
+      const hint = document.getElementById(toggle.getAttribute('aria-describedby')!);
+      expect(hint).toHaveTextContent('La página actual está en este grupo');
+
+      fireEvent.click(toggle);
+      expect(itemsOf('Conocimiento')).not.toHaveAttribute('hidden');
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(storedGroupKeys()).toEqual([]);
+
+      // Non-active groups carry no such disabling.
+      expect(toggleOf('Gobierno')).not.toHaveAttribute('aria-disabled');
+    });
+
+    it('a stored fold on the active group is ignored, and never rewritten', () => {
+      window.localStorage.setItem(groupKey('conocimiento'), 'folded');
+      mount();
+      expect(itemsOf('Conocimiento')).not.toHaveAttribute('hidden');
+      expect(window.localStorage.getItem(groupKey('conocimiento'))).toBe('folded');
+    });
+
+    it('navigating by hash into a folded group opens it, and leaving returns it to its stored fold (derived, not stored)', () => {
+      window.localStorage.setItem(groupKey('gobierno'), 'folded');
+      mount();
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+
+      goTo('#view=settings');
+      expect(itemsOf('Gobierno')).not.toHaveAttribute('hidden');
+      expect(window.localStorage.getItem(groupKey('gobierno'))).toBe('folded'); // choice preserved
+
+      goTo('#view=map');
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+    });
+
+    it('clicking an item inside an open group makes that group the active one', () => {
+      window.localStorage.setItem(groupKey('atencion'), 'folded');
+      mount();
+      expect(itemsOf('Atención')).toHaveAttribute('hidden');
+      // Open it, pick an item, then try to fold it: refused (it is the active group now).
+      fireEvent.click(toggleOf('Atención'));
+      fireEvent.click(screen.getByRole('button', { name: 'Atención · Escalado' }));
+      fireEvent.click(toggleOf('Atención'));
+      expect(itemsOf('Atención')).not.toHaveAttribute('hidden');
+    });
+
+    it('Cobertura flag off + #view=coverage: the Análisis group holding the open page does not fold shut', () => {
+      vi.stubEnv('VITE_SHOW_COVERAGE', 'false');
+      window.localStorage.setItem(groupKey('analisis'), 'folded');
+      window.location.hash = '#view=coverage';
+      mount();
+      expect(itemsOf('Análisis')).not.toHaveAttribute('hidden');
+    });
+
+    it('icon-only mode: folded groups still show every icon; the toggles are hidden; aria-labels intact', () => {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
+      window.localStorage.setItem(groupKey('gobierno'), 'folded');
+      window.localStorage.setItem(groupKey('atencion'), 'folded');
+      mount();
+      expect(document.querySelector('.shell-sidebar')).toHaveClass('shell-sidebar--collapsed');
+      for (const id of GROUP_IDS) {
+        const group = document.querySelector(`#shell-nav-group-${id}`) as HTMLElement;
+        expect(group, id).not.toHaveAttribute('hidden');
+        expect(document.querySelector(`[aria-controls="shell-nav-group-${id}"]`)).toHaveAttribute('hidden');
+      }
+      expect(screen.getByRole('button', { name: 'Gobierno · Ajustes' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Atención · Escalado' })).toBeInTheDocument();
+
+      // Expanding the rail restores the user's folds (nothing was lost or rewritten).
+      fireEvent.click(screen.getByRole('button', { name: 'Expandir menú' }));
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+      expect(itemsOf('Atención')).toHaveAttribute('hidden');
+    });
+
+    it('icon-only mode never reads or writes fold state when the rail is toggled around', () => {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
+      mount();
+      expect(storedGroupKeys()).toEqual([]);
+    });
+
+    it('mobile overlay: folds apply while open (even with the desktop rail collapsed) and selecting an item closes it', () => {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
+      window.localStorage.setItem(groupKey('gobierno'), 'folded');
+      mount();
+      // Rail: not folded visually (icon-only)…
+      expect(itemsOf('Gobierno')).not.toHaveAttribute('hidden');
+      // …but opening the mobile overlay is expanded mode, so the fold applies.
+      fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }));
+      expect(document.querySelector('.shell-sidebar')).toHaveClass('shell-sidebar--mobile-open');
+      expect(document.querySelector('.shell-sidebar')).not.toHaveClass('shell-sidebar--collapsed');
+      expect(itemsOf('Gobierno')).toHaveAttribute('hidden');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Atención · Escalado' }));
+      expect(document.querySelector('.shell-sidebar')).not.toHaveClass('shell-sidebar--mobile-open');
+    });
+
+    for (const [role, identity] of Object.entries(ROLES)) {
+      it(`${role}: folding every group leaves the group→item structure identical; only the active group's items stay visible`, () => {
+        for (const id of GROUP_IDS) window.localStorage.setItem(groupKey(id), 'folded');
+        mount(identity);
+
+        // Same structure as the unfolded snapshot — the point of `hidden` over unmounting.
+        expect(renderedGroups()).toEqual(EXPECTED[role]);
+
+        const open = Array.from(document.querySelectorAll('.shell-nav-group-items:not([hidden])'));
+        expect(open).toHaveLength(1);
+        expect(within(open[0] as HTMLElement).getAllByRole('button').map((b) => b.textContent?.trim())).toEqual(
+          EXPECTED[role].Conocimiento,
+        );
+
+        // An absent group stays absent (no header, no key written).
+        if (!('Personas' in EXPECTED[role])) {
+          expect(document.querySelector('#shell-nav-group-personas')).toBeNull();
+        }
+      });
+    }
+
+    it('toggling never writes a key for a group that is not rendered', () => {
+      mount(ROLES.knowledge_editor); // no Personas group
+      fireEvent.click(toggleOf('Gobierno'));
+      expect(storedGroupKeys()).toEqual(['gobierno']);
+      expect(window.localStorage.getItem(groupKey('personas'))).toBeNull();
+    });
   });
 
   describe('collapsible sidebar (Sprint 11a CP-2 revision, §B.2)', () => {

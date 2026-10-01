@@ -43,6 +43,21 @@ const TRANSITIONS: Record<EscalationStatus, EscalationStatus[]> = {
   closed: ['in_progress'],
 };
 
+// Sprint 12b item 2b (plan.md §1.8) — the Cerrada column is hidden unless
+// "Mostrar cerradas" is on. A pure view preference (browser-wide, like the other
+// 12b prefs): it is NOT a filter, so it is neither counted in the Filtros badge
+// nor reset by "Limpiar filtros", and it changes no API call or card data.
+// Default off; the key exists only while on.
+const SHOW_CLOSED_KEY = 'hr-admin-board-show-closed';
+
+function initialShowClosed(): boolean {
+  try {
+    return window.localStorage.getItem(SHOW_CLOSED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export function EscalationBoardPage({
   focusUuid,
   onFocusHandled,
@@ -59,6 +74,16 @@ export function EscalationBoardPage({
   const [reason, setReason] = useState('');
   const [mineOnly, setMineOnly] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState<boolean>(initialShowClosed);
+  const toggleShowClosed = (next: boolean) => {
+    setShowClosed(next);
+    try {
+      if (next) window.localStorage.setItem(SHOW_CLOSED_KEY, 'true');
+      else window.localStorage.removeItem(SHOW_CLOSED_KEY);
+    } catch {
+      // best-effort only — a failed write never blocks the toggle itself.
+    }
+  };
 
   // Optimistic drag state: uuid → status before the PATCH lands.
   const [optimistic, setOptimistic] = useState<Record<string, EscalationStatus>>({});
@@ -178,13 +203,21 @@ export function EscalationBoardPage({
             />
             {t.escalationBoardPage.assignedToMeOnlyLabel}
           </label>
+          <label className="board-filter-check">
+            <input
+              type="checkbox"
+              checked={showClosed}
+              onChange={(e) => toggleShowClosed(e.target.checked)}
+            />
+            {t.escalationBoardPage.showClosedLabel} ({data?.counts?.closed ?? 0})
+          </label>
         </FilterToolbar>
 
         {error && <p className="error">{error}</p>}
 
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="board">
-            {(data?.statuses ?? []).map((status) => (
+            {(data?.statuses ?? []).filter((status) => showClosed || status !== 'closed').map((status) => (
               <BoardColumn
                 key={status}
                 status={status}

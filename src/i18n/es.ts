@@ -65,6 +65,8 @@ export const es = {
       guardrails: 'Guardarraíles',
       ajustes: 'Ajustes',
     },
+    // Sprint 12b item 8 — read by assistive tech on the active group's (disabled) fold toggle.
+    groupActiveHint: 'La página actual está en este grupo; no se puede plegar.',
     collapseMenu: 'Colapsar menú',
     expandMenu: 'Expandir menú',
     openMobileMenu: 'Abrir menú',
@@ -108,7 +110,7 @@ export const es = {
         // untranslated JSX in AdminShell.tsx — a CLI command name is
         // invariant across locale, not chrome; see the guard test's
         // `ALLOWED_HARDCODED_STRINGS` entries for `stats:*`/`questions:cluster`).
-        description: 'Tasa de resolución (deflection), escalaciones por corrección y agrupación de preguntas — todo reproducible desde los comandos',
+        description: 'Tasa de resolución automática, escalaciones por acción de corrección y preguntas agrupadas por similitud — todo reproducible desde los comandos',
       },
       coverage: {
         heading: 'Análisis · Cobertura',
@@ -502,6 +504,11 @@ export const es = {
     unassignButton: 'Quitar asignación',
     moveStatusAriaLabel: 'Mover estado',
     moveToPlaceholder: 'Mover a…',
+    // Sprint 12b item 3 — the Conversación block's collapse toggle.
+    showConversation: 'Ver conversación completa',
+    hideConversation: 'Ocultar',
+    messageOne: 'mensaje',
+    messageOther: 'mensajes',
     conversationHeading: 'Conversación',
     conversationRestrictedNotice: 'No tienes permiso para ver el contenido de la conversación. Se requiere',
     conversationRestrictedOr: 'o',
@@ -1231,7 +1238,7 @@ export const es = {
     loadingText: 'Cargando…', // already English live
     periodPrefix: 'Periodo',
     periodNote: 'La tasa de resolución excluye «necesitan categoría», preguntas aclaratorias y declinadas del denominador. Desde la Slice 13e las preguntas fuera de alcance se declinan en lugar de escalarse, así que la tasa sube sin que haya cambiado la calidad de las respuestas.',
-    kpiDeflectionRateLabel: 'Tasa de resolución (deflection)',
+    kpiDeflectionRateLabel: 'Tasa de resolución automática',
     kpiAnsweredLabel: 'Respondidas',
     kpiEscalatedLabel: 'Escaladas',
     kpiNeedsCategoryLabel: 'Necesitan categoría',
@@ -1249,35 +1256,86 @@ export const es = {
     declinedCountLabel: 'veces',
     kpiHrRepliesLabel: 'Respuestas humanas (RR. HH.)',
     kpiSatisfactionLabel: 'Satisfacción (👍/👍+👎)',
-    kpiSatisfactionSubSuffix: '(§7, opcional)',
-    pathSplitHeading: 'Reparto por vía (path_split)',
-    authoritySplitHeading: 'Reparto por autoridad (authority_split)',
-    escalationsByFixHeading: 'Escalaciones por corrección (§3)',
+    pathSplitHeading: 'Cómo se resolvieron las preguntas',
+    authoritySplitHeading: 'En qué fuente se basó la respuesta',
+    escalationsByFixHeading: 'Escalaciones por acción de corrección',
     unexplainedCountSuffix: 'tarjeta(s) anteriores sin explicación estructurada aún.',
     resolvedInPeriodSuffix: 'resueltas en el periodo · tasa de conversión a conocimiento',
     reasonHeader: 'Motivo',
-    subOutcomeHeader: 'Sub-resultado',
+    subOutcomeHeader: 'Detalle del motivo',
     fixActionHeader: 'Acción de corrección',
     cardsHeader: 'Tarjetas',
     resolvedHeader: 'Resueltas',
     noEscalationsInPeriod: 'Sin escalaciones en el periodo.',
-    clusteringHeadingPrefix: 'Agrupación de preguntas (§4) — ejecución',
-    clusteringNotePrefix: 'Etiqueta = medoide del cluster (nunca un resumen de IA). Umbral τ=',
-    medoidHeader: 'Medoide',
+    clusteringHeadingPrefix: 'Preguntas agrupadas por similitud — ejecución',
+    clusteringNotePrefix: 'Cada grupo se muestra con su pregunta más representativa (no un resumen de IA). Umbral de similitud: ',
+    medoidHeader: 'Pregunta representativa',
     membersHeader: 'Miembros',
     similarityHeader: 'Similitud (mín–máx)',
     escalationRateHeader: 'Tasa de escalación',
     topReasonHeader: 'Motivo top',
     uniqueLabel: '(único)',
-    noClustersPrefix: 'Sin clusters (ejecuta',
+    noClustersPrefix: 'Sin grupos de preguntas (ejecuta',
     noClustersSuffix: ').',
     topicsHeading: 'Preguntas por tema (top 10)',
-    unansweredRankingHeading: 'Ranking "sin responder" (escalation_rate × volumen × personas afectadas)',
+    unansweredRankingHeading: 'Preguntas sin respuesta, por prioridad',
     volumeLabel: 'volumen',
     rateLabel: 'tasa',
     headcountWeightLabel: 'peso por plantilla',
     scoreLabel: 'puntuación',
     noDataNotice: 'Sin datos.',
+  },
+
+  // Sprint 12b item 6 (plan.md §4) — display labels for the internal values
+  // that reach Analítica charts: `floor_decision.path` (path_split), the
+  // `authority_used` atoms (authority_split) and the `TopicLexicon` keys
+  // (topic_breakdown). DISPLAY ONLY — the data and the `stats:*` commands keep
+  // the raw keys. Guard-tested in `lib/statusLabels.test.ts` against both
+  // dictionaries, so a new value can't reach the screen unlabelled.
+  analyticsLabels: {
+    path: {
+      salary_sql: 'Preguntas sobre el sueldo',
+      prose: 'Preguntas resueltas con el texto del convenio o la ley',
+      reference_fact: 'Preguntas resueltas con un dato de referencia',
+      reference_fact_composition: 'Preguntas que combinan varios datos de referencia',
+      salary_prose_crosspath: 'Preguntas de sueldo con apoyo del texto del convenio',
+      general_knowledge: 'Preguntas de conocimiento general',
+      agent_planner: 'Decisión del asistente (escalar o derivar)',
+      agent_ask_employee: 'Preguntas aclaratorias al empleado',
+      agent_finalize: 'Respuesta final del asistente',
+      agent_figure_guard: 'Cifra no respaldada (bloqueada)',
+      agent_budget: 'Límite de consultas del asistente alcanzado',
+      pre_model_guard: 'Bloqueada por guardarraíles',
+      unknown: 'Sin clasificar',
+    },
+    // One label per ATOM; a combined key such as `national_law+official_convenio`
+    // is split on `+` and joined (`analyticsAuthorityLabel`).
+    authority: {
+      national_law: 'Ley',
+      official_convenio: 'Convenio',
+      internal_hr_ruling: 'Criterio interno de RR. HH.',
+      structured_reference: 'Dato de referencia',
+      general_knowledge: 'Conocimiento general',
+      none: 'Sin fuente documental',
+    },
+    topic: {
+      vacaciones: 'Vacaciones',
+      jornada: 'Jornada',
+      permisos: 'Permisos retribuidos',
+      excedencia: 'Excedencias',
+      periodo_prueba: 'Periodo de prueba',
+      trabajo_distancia: 'Trabajo a distancia',
+      horas_extra: 'Horas extraordinarias',
+      preaviso: 'Preaviso',
+      lactancia: 'Lactancia',
+      maternidad: 'Maternidad y paternidad',
+      descanso: 'Descansos',
+      festivos: 'Festivos',
+      movilidad: 'Movilidad geográfica',
+      antiguedad: 'Antigüedad',
+      despido: 'Despido',
+      ascensos: 'Ascensos',
+    },
   },
 
   // gapMeta.ts — the coverage-gap badge label/hint text shared by the
@@ -1457,6 +1515,8 @@ export const es = {
   // EscalationBoardPage.tsx — the Escalaciones kanban board (drag-drop
   // status columns) and its card drawer trigger (10 matches, §A.1).
   escalationBoardPage: {
+    // Sprint 12b item 2b — the "(N)" is appended in the component from `counts.closed`.
+    showClosedLabel: 'Mostrar cerradas',
     columnLabels: {
       new: 'Nuevas',
       assigned: 'Asignadas',

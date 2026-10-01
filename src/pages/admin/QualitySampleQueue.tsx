@@ -292,11 +292,14 @@ function QualitySampleDrawer({
           <button className="btn btn-ghost" onClick={onClose} aria-label={t.common.close}>✕</button>
         </div>
         <div className="detail-body">
-          <dl className="kv">
-            <dt>{t.qualitySampleQueue.colStratum}</dt><dd>{sample.stratum_path ?? t.qualitySampleQueue.stratumPathFallback} · {sample.stratum_territory?.name ?? t.qualitySampleQueue.nationalFallback}</dd>
-            <dt>{t.qualitySampleQueue.colSeed}</dt><dd>{sample.seed}</dd>
-            {sample.escalation_card && (<><dt>{t.qualitySampleQueue.colCorrectionCard}</dt><dd>#{sample.escalation_card.id}</dd></>)}
-          </dl>
+          {/* Sprint 12b item 4 — a block of its own, so it is a card like the rest. */}
+          <section>
+            <dl className="kv">
+              <dt>{t.qualitySampleQueue.colStratum}</dt><dd>{sample.stratum_path ?? t.qualitySampleQueue.stratumPathFallback} · {sample.stratum_territory?.name ?? t.qualitySampleQueue.nationalFallback}</dd>
+              <dt>{t.qualitySampleQueue.colSeed}</dt><dd>{sample.seed}</dd>
+              {sample.escalation_card && (<><dt>{t.qualitySampleQueue.colCorrectionCard}</dt><dd>#{sample.escalation_card.id}</dd></>)}
+            </dl>
+          </section>
 
           <section>
             <h4>{t.escalationCard.conversationHeading}</h4>

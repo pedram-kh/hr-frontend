@@ -18,6 +18,13 @@ FROM node:22-slim AS build
 WORKDIR /app
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Sprint 12b presentation flags (src/lib/featureFlags.ts) — build-time like the
+# URL above. Defaults here are the code defaults; the staging compose file
+# overrides them to the DEMO build (both off) unless exported otherwise.
+ARG VITE_SHOW_CHUNK_HEALTH=false
+ENV VITE_SHOW_CHUNK_HEALTH=$VITE_SHOW_CHUNK_HEALTH
+ARG VITE_SHOW_COVERAGE=true
+ENV VITE_SHOW_COVERAGE=$VITE_SHOW_COVERAGE
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
