@@ -177,6 +177,7 @@ describe('SUB_OUTCOME_LABELS', () => {
     'profile_incomplete.contract_type',
     'profile_incomplete.asserted_differs',
     'employee_requested_review.answer_reviewed',
+    'employee_requested_review.declined_reviewed',
     'planner_escalated.off_domain',
     'planner_escalated.unsafe',
     'planner_escalated.unanswerable',
@@ -189,8 +190,8 @@ describe('SUB_OUTCOME_LABELS', () => {
     'tool_budget_exhausted.malformed',
   ];
 
-  it('has exactly 71 keys, matching EscalationExplainer::MATRIX', () => {
-    expect(MATRIX_KEYS.length).toBe(71);
+  it('has exactly 72 keys, matching EscalationExplainer::MATRIX', () => {
+    expect(MATRIX_KEYS.length).toBe(72);
   });
 
   for (const [lang, dict] of Object.entries(DICTS)) {

@@ -154,13 +154,30 @@ function AnswerBlock({ response }: { response: ChatResponse }) {
   );
 }
 
+// Slice 13e — a confirmed off-domain question the assistant declined. The decline text is the server's (policy text or the
+// constant); the hint under it is frontend-only on purpose, so an admin edit of the text can never remove the way back to a
+// person. No thumbs: nothing was answered. The review button is the same one an answer has (-> employee_requested_review).
+function DeclineBlock({ response }: { response: ChatResponse }) {
+  const t = useT();
+  return (
+    <div className="card chat-bubble chat-bubble--assistant chat-bubble--decline">
+      <span className="chat-badge chat-badge--decline">{t.chat.declineBadge}</span>
+      <p className="answer-prose">{response.answer}</p>
+      <p className="muted chat-decline-hint">{t.chat.declineReviewHint}</p>
+      <div className="chat-bubble-actions">
+        <ReviewButton messageId={response.message_id} sentNote={t.chat.declineReviewSentNote} />
+      </div>
+    </div>
+  );
+}
+
 // Sprint 13, build step 8 (plan.md §D.13/§E.15) — "¿Quieres que lo revise
 // RR. HH.?" under an answered turn (classic and agent alike, spec §8: the
 // review button is not agent-only — a shared UI). One click, self-scoped
 // server-side, idempotent (a second click is harmless — it re-hits the same
 // endpoint and gets back the same card, but the UI never needs to know that;
 // once sent, the button stays "sent" for this render's lifetime).
-function ReviewButton({ messageId }: { messageId: number }) {
+function ReviewButton({ messageId, sentNote }: { messageId: number; sentNote?: string }) {
   const t = useT();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
@@ -178,7 +195,7 @@ function ReviewButton({ messageId }: { messageId: number }) {
   };
 
   if (state === 'sent') {
-    return <span className="muted chat-review-sent">{t.chat.reviewSentNote}</span>;
+    return <span className="muted chat-review-sent">{sentNote ?? t.chat.reviewSentNote}</span>;
   }
 
   return (
@@ -484,6 +501,8 @@ export function ChatScreen() {
                 />
               ) : item.response.outcome === 'ask' ? (
                 <AskBlock response={item.response} />
+              ) : item.response.outcome === 'decline' ? (
+                <DeclineBlock response={item.response} />
               ) : item.response.escalated ? (
                 <EscalationBlock response={item.response} />
               ) : (

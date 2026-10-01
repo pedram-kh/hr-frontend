@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
-import { agentStepMeta, laneRow, normalizationDetail } from './agentTrace';
+import { agentStepMeta, declineMeta, laneRow, normalizationDetail, traceOutcomeLabel } from './agentTrace';
+import type { ChatOutcome, DeclineTrace } from '../../lib/api';
 
 // CP-2 trace review: a `rule_verdict` step used to render as the raw type name with an empty meta line.
 describe('agentStepMeta — rule_verdict', () => {
@@ -16,6 +17,7 @@ describe('agentStepMeta — rule_verdict', () => {
     ['force_escalate', 'forzó el escalado'],
     ['force_finish', 'forzó el cierre con la respuesta'],
     ['force_ask', 'forzó una pregunta'],
+    ['force_decline', 'forzó una declinación (fuera de alcance)'],
   ])('renders %s', (verdict, text) => {
     expect(agentStepMeta(es, { type: 'rule_verdict', rule: 'R08', verdict }).meta).toBe(`R08 · ${text}`);
   });
@@ -133,5 +135,60 @@ describe('laneRow', () => {
     const r = laneRow(es, { sources: [{ kind: 'web', id: 'sepe-x', title: 'SEPE' }], grounding: { checked: true, grounded: true } });
     expect(r?.meta).toBe('origen no registrado · sin bloqueo');
     expect(r?.detail).toEqual(['Fuentes: SEPE', 'Verificación contra la fuente: verificada']);
+  });
+});
+
+// Slice 13e (plan.md §5.2): the decision line's outcome word, and the decline gate's evidence line.
+describe('traceOutcomeLabel', () => {
+  const ALL: ChatOutcome[] = ['answer', 'escalate', 'needs_category', 'ask', 'decline'];
+
+  it.each(ALL)('has a distinct, non-empty label for %s in both dictionaries', (o) => {
+    for (const d of [es, en]) expect(traceOutcomeLabel(d, o).length).toBeGreaterThan(0);
+  });
+
+  it('has no label collisions', () => {
+    for (const d of [es, en]) expect(new Set(ALL.map((o) => traceOutcomeLabel(d, o))).size).toBe(ALL.length);
+  });
+
+  it('reads an ask turn as a question and a decline as out of scope, never as an escalation', () => {
+    expect(traceOutcomeLabel(es, 'ask')).toBe('preguntar');
+    expect(traceOutcomeLabel(es, 'decline')).toBe('declinar (fuera de alcance)');
+    expect(traceOutcomeLabel(en, 'decline')).toBe('decline (out of scope)');
+  });
+
+  it('shows an outcome it does not know rather than calling it an escalation', () => {
+    expect(traceOutcomeLabel(es, 'future_outcome')).toBe('future_outcome');
+  });
+});
+
+describe('declineMeta', () => {
+  const planner: DeclineTrace = {
+    granted: true,
+    source: 'planner',
+    reason: 'off_domain',
+    checks: Array.from({ length: 10 }, (_, i) => ({ id: `D${i}`, pass: true })),
+    denied_by: null,
+    confirm: { label: 'off_domain', confidence: 0.95, floor: 0.9, source: 'llm' },
+    gate_version: 'dg-1',
+  };
+
+  it('shows the source, the router vote against its floor, and the checks passed', () => {
+    expect(declineMeta(es, planner)).toBe('fuente: planificador · router off_domain 0.95 (≥ 0.90) · 10 comprobaciones superadas');
+  });
+
+  it('shows the admin pattern for the guard source', () => {
+    const guard: DeclineTrace = { ...planner, source: 'guard_admin', confirm: null, matched_pattern: 'gimnasio' };
+    expect(declineMeta(es, guard)).toBe('fuente: lista de Guardarraíles · patrón «gimnasio» · 10 comprobaciones superadas');
+  });
+
+  it('names the check that refused when the decline was denied', () => {
+    const denied: DeclineTrace = {
+      ...planner,
+      granted: false,
+      denied_by: 'D7',
+      checks: planner.checks.map((c) => (c.id === 'D7' ? { ...c, pass: false, detail: 'turno' } : c)),
+    };
+    expect(declineMeta(es, denied)).toBe('fuente: planificador · router off_domain 0.95 (≥ 0.90) · declinación denegada por D7 (turno)');
+    expect(declineMeta(en, denied)).toContain('decline denied by D7 (turno)');
   });
 });

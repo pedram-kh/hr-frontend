@@ -1,4 +1,4 @@
-import type { GeneralLaneTrace, MessageTrace } from '../../lib/api';
+import type { ChatOutcome, DeclineTrace, GeneralLaneTrace, MessageTrace } from '../../lib/api';
 import type { Dict } from '../../i18n/es';
 
 // Sprint 13, build step 8 (plan.md §D.12/§E.15) — one timeline entry per
@@ -51,6 +51,7 @@ export function agentStepMeta(t: Dict, step: { type: string; [k: string]: unknow
         force_escalate: t.tracePanel.agentRuleVerdictForceEscalate,
         force_finish: t.tracePanel.agentRuleVerdictForceFinish,
         force_ask: t.tracePanel.agentRuleVerdictForceAsk,
+        force_decline: t.tracePanel.agentRuleVerdictForceDecline,
       };
       const verdict = typeof step.verdict === 'string' ? step.verdict : '';
       const rule = typeof step.rule === 'string' ? step.rule : '';
@@ -162,4 +163,37 @@ export function laneRow(t: Dict, lane: GeneralLaneTrace | undefined): { label: s
   if (lane.prompt_sha256) detail.push(`${p.lanePromptPrefix}${lane.prompt_sha256.slice(0, 12)}`);
 
   return { label: p.laneLabel, meta, detail };
+}
+
+// Slice 13e — the decision line's outcome word. A `Record<ChatOutcome, string>` so adding an outcome to the type is a compile
+// error here until it has a label (it used to be a two-way ternary whose fall-through said "escalate" for anything unknown,
+// which is how an `ask` turn read as an escalation). An outcome from a newer backend that is not in the type still renders.
+export function traceOutcomeLabel(t: Dict, outcome: string | undefined): string {
+  const labels: Record<ChatOutcome, string> = {
+    answer: t.tracePanel.outcomeAnswer,
+    escalate: t.tracePanel.outcomeEscalate,
+    needs_category: t.tracePanel.outcomeNeedsCategory,
+    ask: t.tracePanel.outcomeAsk,
+    decline: t.tracePanel.outcomeDecline,
+  };
+  if (outcome === undefined) return t.tracePanel.outcomeEscalate;
+  return (labels as Record<string, string>)[outcome] ?? outcome;
+}
+
+/**
+ * Slice 13e — the one-line evidence of the decline gate, e.g. `fuente: planificador · router off_domain 0.95 (≥ 0.90) · 10
+ * comprobaciones superadas`, or `fuente: lista de Guardarraíles · patrón «gimnasio» · …`. For a DENIED decision (the planner
+ * said off_domain and a check refused) it names the check that refused, so HR can see why a card was written.
+ */
+export function declineMeta(t: Dict, d: DeclineTrace): string {
+  const source = d.source === 'guard_admin' ? t.tracePanel.declineSourceGuard : t.tracePanel.declineSourcePlanner;
+  const pattern = d.matched_pattern ? `${t.tracePanel.declinePatternPrefix}${d.matched_pattern}${t.tracePanel.declinePatternSuffix}` : '';
+  const vote = d.confirm
+    ? `${t.tracePanel.declineRouterPrefix}${d.confirm.label} ${d.confirm.confidence} (≥ ${d.confirm.floor.toFixed(2)})`
+    : '';
+  const passed = d.checks.filter((c) => c.pass).length;
+  const tail = d.granted
+    ? ` · ${passed}${t.tracePanel.declineChecksPassedSuffix}`
+    : `${t.tracePanel.declineDeniedPrefix}${d.denied_by ?? '?'}${d.checks.find((c) => c.id === d.denied_by)?.detail ? ` (${d.checks.find((c) => c.id === d.denied_by)?.detail})` : ''}`;
+  return `${t.tracePanel.declineSourcePrefix}${source}${pattern}${vote}${tail}`;
 }

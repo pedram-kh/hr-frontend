@@ -120,6 +120,7 @@ export function HistoryPage() {
             <option value="answered">{t.historyPage.outcomeAnsweredOnlyOption}</option>
             <option value="escalated">{t.historyPage.outcomeEscalatedOnlyOption}</option>
             <option value="asked">{t.historyPage.outcomeAskedOnlyOption}</option>
+            <option value="declined">{t.historyPage.outcomeDeclinedOnlyOption}</option>
           </select>
           <select className="select" value={filters.reason ?? ''} onChange={(e) => setFilter('reason', e.target.value)} aria-label={t.historyPage.escalationReasonAriaLabel}>
             {REASONS.map((r) => (<option key={r.id} value={r.id}>{r.label}</option>))}
@@ -152,13 +153,16 @@ export function HistoryPage() {
                       // (e.g. "estatuto_fallback_gap"); the shared helper
                       // Correction-02 already built for this exact reason set.
                       <span className="badge badge-review">{t.historyPage.escalatedBadge}{r.escalation_reason ? ` · ${escalationReasonLabel(t, r.escalation_reason)}` : ''}</span>
-                    ) : (
+                    ) : r.declined_only ? null : (
+                      // Slice 13e — a session whose every turn was declined was never "answered"; its badge is the decline one below.
                       <span className="badge badge-verified">{t.historyPage.answeredBadge}</span>
                     )}
                     {/* Sprint 13, build step 8 — independent of the badge above
                         (a session can contain an ask turn AND, separately,
                         an escalation elsewhere in it). */}
                     {r.asked && <span className="badge badge-agent">{t.historyPage.askedBadge}</span>}
+                    {/* Slice 13e — a confirmed off-domain turn (no card). Also independent of the badges above. */}
+                    {r.declined && <span className="badge badge-historical">{t.historyPage.declinedBadge}</span>}
                   </td>
                 </tr>
               ))}
@@ -314,6 +318,7 @@ function ConversationBubble({ message }: { message: ConversationMessage }) {
     <div className="chat-row chat-row--assistant">
       <div className={`card chat-bubble chat-bubble--assistant ${message.escalated ? 'escalation' : ''}`}>
         {message.escalated && <span className="badge badge-review">{t.escalationCard.escalatedToHrBadge}</span>}
+        {message.outcome === 'decline' && <span className="badge badge-historical">{t.historyPage.declinedBadge}</span>}
         <p className="answer-prose">{message.content}</p>
         <CitationList citations={message.citations} />
         {message.trace && <TracePanel trace={message.trace} />}
