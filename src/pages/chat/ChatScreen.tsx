@@ -11,7 +11,7 @@ import {
   type JobCategoryOption,
 } from '../../lib/api';
 import { stripSourceMarkers } from '../../lib/citationMarkers';
-import { isGeneralLaneAnswer, stripGeneralLaneCaveat } from '../../lib/generalLane';
+import { generalLaneBasis, isGeneralLaneAnswer, stripGeneralLaneCaveat } from '../../lib/generalLane';
 import { SUGGESTED_QUESTIONS } from '../../lib/suggestedQuestions';
 import { useT } from '../../i18n/context';
 import type { Dict } from '../../i18n/es';
@@ -118,9 +118,15 @@ function AnswerBlock({ response }: { response: ChatResponse }) {
   const isGeneralLane = isGeneralLaneAnswer(response.authority_used);
   const prose = isGeneralLane ? stripGeneralLaneCaveat(response.answer) : response.answer;
   const generalLaneSources = response.general_lane?.sources ?? [];
+  // Slice 13c: the chip says where the answer came from — a fetched official page, or the model's own knowledge.
+  const modelBasis = isGeneralLane && generalLaneBasis(response.general_lane) === 'model_knowledge';
   return (
     <div className="card chat-bubble chat-bubble--assistant">
-      {isGeneralLane && <span className="chat-badge chat-badge--general-lane">{t.chat.generalLaneBadge}</span>}
+      {isGeneralLane && (
+        <span className={`chat-badge chat-badge--general-lane${modelBasis ? ' chat-badge--model-knowledge' : ''}`}>
+          {modelBasis ? t.chat.generalLaneBadgeModel : t.chat.generalLaneBadge}
+        </span>
+      )}
       <p className="answer-prose">{stripSourceMarkers(prose)}</p>
       {isGeneralLane && generalLaneSources.length > 0 && (
         <p className="answer-source-line muted">

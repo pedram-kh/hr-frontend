@@ -1,6 +1,6 @@
 import type { MessageTrace } from '../../lib/api';
 import { useT } from '../../i18n/context';
-import { agentStepMeta, normalizationDetail } from './agentTrace';
+import { agentStepMeta, laneRow, normalizationDetail } from './agentTrace';
 import { compositionFactsMeta, factSetMeta } from './factSetTrace';
 
 // The expandable "how I got here" view (design-system §8). Read-only; renders the
@@ -156,6 +156,12 @@ export function TracePanel({ trace }: { trace: MessageTrace }) {
       meta: `${outcomeLabel}${f.escalation_reason ? ` (${f.escalation_reason})` : ''}${checks}${fallback}`,
       dot: f.outcome === 'answer' ? 'src-admin_manual' : f.outcome === 'needs_category' ? 'src-ai_agent' : 'src-system',
     });
+  }
+
+  // Slice 13c — the general-knowledge lane's row: basis, words, which lock (if any) blocked it, sources, fetch errors.
+  const lane = laneRow(t, trace.general_lane);
+  if (lane) {
+    steps.push({ label: lane.label, meta: lane.meta, dot: 'src-ai_agent', list: lane.detail, listSummary: t.tracePanel.laneShowDetailSummary });
   }
 
   // Sprint 13, build step 8 (plan.md §D.12/§E.15) — the agent engine's own

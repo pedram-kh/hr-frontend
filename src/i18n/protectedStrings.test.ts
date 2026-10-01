@@ -88,6 +88,13 @@ const PROTECTED_STRINGS: Array<{ name: string; citation: string; value: string }
     value: 'Información general — no procede de tu convenio ni de la normativa cargada.',
   },
   {
+    name: 'ChatService::GENERAL_LANE_MODEL_CAVEAT',
+    citation: 'hr-backend/app/Services/ChatService.php (Slice 13c, plan.md §2.5)',
+    value:
+      'Información general, redactada sin consultar tu convenio ni la normativa cargada y sin una fuente verificable. ' +
+      'No describe lo que se te aplica a ti: consúltalo en tu convenio o con Recursos Humanos.',
+  },
+  {
     name: 'SalaryAnswerService::COVERAGE_GAP_MESSAGE',
     citation: 'hr-backend/app/Services/SalaryAnswerService.php:54-56',
     value:

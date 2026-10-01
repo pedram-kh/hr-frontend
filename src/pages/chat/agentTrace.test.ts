@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
-import { agentStepMeta, normalizationDetail } from './agentTrace';
+import { agentStepMeta, laneRow, normalizationDetail } from './agentTrace';
 
 // CP-2 trace review: a `rule_verdict` step used to render as the raw type name with an empty meta line.
 describe('agentStepMeta — rule_verdict', () => {
@@ -87,5 +87,51 @@ describe('agentStepMeta / normalizationDetail — normalization', () => {
     expect(lines).toContain('Forma normalizada: —');
     expect(lines).toContain('Tema: —');
     expect(lines).toContain('Confianza: —');
+  });
+});
+
+// Slice 13c: the trace panel's "Lane" row.
+describe('laneRow', () => {
+  it('is null when the turn never reached the lane', () => {
+    expect(laneRow(es, undefined)).toBeNull();
+  });
+
+  it('shows the model basis, the word count and a clean pass, with the detail lines', () => {
+    const r = laneRow(es, {
+      basis: 'model_knowledge',
+      sources: [{ kind: 'model_knowledge', title: 'conocimiento general del modelo' }],
+      web_attempted: true,
+      fetch_errors: [{ url: 'https://www.sepe.es/x', status: 404, error: 'http_404' }],
+      grounding: { checked: false, reason: 'model_knowledge_no_source' },
+      postcheck: { passed: true },
+      shape: { verdict: 'pass', rule_ids: [] },
+      word_count: 64,
+      prompt_sha256: 'abcdef0123456789abcdef',
+      draft: { model: 'claude-sonnet-5', general_knowledge_ms: 900, cost_usd: 0.0034 },
+    });
+    expect(r?.label).toBe('Lane de conocimiento general');
+    expect(r?.meta).toBe('conocimiento del modelo (sin página) · 64 palabras · sin bloqueo');
+    expect(r?.detail).toContain('Se intentó una página: sí');
+    expect(r?.detail).toContain('Error al leer: https://www.sepe.es/x · http_404');
+    expect(r?.detail).toContain('Verificación contra la fuente: no aplica (no hay fuente)');
+    expect(r?.detail).toContain('Forma: pasa');
+    expect(r?.detail).toContain('Borrador: $0.0034 · 900 ms · claude-sonnet-5');
+    expect(r?.detail).toContain('Prompt sha256: abcdef012345');
+  });
+
+  it('names the lock that blocked: the post-check, or the shape check with the rule and why', () => {
+    const post = laneRow(en, { basis: 'model_knowledge', postcheck: { passed: false, hits: [{ pattern_id: 'F1', matched_span: '5' }] } });
+    expect(post?.meta).toContain('blocked by the post-check');
+    expect(post?.detail).toContain('Post-check: F1 «5»');
+
+    const shape = laneRow(en, { basis: 'model_knowledge', postcheck: { passed: true }, shape: { verdict: 'blocked', rule_ids: ['S1'], hits: [{ rule_id: 'S1', detail: 'article: artículo 46' }] } });
+    expect(shape?.meta).toContain('blocked by the shape check');
+    expect(shape?.detail).toContain('Shape: S1 (article: artículo 46)');
+  });
+
+  it('renders a Sprint-13 trace (no basis, shape, words or hash) without inventing anything', () => {
+    const r = laneRow(es, { sources: [{ kind: 'web', id: 'sepe-x', title: 'SEPE' }], grounding: { checked: true, grounded: true } });
+    expect(r?.meta).toBe('origen no registrado · sin bloqueo');
+    expect(r?.detail).toEqual(['Fuentes: SEPE', 'Verificación contra la fuente: verificada']);
   });
 });
