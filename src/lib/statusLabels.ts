@@ -44,3 +44,39 @@ export function taggingStatusLabel(t: Dict, status: string | null | undefined): 
   if (!status) return t.common.dash;
   return t.statusLabels.taggingStatus[status] ?? status;
 }
+
+// --- Analítica chart labels (Sprint 12b item 6, plan.md §4.4) ----------------
+// `path` (floor_decision.path), the `authority_used` atoms and the TopicLexicon
+// keys reach the Analítica bar charts as internal snake_case values. Unlike the
+// helpers above (which return the raw value for an unmapped key), these fall
+// back to a HUMANISED string, so a value added on the backend tomorrow can
+// never show `snake_case` on screen, and warn in dev so it gets a real label.
+
+/** `reference_fact_composition` → `Reference fact composition`. Never contains `_`. */
+export function humanizeKey(key: string): string {
+  const spaced = key.replace(/[_\s]+/g, ' ').trim();
+  return spaced === '' ? key : spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function labelOrHumanized(map: Record<string, string>, kind: string, key: string): string {
+  const hit = map[key];
+  if (hit !== undefined) return hit;
+  if (import.meta.env.DEV) console.warn(`analyticsLabels.${kind}: no label for "${key}" — add one to es.ts and en.ts`);
+  return humanizeKey(key);
+}
+
+export function analyticsPathLabel(t: Dict, key: string): string {
+  return labelOrHumanized(t.analyticsLabels.path, 'path', key);
+}
+
+/** `authority_used_key` is the sorted atoms joined with `+` (DeflectionAnalytics::authorityKey), or `none`. */
+export function analyticsAuthorityLabel(t: Dict, key: string): string {
+  return key
+    .split('+')
+    .map((atom) => labelOrHumanized(t.analyticsLabels.authority, 'authority', atom))
+    .join(' + ');
+}
+
+export function analyticsTopicLabel(t: Dict, key: string): string {
+  return labelOrHumanized(t.analyticsLabels.topic, 'topic', key);
+}

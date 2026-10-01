@@ -10,7 +10,7 @@ import {
 } from '../../lib/api';
 import { BarChart, KpiTile } from './charts';
 import { escalationReasonLabel } from '../../lib/escalationReasons';
-import { subOutcomeLabel } from '../../lib/statusLabels';
+import { analyticsAuthorityLabel, analyticsPathLabel, analyticsTopicLabel, subOutcomeLabel } from '../../lib/statusLabels';
 import { useLocale, useT } from '../../i18n/context';
 import { formatDate, formatPercent } from '../../i18n/format';
 
@@ -43,11 +43,18 @@ export function AnalyticsPage() {
   if (!deflection || !byFix || !clusters) return <p className="muted">{t.analyticsPage.loadingText}</p>;
 
   const summary = deflection.summary;
-  const pathData = Object.entries(summary.path_split).map(([label, value]) => ({ label, value }));
-  const authorityData = Object.entries(summary.authority_split).map(([label, value]) => ({ label, value }));
+  // Sprint 12b item 6 — the raw internal keys (`salary_sql`, `national_law+official_convenio`,
+  // `periodo_prueba`…) are translated for display only; the data keeps its keys.
+  const pathData = Object.entries(summary.path_split).map(([key, value]) => ({ label: analyticsPathLabel(t, key), value }));
+  const authorityData = Object.entries(summary.authority_split).map(([key, value]) => ({ label: analyticsAuthorityLabel(t, key), value }));
   const topicData = Object.entries(clusters.topic_breakdown)
     .slice(0, 10)
-    .map(([label, value]) => ({ label, value }));
+    .map(([key, value]) => ({ label: analyticsTopicLabel(t, key), value }));
+  // The axis shows a short localised date, not the ISO `YYYY-MM-DD`.
+  const declinedData = (deflection.declined_by_day ?? []).map((d) => ({
+    label: formatDate(d.date, locale, { day: 'numeric', month: 'short' }),
+    value: d.declined,
+  }));
 
   return (
     <div className="analytics-page">
@@ -73,7 +80,7 @@ export function AnalyticsPage() {
         <KpiTile
           label={t.analyticsPage.kpiSatisfactionLabel}
           value={deflection.satisfaction.rate != null ? formatPercent(deflection.satisfaction.rate * 100, locale) : t.common.dash}
-          sub={`${deflection.satisfaction.up}👍 · ${deflection.satisfaction.down}👎 ${t.analyticsPage.kpiSatisfactionSubSuffix}`}
+          sub={`${deflection.satisfaction.up}👍 · ${deflection.satisfaction.down}👎`}
         />
       </div>
 
@@ -84,7 +91,7 @@ export function AnalyticsPage() {
 
       <section>
         <h4>{t.analyticsPage.declinedByDayHeading}</h4>
-        <BarChart data={(deflection.declined_by_day ?? []).map((d) => ({ label: d.date, value: d.declined }))} />
+        <BarChart data={declinedData} />
       </section>
 
       <section>

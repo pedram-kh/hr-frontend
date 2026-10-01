@@ -115,7 +115,7 @@ export function ReferenceFactCreatePanel({
           <div className="fact-create-grid">
             <SourceReader sources={sources} onUploaded={loadSources} onUseLocator={setSourceLocator} onLinkSource={(id) => setSourceDocId(id)} />
 
-            <div className="fact-create-form">
+            <div className="fact-create-form panel-card">
               {error && <p className="error">{error}</p>}
 
               <div className="field">
@@ -259,7 +259,7 @@ function SourceReader({
   };
 
   return (
-    <div className="fact-reader">
+    <div className="fact-reader panel-card">
       <h4>{t.referenceFactCreatePanel.readerHeading}</h4>
       <p className="muted">{t.referenceFactCreatePanel.readerIntroPrefix} <code>reference_source</code> {t.referenceFactCreatePanel.readerIntroSuffix}</p>
 

@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { CitationList } from '../chat/CitationList';
 import { TracePanel } from '../chat/TracePanel';
-import { useT } from '../../i18n/context';
+import { plural, useLocale, useT } from '../../i18n/context';
 
 // Legal status transitions (mirrors EscalationService::TRANSITIONS — the server
 // validates; this only shapes the picker so an illegal move isn't offered).
@@ -26,6 +26,23 @@ const TRANSITIONS: Record<EscalationStatus, EscalationStatus[]> = {
   resolved: ['closed', 'in_progress'],
   closed: ['in_progress'],
 };
+
+// Sprint 12b item 3 (plan.md §6.1) — the Conversación block starts collapsed;
+// the employee's triggering question is a separate block above it and stays
+// visible either way. ONE browser-wide preference, not per card: expand once
+// and later cards open expanded (per-card memory would be one key per card uuid,
+// unbounded across hundreds of cards, and would re-collapse on every new card).
+// Same best-effort posture as the sidebar prefs; the key exists only while
+// expanded ('true'), so the default (collapsed) writes nothing.
+const CONVO_OPEN_KEY = 'hr-admin-escalation-convo-open';
+
+function initialConvoOpen(): boolean {
+  try {
+    return window.localStorage.getItem(CONVO_OPEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 // The card-scoped detail drawer: the conversation + trace for THIS card only
 // (not a history browser), plus assign/move/reply/resolve for escalation.work
@@ -45,7 +62,19 @@ export function CardDrawer({
 }) {
   const { identity } = useAuth();
   const t = useT();
+  const { locale } = useLocale();
   const statusLabels: Record<EscalationStatus, string> = t.escalationCard.statusLabels;
+  const [convoOpen, setConvoOpen] = useState<boolean>(initialConvoOpen);
+  const toggleConvo = () => {
+    const next = !convoOpen;
+    setConvoOpen(next);
+    try {
+      if (next) window.localStorage.setItem(CONVO_OPEN_KEY, 'true');
+      else window.localStorage.removeItem(CONVO_OPEN_KEY);
+    } catch {
+      // best-effort only — a failed write never blocks the toggle itself.
+    }
+  };
   const [detail, setDetail] = useState<EscalationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -193,7 +222,23 @@ export function CardDrawer({
       )}
 
       <section>
-        <h4>{t.escalationCard.conversationHeading}</h4>
+        <div className="convo-head">
+          <h4>{t.escalationCard.conversationHeading}</h4>
+          {/* No toggle for the restricted variant: there is nothing to collapse. */}
+          {!detail.conversation_restricted && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-inline convo-toggle"
+              aria-expanded={convoOpen}
+              aria-controls="card-convo-body"
+              onClick={toggleConvo}
+            >
+              {convoOpen
+                ? t.escalationCard.hideConversation
+                : `${t.escalationCard.showConversation} (${detail.conversation.length} ${plural(locale, detail.conversation.length, { one: t.escalationCard.messageOne, other: t.escalationCard.messageOther })})`}
+            </button>
+          )}
+        </div>
         {detail.conversation_restricted ? (
           // Sprint-5 tightening (ADR-0018 §4.4): a knowledge_editor sees the card
           // meta but NOT the conversation content (gated server-side; the payload
@@ -204,7 +249,9 @@ export function CardDrawer({
             <code>escalation.work</code> {t.escalationCard.conversationRestrictedOr} <code>history.view_all</code>.
           </p>
         ) : (
-          <>
+          // `hidden`, not unmounted: the bubbles stay in the tree (cheap, and a
+          // toggle never refetches) but leave the tab order and the a11y tree.
+          <div id="card-convo-body" hidden={!convoOpen}>
             <p className="timeline-meta">
               {t.escalationCard.conversationIntro}
               <em> {t.escalationCard.conversationIntroThis}</em> {t.escalationCard.conversationIntroSuffix}
@@ -212,7 +259,7 @@ export function CardDrawer({
             <div className="card-convo">
               {detail.conversation.map((m) => <ConversationBubble key={m.id} message={m} />)}
             </div>
-          </>
+          </div>
         )}
       </section>
 

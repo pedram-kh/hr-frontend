@@ -106,6 +106,7 @@ export function HistoryPage() {
           }
           filters={filters}
           onClear={() => setFilters({})}
+          inlineWhenWide
         >
           <select className="select" value={filters.convenio_id ?? ''} onChange={(e) => setFilter('convenio_id', e.target.value ? Number(e.target.value) : undefined)} aria-label={t.common.convenio}>
             <option value="">{t.historyPage.allConveniosOption}</option>
@@ -241,15 +242,22 @@ function ConversationDrawer({ sessionUuid, onClose }: { sessionUuid: string; onC
               <p className="notice notice--neutral">
                 <span aria-hidden="true">🔒</span> {t.historyPage.readOnlyNotice}
               </p>
-              <dl className="kv">
-                {convo.employee?.convenio && (<><dt>{t.common.convenio}</dt><dd>{convo.employee.convenio.numero} — {convo.employee.convenio.name}</dd></>)}
-                <dt>{t.historyPage.startedLabel}</dt><dd>{formatDate(convo.started_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
-                <dt>{t.historyPage.colLastActivity}</dt><dd>{formatDate(convo.last_activity_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
-              </dl>
+              {/* Sprint 12b item 4 — three blocks (session details / employee /
+                  conversation) so each is a card on the grey drawer canvas; the
+                  read-only notice stays a banner above them. */}
+              <section>
+                <dl className="kv">
+                  {convo.employee?.convenio && (<><dt>{t.common.convenio}</dt><dd>{convo.employee.convenio.numero} — {convo.employee.convenio.name}</dd></>)}
+                  <dt>{t.historyPage.startedLabel}</dt><dd>{formatDate(convo.started_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
+                  <dt>{t.historyPage.colLastActivity}</dt><dd>{formatDate(convo.last_activity_at, locale, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
+                </dl>
+              </section>
               <EmployeeContextBlock context={convo.employee_context} />
-              <div className="card-convo">
-                {convo.messages.map((m) => <ConversationBubble key={m.id} message={m} />)}
-              </div>
+              <section>
+                <div className="card-convo">
+                  {convo.messages.map((m) => <ConversationBubble key={m.id} message={m} />)}
+                </div>
+              </section>
             </>
           )}
         </div>
@@ -271,22 +279,24 @@ function EmployeeContextBlock({ context }: { context: EscalationEmployeeContext 
   if (!context) return null;
 
   return (
-    <dl className="kv">
-      <dt>{t.escalationCard.colEmployee}</dt><dd>{context.full_name}</dd>
-      <dt>{t.escalationCard.colEmail}</dt><dd>{context.email}</dd>
-      <dt>{t.escalationCard.colTerritory}</dt><dd>{context.territory?.name ?? t.common.dash}</dd>
-      <dt>{t.escalationCard.colCategoryGroup}</dt>
-      <dd>
-        {context.job_category?.name ?? t.common.dash}
-        {context.convenio_group && <span className="muted"> · {context.convenio_group.path_label}</span>}
-      </dd>
-      <dt>{t.escalationCard.colSeniority}</dt>
-      <dd>
-        {context.seniority
-          ? `${context.seniority.years} ${plural(locale, context.seniority.years, { one: t.escalationCard.yearOne, other: t.escalationCard.yearOther })} ${t.escalationCard.senioritySincePrefix} ${formatDate(context.seniority.start_date, locale)})`
-          : <span className="muted">{t.escalationCard.notRegistered}</span>}
-      </dd>
-    </dl>
+    <section>
+      <dl className="kv">
+        <dt>{t.escalationCard.colEmployee}</dt><dd>{context.full_name}</dd>
+        <dt>{t.escalationCard.colEmail}</dt><dd>{context.email}</dd>
+        <dt>{t.escalationCard.colTerritory}</dt><dd>{context.territory?.name ?? t.common.dash}</dd>
+        <dt>{t.escalationCard.colCategoryGroup}</dt>
+        <dd>
+          {context.job_category?.name ?? t.common.dash}
+          {context.convenio_group && <span className="muted"> · {context.convenio_group.path_label}</span>}
+        </dd>
+        <dt>{t.escalationCard.colSeniority}</dt>
+        <dd>
+          {context.seniority
+            ? `${context.seniority.years} ${plural(locale, context.seniority.years, { one: t.escalationCard.yearOne, other: t.escalationCard.yearOther })} ${t.escalationCard.senioritySincePrefix} ${formatDate(context.seniority.start_date, locale)})`
+            : <span className="muted">{t.escalationCard.notRegistered}</span>}
+        </dd>
+      </dl>
+    </section>
   );
 }
 

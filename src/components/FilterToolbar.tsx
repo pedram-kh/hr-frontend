@@ -29,6 +29,7 @@ export function FilterToolbar({
   filters,
   onClear,
   total,
+  inlineWhenWide = false,
   children,
 }: {
   /** Always-visible, left-aligned content that is NOT a filter (search box, upload button, an active deep-link chip). */
@@ -39,6 +40,14 @@ export function FilterToolbar({
   onClear?: () => void;
   /** Always-visible, right-aligned total (e.g. "N documents"). Rendered as-is, unchanged from today's `.docs-total` pattern. */
   total?: ReactNode;
+  /**
+   * Sprint 12b item 5 — opt-in compact one-line mode (Historial). Once the toolbar
+   * is wide enough to hold every control on one line the "Filtros" toggle is
+   * hidden and the filters are always shown; narrower, the toggle works exactly as
+   * before (a collapsed wrapper is kept in the DOM but `display: none`). Without
+   * this flag nothing about the toggle changes.
+   */
+  inlineWhenWide?: boolean;
   /** The screen's own, unmodified filter controls. */
   children?: ReactNode;
 }) {
@@ -51,7 +60,7 @@ export function FilterToolbar({
   const activeCount = filters ? countActive(filters) : 0;
 
   return (
-    <div className="filter-toolbar">
+    <div className={`filter-toolbar${inlineWhenWide ? ' filter-toolbar--inline' : ''}`}>
       <div className="docs-toolbar filter-toolbar-row">
         {primary}
         {hasFilterControls && (
@@ -70,9 +79,16 @@ export function FilterToolbar({
             {t.filterToolbar.clearFiltersButton}
           </button>
         )}
+        {/* Sprint 12b item 5 — the filters live INSIDE the row now. At >= 960px
+            of toolbar width the wrapper is `display: contents` (index.css), so
+            search + filters + toggle flow as ONE wrapping line; below that it is
+            its own full-width flex row, i.e. today's two-row layout. DOM order
+            stays toggle → filters so keyboard order matches reading order. */}
+        {hasFilterControls && (open || inlineWhenWide) && (
+          <div className={`filter-toolbar-filters${inlineWhenWide && !open ? ' is-collapsed' : ''}`}>{children}</div>
+        )}
         {total}
       </div>
-      {hasFilterControls && open && <div className="docs-toolbar filter-toolbar-filters">{children}</div>}
     </div>
   );
 }

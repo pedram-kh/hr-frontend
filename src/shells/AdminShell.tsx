@@ -19,10 +19,12 @@ import {
   CircleUserRound,
   LogOut,
   Menu,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../auth/context';
 import { canManageAdmins, canManageDirectory, canViewAllHistory, canViewAnalytics, canViewCoverage, canViewQuality } from '../lib/api';
 import { parseAdminHash } from '../lib/adminHash';
+import { showCoverageNav } from '../lib/featureFlags';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { LocaleToggle } from '../i18n/LocaleToggle';
 import { useT } from '../i18n/context';
@@ -91,6 +93,41 @@ function initialSidebarCollapsed(): boolean {
   } catch {
     return false;
   }
+}
+
+// Sprint 12b item 8 (plan.md §2) — each sidebar group folds on its header.
+// Same posture as the collapse preference above: a pure UI-layout choice,
+// best-effort localStorage, one key per group, keyed by the STABLE English slug
+// (never the translated label, so switching locale keeps the folds). Absent key
+// = open (today's default); the value is only ever 'folded', and the key is
+// removed again when the group is reopened. Written on toggle only — never on
+// mount — so a visit that changes nothing writes nothing.
+const GROUP_IDS = ['conocimiento', 'atencion', 'analisis', 'personas', 'gobierno'] as const;
+type GroupId = (typeof GROUP_IDS)[number];
+
+const groupKey = (id: GroupId) => `hr-admin-sidebar-group-${id}`;
+
+// Which group a view lives in — used by the active-group rule. `coverage` is
+// listed even when its nav item is flag-hidden (item 7): the page can still be
+// open via `#view=coverage`, and its group must not fold shut around it.
+const GROUP_VIEWS: Record<GroupId, readonly View[]> = {
+  conocimiento: ['map', 'documents', 'review'],
+  atencion: ['escalations', 'history'],
+  analisis: ['analytics', 'coverage', 'quality'],
+  personas: ['directory', 'admins'],
+  gobierno: ['guardrails', 'settings'],
+};
+
+function initialFolds(): Record<GroupId, boolean> {
+  const folds = {} as Record<GroupId, boolean>;
+  for (const id of GROUP_IDS) {
+    try {
+      folds[id] = window.localStorage.getItem(groupKey(id)) === 'folded';
+    } catch {
+      folds[id] = false;
+    }
+  }
+  return folds;
 }
 
 // Admin console shell. Sprint 1: Knowledge → Documents. Sprint 2b-1 adds
@@ -162,6 +199,24 @@ export function AdminShell() {
   // `--collapsed` class is simply omitted below), never the icon rail.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Sprint 12b item 8 — per-group fold state (expanded mode only; see navGroup).
+  const [folds, setFolds] = useState<Record<GroupId, boolean>>(initialFolds);
+  const toggleGroup = (id: GroupId) => {
+    const next = !folds[id];
+    setFolds((f) => ({ ...f, [id]: next }));
+    try {
+      if (next) window.localStorage.setItem(groupKey(id), 'folded');
+      else window.localStorage.removeItem(groupKey(id));
+    } catch {
+      // best-effort only — a failed write never blocks folding itself.
+    }
+  };
+  // Icon rail = desktop collapsed AND not the mobile overlay (the exact
+  // expression the <aside> class uses). Folding is an expanded-mode concept.
+  const iconOnly = collapsed && !mobileNavOpen;
+  // The group holding the current page never folds (derived, never stored).
+  const activeGroup = GROUP_IDS.find((id) => GROUP_VIEWS[id].includes(view)) ?? null;
+
   const showDirectory = canManageDirectory(identity);
   const showAdmins = canManageAdmins(identity);
   const showHistory = canViewAllHistory(identity);
@@ -214,7 +269,10 @@ export function AdminShell() {
   ].filter(Boolean);
   const analisis = [
     showAnalytics && navBtn('analytics', t.adminShell.groups.analisis, t.adminShell.nav.analitica, BarChart3),
-    showCoverage && navBtn('coverage', t.adminShell.groups.analisis, t.adminShell.nav.cobertura, Grid3x3),
+    // Sprint 12b item 7 — only the NAV ITEM is flag-gated. The page render
+    // below (`view === 'coverage' && showCoverage`) is untouched, so
+    // `#view=coverage` (typed, bookmarked, or a backend Corregir link) still opens.
+    showCoverage && showCoverageNav() && navBtn('coverage', t.adminShell.groups.analisis, t.adminShell.nav.cobertura, Grid3x3),
     showQuality && navBtn('quality', t.adminShell.groups.analisis, t.adminShell.nav.calidad, BadgeCheck),
   ].filter(Boolean);
   const personas = [
@@ -226,13 +284,47 @@ export function AdminShell() {
     navBtn('settings', t.adminShell.groups.gobierno, t.adminShell.nav.ajustes, SettingsIcon),
   ];
 
-  const navGroup = (label: string, items: ReactNode[]) =>
-    items.length > 0 && (
-      <div className="shell-nav-group" key={label}>
-        <span className="shell-nav-group-label shell-sidebar-text">{label}</span>
-        {items}
+  // Sprint 12b item 8 (plan.md §2.2-2.5). The header is a real <button>; the
+  // items sit in a sibling role="group" that is HIDDEN (not unmounted) when
+  // folded, so group→item structure is identical in every fold state, and
+  // folded items leave the tab order and the accessibility tree.
+  //  - icon rail: the toggle is hidden and the items are never hidden, whatever
+  //    the stored fold — every icon stays visible with its tooltip/aria-label.
+  //  - active group: forced open; the toggle stays focusable but aria-disabled
+  //    (with a hint) so a screen-reader user hears why it does nothing.
+  const navGroup = (id: GroupId, label: string, items: ReactNode[]) => {
+    if (items.length === 0) return false;
+    const isActive = activeGroup === id;
+    const folded = !iconOnly && folds[id] && !isActive;
+    const panelId = `shell-nav-group-${id}`;
+    const labelId = `${panelId}-label`;
+    const hintId = `${panelId}-hint`;
+    return (
+      <div className="shell-nav-group" key={id}>
+        <button
+          type="button"
+          className={`shell-nav-group-toggle ${folded ? 'is-folded' : ''}`}
+          hidden={iconOnly}
+          aria-expanded={!folded}
+          aria-controls={panelId}
+          aria-disabled={isActive ? true : undefined}
+          aria-describedby={isActive ? hintId : undefined}
+          onClick={() => {
+            if (!isActive) toggleGroup(id);
+          }}
+        >
+          <span className="shell-nav-group-label shell-sidebar-text" id={labelId}>{label}</span>
+          <ChevronDown className="shell-nav-group-chevron" size={14} aria-hidden="true" />
+        </button>
+        {isActive && !iconOnly && (
+          <span id={hintId} className="visually-hidden">{t.adminShell.groupActiveHint}</span>
+        )}
+        <div className="shell-nav-group-items" id={panelId} role="group" aria-labelledby={labelId} hidden={folded}>
+          {items}
+        </div>
       </div>
     );
+  };
 
   return (
     <div className="shell shell--with-sidebar">
@@ -240,7 +332,7 @@ export function AdminShell() {
         <div className="shell-sidebar-backdrop" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
       )}
       <aside
-        className={`shell-sidebar ${collapsed && !mobileNavOpen ? 'shell-sidebar--collapsed' : ''} ${
+        className={`shell-sidebar ${iconOnly ? 'shell-sidebar--collapsed' : ''} ${
           mobileNavOpen ? 'shell-sidebar--mobile-open' : ''
         }`}
       >
@@ -265,11 +357,11 @@ export function AdminShell() {
           </button>
         </div>
         <nav className="shell-nav shell-nav--sidebar">
-          {navGroup(t.adminShell.groups.conocimiento, conocimiento)}
-          {navGroup(t.adminShell.groups.atencion, atencion)}
-          {navGroup(t.adminShell.groups.analisis, analisis)}
-          {navGroup(t.adminShell.groups.personas, personas)}
-          {navGroup(t.adminShell.groups.gobierno, gobierno)}
+          {navGroup('conocimiento', t.adminShell.groups.conocimiento, conocimiento)}
+          {navGroup('atencion', t.adminShell.groups.atencion, atencion)}
+          {navGroup('analisis', t.adminShell.groups.analisis, analisis)}
+          {navGroup('personas', t.adminShell.groups.personas, personas)}
+          {navGroup('gobierno', t.adminShell.groups.gobierno, gobierno)}
         </nav>
         <div className="shell-sidebar-footer">
           <div className="shell-sidebar-user" data-tooltip={identity?.email ?? ''}>
