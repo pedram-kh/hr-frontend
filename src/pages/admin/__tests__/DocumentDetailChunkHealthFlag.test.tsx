@@ -44,6 +44,7 @@ const doc: DocumentDetail = {
     language_split_available: false,
     note: 'chunk-health-note',
   },
+  embed: { state: null, chunk_count: 12, error_code: null },
   is_unscoped: false,
   pages: [],
   empty_text: false,
