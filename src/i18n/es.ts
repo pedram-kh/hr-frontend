@@ -265,6 +265,16 @@ export const es = {
     aiTaggingStep2Click: 'pulsa',
     confirmTagsButton: 'Confirmar etiquetas', // already English live
     aiTaggingStep2Suffix: '— eso fija el alcance y hace recuperable el documento.', // already English live
+    embedding: 'Indexando…',
+    searchableChunk: 'Buscable · 1 fragmento',
+    searchableChunks: 'Buscable · {count} fragmentos',
+    retryEmbeddingButton: 'Reintentar indexación',
+    embedErrors: {
+      timed_out: 'La indexación tardó demasiado y se detuvo.',
+      service_unreachable: 'El servicio de indexación no respondió.',
+      failed: 'La indexación falló.',
+      not_finished: 'La indexación no terminó.',
+    },
     derivedLabel: 'derivado', // already English live
     derivedTitleHint: 'Derivado del convenio — no editable', // already English live
     removedLabel: 'eliminado', // already English live
@@ -995,6 +1005,15 @@ export const es = {
     manualBindingNeededHeading: 'No se resuelven solos',
     approveAndBindPrefix: 'Aprobar nodo y vincular',
     approveAndBindSuffix: 'dato(s)',
+    diffNote: 'Aprobar el nodo no vincula nada por sí solo. Solo se escriben los datos que confirmes.',
+    reasons: {
+      complement: 'La etiqueta se define por exclusión ("{label}"): depende de qué grupos reclaman los demás datos, que es un juicio humano, no una lectura. Vincúlala a mano.',
+      no_structure: 'Este convenio todavía no tiene ninguna estructura de grupos aprobada.',
+      unrecognized: 'No se reconoce ninguna referencia a un grupo en "{label}".',
+      unknown_group: '"{label}" apunta a un grupo que no existe en la estructura aprobada de este convenio.',
+      ambiguous_split_group: '"{label}" nombra un grupo que está dividido en áreas con valores distintos, sin decir cuál. Elige a mano si el dato cubre todo el grupo o solo un área.',
+      unknown_sub_area: '"{label}" apunta a un área que no existe bajo ese grupo en la estructura aprobada.',
+    },
   },
 
   // HistoryPage.tsx — the gated full-conversation History browser (ADR-0018,

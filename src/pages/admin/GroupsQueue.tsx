@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   approveConvenioGroup,
   bindGroupFacts,
@@ -20,6 +20,16 @@ import { useAuth } from '../../auth/context';
 import { firstLine } from '../../lib/format';
 import { factStatusLabel, groupNodeStatusLabel } from '../../lib/statusLabels';
 import { useT } from '../../i18n/context';
+
+function groupReason(
+  t: ReturnType<typeof useT>,
+  kind: string,
+  label: string | null,
+): string {
+  const template = (t.groupsQueue.reasons as Record<string, string>)[kind];
+  if (!template) return '';
+  return template.replaceAll('{label}', label ?? '');
+}
 
 // Sprint 7f (ADR-0028) — the Groups review tab.
 //
@@ -54,6 +64,8 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
   const [tree, setTree] = useState<ConvenioGroupTree | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const scrolledFor = useRef<number | null>(null);
 
   const loadConvenios = useCallback(() => {
     setLoading(true);
@@ -73,6 +85,12 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
   useEffect(() => {
     if (selected !== null) loadTree(selected);
   }, [selected, loadTree]);
+
+  useEffect(() => {
+    if (selected === null || tree?.convenio.id !== selected || scrolledFor.current === selected) return;
+    scrolledFor.current = selected;
+    detailRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [selected, tree]);
 
   const refresh = useCallback(() => {
     loadConvenios();
@@ -118,7 +136,7 @@ export function GroupsQueue({ initialConvenioId = null }: { initialConvenioId?: 
         </table>
       </div>
 
-      <div className="pane-detail">
+      <div className="pane-detail" ref={detailRef}>
         {selected === null ? (
           <p className="muted">{t.groupsQueue.chooseConvenioPrompt}</p>
         ) : tree === null ? (
@@ -150,6 +168,7 @@ function ConvenioTree({
         <h3>{tree.convenio.name}</h3>
         {canEdit && (
           <button
+            className="btn btn-primary"
             disabled={busy}
             onClick={() => {
               setBusy(true);
@@ -216,7 +235,7 @@ function ConvenioTree({
                   <td className="small muted" title={f.source_excerpt ?? undefined}>
                     {firstLine(f.source_excerpt) ?? t.common.dash}
                   </td>
-                  <td className="small muted">{f.reason}</td>
+                  <td className="small muted">{groupReason(t, f.kind, f.group_label)}</td>
                   <td>
                     <ManualBindCell
                       fact={f}
@@ -290,6 +309,7 @@ function ManualBindCell({
         ))}
       </select>
       <button
+        className="btn btn-primary"
         disabled={busy || target === ''}
         onClick={() => {
           setBusy(true);
@@ -454,19 +474,19 @@ function NodeCard({
         <div className="node-actions">
           {pending && !editing && (
             <>
-              <button disabled={busy} onClick={openDiff}>
+              <button className="btn btn-primary" disabled={busy} onClick={openDiff}>
                 {t.groupsQueue.reviewAndApproveButton}
               </button>
-              <button disabled={busy} onClick={() => setEditing(true)}>
+              <button className="btn btn-ghost" disabled={busy} onClick={() => setEditing(true)}>
                 {t.groupsQueue.editButton}
               </button>
-              <button disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
+              <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
                 {t.groupsQueue.rejectButton}
               </button>
             </>
           )}
           {!pending && node.status === 'approved' && (
-            <button disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
+            <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => rejectConvenioGroup(node.id))}>
               {t.groupsQueue.rejectButton}
             </button>
           )}
@@ -480,6 +500,7 @@ function NodeCard({
             {t.groupsQueue.editLabelHint}
           </span>
           <button
+            className="btn btn-primary"
             disabled={busy}
             onClick={() =>
               act(() => updateConvenioGroup(node.id, { label }).then(() => setEditing(false)))
@@ -488,6 +509,7 @@ function NodeCard({
             {t.common.save}
           </button>
           <button
+            className="btn btn-ghost"
             disabled={busy}
             onClick={() => {
               setLabel(node.label);
@@ -502,7 +524,7 @@ function NodeCard({
       {diff && (
         <div className="panel diff">
           <h4>{t.groupsQueue.diffHeading}</h4>
-          <p className="muted small">{diff.note}</p>
+          <p className="muted small">{t.groupsQueue.diffNote}</p>
 
           {diff.would_bind.length === 0 ? (
             <p className="muted">{t.groupsQueue.noFactsPointNotice}</p>
@@ -571,7 +593,7 @@ function NodeCard({
               <ul className="small muted">
                 {diff.needs_manual_binding.map((f) => (
                   <li key={f.fact_id}>
-                    <span className="muted">#{f.fact_id}</span> <code>{f.group_label}</code> — {f.reason}
+                    <span className="muted">#{f.fact_id}</span> <code>{f.group_label}</code> — {groupReason(t, f.kind, f.group_label)}
                     {f.source_excerpt && (
                       <div className="muted small" title={f.source_excerpt}>
                         {firstLine(f.source_excerpt)}
@@ -585,6 +607,7 @@ function NodeCard({
 
           <div className="node-actions">
             <button
+              className="btn btn-primary"
               disabled={busy}
               onClick={() =>
                 act(() =>
@@ -597,7 +620,7 @@ function NodeCard({
             >
               {t.groupsQueue.approveAndBindPrefix} {ticked.size} {t.groupsQueue.approveAndBindSuffix}
             </button>
-            <button disabled={busy} onClick={() => setDiff(null)}>
+            <button className="btn btn-ghost" disabled={busy} onClick={() => setDiff(null)}>
               {t.common.cancel}
             </button>
           </div>

@@ -26,6 +26,30 @@ import { retrievalStatusLabel, taggingStatusLabel } from '../../lib/statusLabels
 import { useT, useLocale } from '../../i18n/context';
 import { showChunkHealth } from '../../lib/featureFlags';
 
+const EMBED_PROSE = new Set(['convenio_text', 'partial_agreement', 'national_law', 'internal_hr_ruling']);
+
+export function searchableLine(
+  detail: { searchableChunk: string; searchableChunks: string },
+  count: number,
+): string {
+  const template = count === 1 ? detail.searchableChunk : detail.searchableChunks;
+  return template.replace('{count}', String(count));
+}
+
+function embedLine(
+  detail: { embedding: string; searchableChunk: string; searchableChunks: string; embedErrors: Record<string, string> },
+  doc: DocumentDetail,
+): string | null {
+  const typeCode = doc.tags.document_type?.code;
+  if (!typeCode || !EMBED_PROSE.has(typeCode) || doc.embed.state == null) return null;
+  if (doc.embed.state === 'pending') return detail.embedding;
+  if (doc.embed.state === 'searchable') {
+    return searchableLine(detail, doc.embed.chunk_count);
+  }
+  const code = doc.embed.error_code ?? 'failed';
+  return detail.embedErrors[code] ?? detail.embedErrors.failed;
+}
+
 // Right-hand document card: scope facets + inline provenance, validity/status,
 // chunk health, lineage, the provenance timeline, the real-document viewer, the
 // read-only sandbox, and (for knowledge.edit holders) the bounded-edit controls.
@@ -61,6 +85,16 @@ export function DocumentDetailPanel({
 
   // Cancel any in-flight re-suggest poll when the doc changes or the panel closes.
   useEffect(() => () => pollCancelRef.current?.(), [uuid]);
+
+  // Slice 12c. The confirm request returns as soon as the job is queued.
+  // Poll while the card says pending; stop on searchable or failed.
+  useEffect(() => {
+    if (doc?.embed?.state !== 'pending') return;
+    const id = window.setInterval(() => {
+      getDocument(uuid).then(setDoc).catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [uuid, doc?.embed?.state]);
 
   // ESC to close
   useEffect(() => {
@@ -98,6 +132,7 @@ export function DocumentDetailPanel({
     load();
     onChanged();
   };
+  const statusLine = embedLine(t.documentDetail, doc);
 
   const confirm = async () => {
     setBusy(true);
@@ -238,9 +273,11 @@ export function DocumentDetailPanel({
       {doc.is_ai_proposed && (
         <p className="notice notice--ai">
           <span className="ai-pill">AI</span>
-          {'  '}{t.documentDetail.aiTaggingUnverified} <strong>{t.documentDetail.aiTaggingInert}</strong> {t.documentDetail.aiTaggingUntilConfirm}{' '}
-          <strong>{t.documentDetail.aiTaggingStep1Label}</strong> {t.documentDetail.aiTaggingStep1Text}{' '}
-          <strong>{t.documentDetail.aiTaggingStep2Label}</strong> {t.documentDetail.aiTaggingStep2Click} <strong>{t.documentDetail.confirmTagsButton}</strong> {t.documentDetail.aiTaggingStep2Suffix}
+          <span>
+            {t.documentDetail.aiTaggingUnverified} <strong>{t.documentDetail.aiTaggingInert}</strong> {t.documentDetail.aiTaggingUntilConfirm}{' '}
+            <strong>{t.documentDetail.aiTaggingStep1Label}</strong> {t.documentDetail.aiTaggingStep1Text}{' '}
+            <strong>{t.documentDetail.aiTaggingStep2Label}</strong> {t.documentDetail.aiTaggingStep2Click} <strong>{t.documentDetail.confirmTagsButton}</strong> {t.documentDetail.aiTaggingStep2Suffix}
+          </span>
         </p>
       )}
 
@@ -302,14 +339,24 @@ export function DocumentDetailPanel({
 
       {canEdit && <EditControls doc={doc} suspectedMistag={suspectedMistag} onChanged={reload} />}
 
+      {statusLine && (
+        <p className={doc.embed.state === 'failed' ? 'error' : 'muted'} data-embed-state={doc.embed.state ?? ''}>
+          {statusLine}
+        </p>
+      )}
+
       {canEdit && (
         <section className="actions">
           <button
             className="btn btn-primary"
             onClick={confirm}
-            disabled={busy || proposing || doc.tagging_status === 'verified'}
+            disabled={busy || proposing || (doc.tagging_status === 'verified' && doc.embed.state !== 'failed')}
           >
-            {doc.tagging_status === 'verified' ? t.documentDetail.tagsConfirmed : t.documentDetail.confirmTagsButton}
+            {doc.embed.state === 'failed'
+              ? t.documentDetail.retryEmbeddingButton
+              : doc.tagging_status === 'verified'
+                ? t.documentDetail.tagsConfirmed
+                : t.documentDetail.confirmTagsButton}
           </button>
           {doc.tagging_status === 'under_review' && (
             <>

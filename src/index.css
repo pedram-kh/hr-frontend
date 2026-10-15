@@ -1649,6 +1649,50 @@ a {
    create modal, which also uses the bare .panel class. Structure/layout is
    unchanged, per instruction — surfaces and borders only. */
 
+/* Slice 12c. The convenio list and its detail stack, full width. A side-by-side
+   grid hid the fourth list column and wrapped convenio names. The detail
+   scrolls with the page, on the page background. */
+.groups-queue.two-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: stretch;
+  max-width: 100%;
+}
+
+.groups-queue .pane-list {
+  width: 100%;
+  min-width: 0;
+}
+
+.groups-queue .pane-list .table th:not(:first-child),
+.groups-queue .pane-list .table td:not(:first-child) {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.groups-queue .pane-detail {
+  width: 100%;
+  min-width: 0;
+  background: var(--canvas);
+  padding: var(--space-3) 0 0;
+}
+
+.groups-queue .node-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.groups-queue .node-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .groups-queue .panel {
   /* Level 2 surface: the card floats off the page (--canvas, level 1) on
      --surface, with a real, visible border instead of border-left-only +
@@ -3093,10 +3137,17 @@ a {
   border-bottom-color: var(--accent);
 }
 
-/* The unverified-AI banner — fuchsia-tinted (distinct from the warning notice). */
+/* The unverified-AI banner — fuchsia-tinted (distinct from the warning notice).
+   display:block so the Step 1 / Step 2 sentence is one paragraph. .notice is
+   flex, and a flex item per <strong> was wrapping the banner into columns. */
 .notice--ai {
+  display: block;
   border-color: color-mix(in srgb, var(--provenance-ai) 45%, transparent);
   background: color-mix(in srgb, var(--provenance-ai) 8%, transparent);
+}
+
+.notice--ai .ai-pill {
+  margin-right: var(--space-2);
 }
 
 .ai-suggestions {

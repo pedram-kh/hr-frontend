@@ -226,6 +226,16 @@ export const en: Dict = {
     aiTaggingStep2Click: 'click',
     confirmTagsButton: 'Confirm tags',
     aiTaggingStep2Suffix: '— that writes the scope and makes the document retrievable.',
+    embedding: 'Embedding…',
+    searchableChunk: 'Searchable · 1 chunk',
+    searchableChunks: 'Searchable · {count} chunks',
+    retryEmbeddingButton: 'Retry embedding',
+    embedErrors: {
+      timed_out: 'Embedding took too long and was stopped.',
+      service_unreachable: 'The embedding service did not respond.',
+      failed: 'Embedding failed.',
+      not_finished: 'Embedding did not finish.',
+    },
     derivedLabel: 'derived',
     derivedTitleHint: 'Derived from the convenio — not editable',
     removedLabel: 'removed',
@@ -915,6 +925,15 @@ export const en: Dict = {
     manualBindingNeededHeading: "Don't resolve on their own",
     approveAndBindPrefix: 'Approve node and bind',
     approveAndBindSuffix: 'fact(s)',
+    diffNote: 'Approving the node binds nothing by itself. Only the facts you confirm are written.',
+    reasons: {
+      complement: 'The label is defined by exclusion ("{label}"). It depends on which groups the other facts claim, which is a human judgment. Bind it by hand.',
+      no_structure: 'This convenio has no approved group structure yet.',
+      unrecognized: 'No group is named in "{label}".',
+      unknown_group: '"{label}" names a group that is not in this convenio\'s approved structure.',
+      ambiguous_split_group: '"{label}" names a group that is split into areas with different values, without saying which. Choose by hand whether the fact covers the whole group or one area.',
+      unknown_sub_area: '"{label}" names an area that is not under that group in the approved structure.',
+    },
   },
 
   historyPage: {

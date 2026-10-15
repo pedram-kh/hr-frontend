@@ -303,6 +303,13 @@ export interface DocumentDetail {
   topics: TopicTag[];
   lineage: { predecessor: LineageRef | null; successors: LineageRef[] };
   chunk_health: ChunkHealth;
+  // Slice 12c. Computed on the document: pending | searchable | failed | null.
+  // error_code is set only when state is failed.
+  embed: {
+    state: 'pending' | 'searchable' | 'failed' | null;
+    chunk_count: number;
+    error_code: 'timed_out' | 'service_unreachable' | 'failed' | 'not_finished' | null;
+  };
   is_unscoped: boolean;
   pages: DocumentPage[];
   empty_text: boolean;
@@ -338,7 +345,7 @@ export function getDocument(uuid: string): Promise<DocumentDetail> {
   return request(`/admin/documents/${uuid}`, { method: 'GET' });
 }
 
-export function confirmTags(uuid: string): Promise<{ status: string }> {
+export function confirmTags(uuid: string): Promise<{ status: string; tagging_status: string; embed_queued: boolean }> {
   return request(`/admin/documents/${uuid}/confirm`, { method: 'POST' });
 }
 
